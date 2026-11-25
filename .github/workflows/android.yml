@@ -34,6 +34,8 @@ jobs:
             printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
           fi
       - run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
+        env:
+          NERO_YOUTUBE_ENDPOINT: ${{ vars.NERO_YOUTUBE_ENDPOINT }}
       - name: Prepare APK and checksum
         run: |
           mkdir -p dist

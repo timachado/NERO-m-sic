@@ -122,3 +122,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.5-dev
 - Adicionar faixa diretamente do player à playlist: local ou áudio aberto autorizado, preservando as listas existentes. Referência de áudio aberto transportada nos metadados Media3, validada antes de salvar. Pesquisa local com toque para reproduzir e ação de playlist. Nenhum novo provedor de streaming ativado; compilação e testes no aparelho pendentes.
+
+## 0.9.6-dev
+- YouTube: pesquisa nativa de vídeos musicais com API oficial via backend autenticado, player de vídeo incorporado e pausa do player de áudio. Integração preparada, não ativada: endpoint e projeto Firebase ainda precisam ser configurados. Não equivale a streaming do catálogo YouTube Music. Ver docs/youtube-catalog.md.

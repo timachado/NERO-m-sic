@@ -250,7 +250,7 @@ private fun NeroApp() {
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()},queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if(tab == 1) {
-                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,
+                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,onPauseAudio={controller?.pause()},
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
             } else if (tab == 3 || tab == 4) {
