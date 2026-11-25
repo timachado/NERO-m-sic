@@ -36,7 +36,8 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         finally{busy=false}
     }
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
-    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("album",album.title,album.url,album.credit,album.artwork)),index)}
+    val now=LocalNeroNowPlaying.current
+    fun play(hit:NativeMusicHit){if(now.matches(hit.reference().id)){now.open();return};val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("album",album.title,album.url,album.credit,album.artwork)),index)}
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         item{
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
@@ -54,9 +55,9 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         items(songs,key={it.id}){hit->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 AsyncImage(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
-                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(hit.artist,fontSize=12.sp,color=Color.LightGray)}
+                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
-                IconButton(enabled=canPlay,onClick={play(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                NowTrackAction(hit.reference().id,canPlay){play(hit)}
             }
         }
     }
