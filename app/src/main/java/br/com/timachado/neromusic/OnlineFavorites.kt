@@ -78,7 +78,7 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                     row.cover?.let{AsyncImage(model=it,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)))}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                    Text(row.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
+                    Text(row.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor(row.item?.mediaId));NowTrackStatus(row.item?.mediaId)
                     Text(row.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 row.online?.let{ref->
@@ -94,7 +94,7 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                 }
                 IconButton(onClick={row.local?.let(onLocalRemove)?:row.online?.let(onOnlineRemove)}){Icon(Icons.Default.Favorite,"Retirar dos favoritos",tint=Color(0xFF39FF14))}
                 val index=playable.indexOfFirst{it.id==row.id}
-                if(index>=0)IconButton(enabled=canPlay,onClick={onQueue(queue,index)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                if(index>=0)NowTrackAction(queue[index].mediaId,canPlay){onQueue(queue,index)}
                 else IconButton(onClick={onSearch(row.title+" "+row.artist)}){Icon(Icons.Default.Search,"Encontrar no NERO")}
             }
         }
