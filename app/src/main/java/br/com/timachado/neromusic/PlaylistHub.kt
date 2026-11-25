@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList())
@@ -154,7 +153,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
 private fun HubCover(covers:List<String>){
     Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
         if(covers.isEmpty())Icon(Icons.Default.QueueMusic,null,tint=Color(0xFF00E5FF))
-        else if(covers.size<4)AsyncImage(model=covers.first(),contentDescription=null,modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-        else Column(Modifier.fillMaxSize()){repeat(2){r->Row(Modifier.weight(1f)){repeat(2){c->AsyncImage(model=covers[r*2+c],contentDescription=null,modifier=Modifier.weight(1f).fillMaxHeight(),contentScale=ContentScale.Crop)}}}}
+        else if(covers.size<4)NeroArtwork(model=covers.first(),contentDescription=null,modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+        else Column(Modifier.fillMaxSize()){repeat(2){r->Row(Modifier.weight(1f)){repeat(2){c->NeroArtwork(model=covers[r*2+c],contentDescription=null,modifier=Modifier.weight(1f).fillMaxHeight(),contentScale=ContentScale.Crop)}}}}
     }
 }
