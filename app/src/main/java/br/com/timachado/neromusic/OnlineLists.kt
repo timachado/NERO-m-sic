@@ -118,6 +118,11 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             else {val first=incoming.songs.first();openShared=false;onSearch(first.title+" "+first.artist)}
         } else null)
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
+    var suggestions by remember(active?.id){mutableStateOf(emptyList<NativeMusicHit>())}
+    var suggestionsBusy by remember(active?.id){mutableStateOf(false)}
+    var suggestionsNotice by remember(active?.id){mutableStateOf<String?>(null)}
+    val hidden=rememberHiddenSongs()
+    val visibleSuggestions=filterRecommendedSongs(suggestions,hidden).filter{hit->active?.songs?.none{it.id==hit.reference().id}==true}
     val saved=offlineState.saved
     val localIndex=remember(tracks){tracks.groupBy{it.title.trim().lowercase(java.util.Locale.ROOT) to it.artist.trim().lowercase(java.util.Locale.ROOT)}}
     val available=remember(active,localIndex,saved){
@@ -167,6 +172,22 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null){
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
+                if(NativeMusicCatalog.enabled&&active.songs.any{it.artist.trim().length>=3}){
+                    OutlinedButton(enabled=!suggestionsBusy,onClick={
+                        val artists=active.songs.map{NeroFollowedArtists.clean(it.artist)}.filter{it.length>=3}.distinctBy(::nativeArtistKey).take(3)
+                        val existing=active.songs.map{it.id}.toSet()
+                        suggestionsBusy=true;suggestionsNotice=null
+                        scope.launch{
+                            try{
+                                suggestions=filterRecommendedSongs(artists.flatMap{NativeMusicCatalog.search(it).take(12)},NeroHiddenSongs.read(context))
+                                    .filter{it.reference().id !in existing}.distinctBy{it.id}.take(12)
+                                if(suggestions.isEmpty())suggestionsNotice="Nenhuma faixa nova encontrada."
+                            }catch(e:CancellationException){throw e}catch(_:Exception){suggestionsNotice="Não foi possível buscar sugestões."}
+                            finally{suggestionsBusy=false}
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(suggestionsBusy)"Buscando sugestões…" else "Encontrar músicas para esta playlist")}
+                    suggestionsNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+                }
                 val eligible=active.songs.mapNotNull{ref->ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}}.distinctBy{it.id}
                 val ready=eligible.count{audio->saved.any{it==audio}}
                 val busy=offlineState.active!=null||offlineState.batchTotal>0
@@ -223,6 +244,24 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                         DropdownMenuItem(text={Text("Mover para baixo")},enabled=index>=0&&index<active.songs.lastIndex,onClick={options=false;moveSong(s.id,1)})
                         DropdownMenuItem(text={Text("Remover da playlist")},onClick={options=false;remove=s})
                     }
+                }
+            }
+        }
+        if(active!=null&&visibleSuggestions.isNotEmpty()){
+            item{Text("Sugestões para sua playlist",fontSize=20.sp,fontWeight=FontWeight.Bold);Text("Baseadas nos artistas da lista. Adicione apenas as que quiser.",fontSize=12.sp,color=Color.LightGray)}
+            items(visibleSuggestions,key={"suggestion:"+it.id}){hit->
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    AsyncImage(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
+                    Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title);Text(hit.artist,fontSize=12.sp,color=Color.LightGray)}
+                    IconButton(onClick={
+                        try{
+                            val current=onlineLists(context)
+                            val live=current.firstOrNull{it.id==active.id}?:throw IllegalStateException()
+                            val ref=hit.reference()
+                            val updated=current.map{if(it.id==live.id)it.copy(songs=(it.songs+ref).distinctBy{song->song.id})else it}
+                            saveOnlineLists(context,updated);lists=Result.success(updated)
+                        }catch(_:Exception){notice="Não foi possível adicionar a sugestão."}
+                    }){Icon(Icons.Default.AddCircleOutline,"Adicionar sugestão",tint=Color(0xFF39FF14))}
                 }
             }
         }
