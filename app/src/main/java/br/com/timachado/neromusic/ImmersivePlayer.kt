@@ -4,6 +4,11 @@ import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.clickable
 import androidx.media3.common.MediaItem
 import androidx.compose.foundation.layout.*
@@ -90,14 +95,15 @@ internal fun ImmersivePlayer(
     val tones=rememberPlayerTones(track,remoteCover)
     BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)){
         NeroAuroraBackdrop(tones,playing&&!videoMode,Modifier.matchParentSize())
-        val coverSize=minOf(maxWidth-40.dp,maxHeight*.43f,410.dp).coerceAtLeast(1.dp)
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
+        val compact=maxHeight<780.dp
+        val coverSize=minOf(maxWidth-36.dp,(maxHeight-(if(canVideo) 335.dp else 285.dp)).coerceAtLeast(150.dp),410.dp).coerceAtLeast(1.dp)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Minimizar player")}
                 Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("NERO Music",fontSize=17.sp,fontWeight=FontWeight.Bold,color=Color.White)
+                    Row(verticalAlignment=Alignment.CenterVertically){Text("NER",fontSize=19.sp,fontWeight=FontWeight.ExtraBold,color=Color.White);Icon(Icons.Default.PlayCircle,null,tint=neon,modifier=Modifier.size(19.dp));Text(" Music",fontSize=19.sp,color=Color.White)}
                     Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
-                    Text(origin?.name?:"Reproduzindo",fontSize=15.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(origin?.name?:"Reproduzindo",fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 Box{
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
@@ -121,7 +127,20 @@ internal fun ImmersivePlayer(
                     }
                 }
             }
-            if(canVideo)SingleChoiceMode(videoMode=videoMode,onToggle=onVideoToggle,enabled=ready)
+            if(canVideo)Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+                listOf(false,true).forEach{video->
+                    val selected=videoMode==video
+                    val shape=RoundedCornerShape(50)
+                    val outline=if(selected)neon else aqua.copy(alpha=.7f)
+                    Row(Modifier.height(40.dp).widthIn(min=108.dp).clip(shape)
+                        .background(if(selected)Brush.horizontalGradient(listOf(neon,Color(0xFF00DDA3)))else Brush.horizontalGradient(listOf(Color(0xFF102327),Color(0xFF071619))))
+                        .border(1.dp,outline,shape).clickable(enabled=ready&&!selected){onVideoToggle()}.padding(horizontal=12.dp),
+                        horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+                        Icon(if(video)Icons.Default.OndemandVideo else Icons.Default.MusicNote,null,tint=if(selected)Color.Black else neon,modifier=Modifier.size(20.dp))
+                        Spacer(Modifier.width(6.dp));Text(if(video)"Vídeo" else "Música",color=if(selected)Color.Black else Color.White,fontWeight=FontWeight.Bold,fontSize=14.sp)
+                    }
+                }
+            }
             if(videoMode&&videoPlayer!=null){
                 NativeVideoSurface(videoPlayer,Modifier.fillMaxWidth().aspectRatio(16f/9f).clip(RoundedCornerShape(14.dp)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
@@ -134,16 +153,18 @@ internal fun ImmersivePlayer(
             }
             else {
                 val shape=RoundedCornerShape(24.dp)
-                Box(Modifier.size(coverSize).shadow(12.dp,shape).background(Color(0xFF0C171A),shape)
+                Box(Modifier.size(coverSize).drawBehind{
+                    for(i in 4 downTo 1){val d=i*3.dp.toPx();drawRoundRect(Brush.linearGradient(listOf(neon.copy(alpha=.05f),aqua.copy(alpha=.09f),Color(0xFFFF527D).copy(alpha=.05f))),topLeft=Offset(-d,-d),size=Size(size.width+2*d,size.height+2*d),cornerRadius=CornerRadius(24.dp.toPx()+d),style=Stroke(3.dp.toPx()))}
+                }.shadow(10.dp,shape).background(Color(0xFF0C171A),shape)
                     .border(1.5.dp,Brush.linearGradient(listOf(neon,aqua,tones.copy(alpha=.85f),neon)),shape).padding(2.dp).clip(shape),contentAlignment=Alignment.Center){
-                    if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize(),large=true)
+                    if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize(),large=true)
                     else LocalArtwork(track,Modifier.fillMaxSize(),large=true)
                 }
             }
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
-                    Text(title.ifBlank{"Nenhuma faixa"},fontSize=26.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-                    Text(displayArtistName(artist),color=Color.LightGray,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(title.ifBlank{"Nenhuma faixa"},fontSize=if(compact)21.sp else 24.sp,lineHeight=if(compact)24.sp else 27.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(displayArtistName(artist),color=Color.LightGray,fontSize=14.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                     track?.album?.takeUnless{it=="Álbum desconhecido"}?.let{Text(it,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 }
                 FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=neon)}
@@ -151,8 +172,8 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){
-                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(20.dp))
-                Slider(value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
+                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(18.dp))
+                Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
                     },enabled=ready&&duration>0,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=Color(0xFF16434A)))
@@ -162,9 +183,9 @@ internal fun ImmersivePlayer(
                 }
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically){
-                FilledTonalIconButton(onClick=onPrevious,enabled=ready,modifier=Modifier.size(62.dp),shape=RoundedCornerShape(20.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
-                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(82.dp).border(2.dp,aqua.copy(alpha=.5f),androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(40.dp))}
-                FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(62.dp),shape=RoundedCornerShape(20.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
+                FilledTonalIconButton(onClick=onPrevious,enabled=ready,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
+                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)72.dp else 80.dp).drawBehind{for(i in 3 downTo 1){drawCircle(neon.copy(alpha=.055f*i),radius=size.minDimension/2+i*3.dp.toPx(),style=Stroke(2.dp.toPx()))}}.border(2.dp,neon,androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
+                FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
             }
             Row(Modifier.fillMaxWidth().background(Color(0xFF102B23).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
