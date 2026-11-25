@@ -88,6 +88,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     val prefs=remember { settings(context) }
     val status=EqRuntime.state
+    var leveling by remember{mutableStateOf(context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).getBoolean("leveling",false))}
     var revision by remember { mutableIntStateOf(0) }
     DisposableEffect(prefs) {
         val listener=SharedPreferences.OnSharedPreferenceChangeListener { _,_ -> revision++ }
@@ -102,6 +103,8 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
                 "Graves" -> if(hz<=250) 400 else if(hz>=4000) -100 else 0
                 "Voz" -> if(hz in 500..4000) 300 else -100
                 "Brilho" -> if(hz>=4000) 300 else if(hz<=250) -100 else 0
+                "Rock" -> if(hz<=250||hz>=4000) 250 else -100
+                "Eletrônica" -> if(hz<=250) 350 else if(hz>=4000) 150 else 0
                 else -> 0
             }
             edit.putInt("gain_"+hz,level.coerceIn(status.low,status.high))
@@ -111,9 +114,17 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("NERO Equalizer",fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Text("NERO Audio",fontSize=23.sp,fontWeight=FontWeight.Bold)
         }
-        Text("Prévia Premium · teste de desenvolvimento",color=Color(0xFF00E5FF),fontSize=12.sp)
+        Text("Ajustes de som · desenvolvimento",color=Color(0xFF00E5FF),fontSize=12.sp)
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){
+                Text("Nivelar volume",fontSize=18.sp)
+                Text("Suaviza diferenças de intensidade sem aumentar picos.",fontSize=12.sp,color=Color.LightGray)
+            }
+            Switch(checked=leveling,onCheckedChange={leveling=it;NeroAudioSettings.setLeveling(context,it)})
+        }
+        Text("Funciona em áudio PCM compatível; não é normalização LUFS por faixa.",fontSize=12.sp,color=Color.LightGray)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("Equalização",modifier=Modifier.weight(1f),fontSize=18.sp)
             Switch(checked=enabled,enabled=status.available,onCheckedChange={prefs.edit().putBoolean("enabled",it).apply()})
@@ -126,7 +137,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         },fontSize=13.sp,color=Color.LightGray)
         if(status.available) {
             Text("Predefinições",fontWeight=FontWeight.Bold)
-            listOf(listOf("Plano","Graves"),listOf("Voz","Brilho")).forEach { row ->
+            listOf(listOf("Plano","Graves"),listOf("Voz","Brilho"),listOf("Rock","Eletrônica")).forEach { row ->
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     row.forEach { name ->
                         OutlinedButton(onClick={preset(name)},enabled=enabled,modifier=Modifier.weight(1f)){Text(name)}
