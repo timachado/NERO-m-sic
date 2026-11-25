@@ -309,8 +309,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     "artist"->playerArtist=origin.name
                     "chart"->{showQueue=true}
                     "playlist","local_playlist","imported"->{fullPlayer=false;tab=0;libraryPage=when(origin.kind){"playlist"->7;"local_playlist"->1;else->6};librarySelection=origin.id;libraryCreate=false}
-                    "favorites"->{showQueue=true}
-                    "search"->{showQueue=true}
+                    "favorites"->{fullPlayer=false;tab=2}
+                    "search"->{fullPlayer=false;searchSeed=origin.name;searchAutoFocus=false;tab=1}
                     else->showQueue=true
                 }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->playerArtist=term},
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
