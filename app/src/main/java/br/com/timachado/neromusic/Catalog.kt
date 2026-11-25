@@ -177,7 +177,12 @@ internal object DevCatalog {
                 val recording=track.optJSONObject("recording")
                 val title=track.optString("title").ifBlank{recording?.optString("title").orEmpty()}
                 if(title.isBlank())continue
-                result.add(AlbumSong(i+1,track.optString("number").ifBlank{(j+1).toString()},title,track.optLong("length",recording?.optLong("length",0L)?:0L)))
+                val recordingId=recording?.optString("id")?.takeIf{idPattern.matches(it)}
+                val credits=track.optJSONArray("artist-credit")?:recording?.optJSONArray("artist-credit")
+                val artist=if(credits==null)"" else (0 until credits.length()).joinToString(""){k->
+                    credits.optJSONObject(k)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
+                }.trim()
+                result.add(AlbumSong(i+1,track.optString("number").ifBlank{(j+1).toString()},title,track.optLong("length",recording?.optLong("length",0L)?:0L),recordingId,artist))
             }
         }
         return result

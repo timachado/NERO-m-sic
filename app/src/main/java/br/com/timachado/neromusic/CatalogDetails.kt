@@ -24,7 +24,7 @@ import kotlinx.coroutines.CancellationException
 internal data class AlbumEdition(val id:String,val title:String,val date:String,val country:String,val note:String){
     val label:String get()=listOf(title,date,country,note).filter{it.isNotBlank()}.joinToString(" · ")
 }
-internal data class AlbumSong(val disc:Int,val number:String,val title:String,val duration:Long)
+internal data class AlbumSong(val disc:Int,val number:String,val title:String,val duration:Long,val recordingId:String?=null,val artist:String="")
 
 @Composable
 internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(CatalogEntry)->Unit){
@@ -38,6 +38,10 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
     var trackBusy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
     var reload by remember{mutableIntStateOf(0)}
+    var adding by remember{mutableStateOf<List<OnlineRef>?>(null)}
+    val editionId=selected?.id
+    fun reference(song:AlbumSong):OnlineRef?=song.recordingId?.let{id->OnlineRef(id,song.title,song.artist.ifBlank{entry.credit},editionId)}
+    adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
     LaunchedEffect(entry.id,reload){
         busy=true;message=null
         try {
@@ -84,6 +88,11 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
                     }
                 }
                 Text("Faixas · "+songs.size,fontSize=19.sp,fontWeight=FontWeight.Bold)
+                val references=songs.mapNotNull{reference(it)}
+                OutlinedButton(enabled=!trackBusy&&references.isNotEmpty(),onClick={adding=references},modifier=Modifier.fillMaxWidth()){
+                    Icon(Icons.Default.PlaylistAdd,null);Spacer(Modifier.width(6.dp));Text("Adicionar faixas à playlist")
+                }
+                if(!trackBusy&&references.size<songs.size)Text("Algumas faixas não possuem identificador de gravação.",fontSize=12.sp,color=Color.LightGray)
             }
             if(!busy&&!trackBusy&&songs.isEmpty())item{Text("Nenhuma faixa disponível nesta edição.",color=Color.LightGray)}
             items(songs){song->
@@ -93,7 +102,8 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
                         Text(song.title,fontWeight=FontWeight.Medium)
                         if(song.duration>0)Text(String.format("%d:%02d",song.duration/60000,(song.duration/1000)%60),fontSize=12.sp,color=Color.LightGray)
                     }
-                    IconButton(onClick={if(!openYouTubeMusic(context,song.title+" "+entry.credit))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.PlayArrow,"Buscar faixa no YouTube Music",tint=Color(0xFF39FF14))}
+                    IconButton(enabled=song.recordingId!=null,onClick={reference(song)?.let{adding=listOf(it)}}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
+                    IconButton(onClick={if(!openYouTubeMusic(context,song.title+" "+song.artist.ifBlank{entry.credit}))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar faixa no YouTube Music",tint=Color(0xFF00E5FF))}
                 }
             }
         }else{

@@ -76,7 +76,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
             finally{openBusy=false}
         }
     }
-    adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
+    adding?.let{SaveOnlineDialog(listOf(it),onClose={adding=null})}
     val entry=detail.lastOrNull()
     BackHandler(entry!=null){detail=detail.dropLast(1)}
     if(entry!=null){
@@ -132,7 +132,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                     if(song.credit.isNotBlank())Text(song.credit,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 }
                                 if(kind==CatalogKind.SONG){
-                                    IconButton(onClick={adding=OnlineRef(song.id,song.title,song.credit)}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist online",tint=searchAccent)}
+                                    IconButton(onClick={adding=OnlineRef(song.id,song.title,song.credit,song.artworkReleaseId)}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist online",tint=searchAccent)}
                                     IconButton(onClick={if(!openYouTubeMusic(context,song.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar no YouTube Music")}
                                 }else IconButton(onClick={detail=listOf(song)}){Icon(Icons.Default.KeyboardArrowRight,"Abrir detalhes")}
                             }

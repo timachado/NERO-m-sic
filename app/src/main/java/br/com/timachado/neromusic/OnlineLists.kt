@@ -4,6 +4,11 @@ import android.content.Context
 import android.util.AtomicFile
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -22,7 +27,9 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
-internal data class OnlineRef(val id:String,val title:String,val artist:String)
+internal data class OnlineRef(val id:String,val title:String,val artist:String,val artworkReleaseId:String?=null){
+    val coverUrl:String? get()=artworkReleaseId?.takeIf{Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").matches(it)}?.let{"https://coverartarchive.org/release/$it/front-250"}
+}
 internal data class OnlineList(val id:String,val name:String,val songs:List<OnlineRef>)
 private fun listFile(context:Context)=AtomicFile(File(context.filesDir,"nero-online-lists.json"))
 internal fun onlineLists(context:Context):List<OnlineList>{
@@ -32,18 +39,19 @@ internal fun onlineLists(context:Context):List<OnlineList>{
     return (0 until array.length()).map{i->
         val o=array.getJSONObject(i);val rows=o.getJSONArray("songs")
         OnlineList(o.getString("id"),o.getString("name"),(0 until rows.length()).map{j->
-            val song=rows.getJSONObject(j);OnlineRef(song.getString("id"),song.getString("title"),song.getString("artist"))
+            val song=rows.getJSONObject(j);OnlineRef(song.getString("id"),song.getString("title"),song.getString("artist"),song.optString("artworkReleaseId").takeIf{it.isNotBlank()&&it!="null"})
         })
     }
 }
 private fun saveOnlineLists(context:Context,lists:List<OnlineList>){
-    val data=JSONArray(lists.map{l->JSONObject().put("id",l.id).put("name",l.name).put("songs",JSONArray(l.songs.map{s->JSONObject().put("id",s.id).put("title",s.title).put("artist",s.artist)}))})
+    val data=JSONArray(lists.map{l->JSONObject().put("id",l.id).put("name",l.name).put("songs",JSONArray(l.songs.map{s->JSONObject().put("id",s.id).put("title",s.title).put("artist",s.artist).put("artworkReleaseId",s.artworkReleaseId)}))})
     val bytes=data.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=4*1024*1024)
     val file=listFile(context);val out=file.startWrite()
     try{out.write(bytes);file.finishWrite(out)}catch(e:Exception){file.failWrite(out);throw e}
 }
 @Composable
-internal fun SaveOnlineDialog(song:OnlineRef,onClose:()->Unit){
+internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
+    val incoming=remember(songs){songs.distinctBy{it.id}}
     val context=LocalContext.current
     var loaded by remember{mutableStateOf(runCatching{onlineLists(context)})}
     var name by remember{mutableStateOf("")}
@@ -51,8 +59,8 @@ internal fun SaveOnlineDialog(song:OnlineRef,onClose:()->Unit){
     fun add(list:OnlineList?){
         try{
             val current=onlineLists(context)
-            val next=if(list==null)current+OnlineList(UUID.randomUUID().toString(),name.trim(),listOf(song))
-            else current.map{if(it.id==list.id)it.copy(songs=(it.songs+song).distinctBy{s->s.id})else it}
+            val next=if(list==null)current+OnlineList(UUID.randomUUID().toString(),name.trim(),incoming)
+            else current.map{if(it.id==list.id)it.copy(songs=(it.songs+incoming).distinctBy{s->s.id})else it}
             saveOnlineLists(context,next)
             android.widget.Toast.makeText(context,"Referência salva na playlist",android.widget.Toast.LENGTH_SHORT).show()
             onClose()
@@ -60,8 +68,8 @@ internal fun SaveOnlineDialog(song:OnlineRef,onClose:()->Unit){
     }
     AlertDialog(onDismissRequest=onClose,title={Text("Adicionar à playlist")},
         text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(song.title+" · "+song.artist,color=Color.LightGray)
-            Text("Salva a referência musical, não o áudio.",fontSize=12.sp,color=Color.LightGray)
+            Text(if(incoming.size==1)incoming.first().title+" · "+incoming.first().artist else "${incoming.size} gravações para adicionar",color=Color.LightGray)
+            Text("Salva as referências musicais, não o áudio. Gravações já existentes não serão duplicadas.",fontSize=12.sp,color=Color.LightGray)
             if(loaded.isFailure)Text("Não foi possível carregar suas playlists.")
             else{
                 LazyColumn(Modifier.heightIn(max=180.dp)){items(loaded.getOrDefault(emptyList()),key={it.id}){list->
@@ -70,7 +78,7 @@ internal fun SaveOnlineDialog(song:OnlineRef,onClose:()->Unit){
                 OutlinedTextField(name,{name=it.take(80)},label={Text("Nova playlist online")},singleLine=true)
             }
             message?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        }},confirmButton={TextButton(enabled=loaded.isSuccess&&name.isNotBlank(),onClick={add(null)}){Text("Criar e adicionar")}},
+        }},confirmButton={TextButton(enabled=loaded.isSuccess&&name.isNotBlank()&&incoming.isNotEmpty(),onClick={add(null)}){Text("Criar e adicionar")}},
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
@@ -109,7 +117,11 @@ internal fun OnlineListsScreen(){
             }
         }else items(active.songs,key={it.id}){s->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                Column(Modifier.weight(1f)){Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)}
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
+                    Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
+                    s.coverUrl?.let{AsyncImage(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
+                }
+                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)}
                 IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar no YouTube Music")}
                 IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
             }
