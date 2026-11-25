@@ -129,7 +129,8 @@ private fun NeroApp() {
     var showCloud by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud || showLyrics) { if(showLyrics) showLyrics = false else if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
+    var showQueue by remember { mutableStateOf(false) }
+    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud || showLyrics || showQueue) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true) || t.album.contains(query,true) || t.genre.contains(query,true)) }
@@ -149,7 +150,7 @@ private fun NeroApp() {
         p.prepare();p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics) Column {
+        if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -168,7 +169,9 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (showLyrics) {
+        if (showQueue) {
+            QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false }, modifier = Modifier.padding(padding))
+        } else if (showLyrics) {
             LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
                 onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else it.play() } },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
@@ -208,6 +211,7 @@ private fun NeroApp() {
                     IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
                     IconButton(onClick = { controller?.repeatMode = when (repeat) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }) { Icon(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repetir", tint = if (repeat != Player.REPEAT_MODE_OFF) Green else Color.White) }
                 }
+                TextButton(onClick={showQueue=true},enabled=controller!=null) { Icon(Icons.Default.QueueMusic,null,tint=Cyan); Spacer(Modifier.width(6.dp));Text("Fila de reprodução") }
                 val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
                 if(currentTrack!=null) TextButton(enabled=controller!=null,onClick={
                     val next=buildRadio(tracks,favorites,history(context),currentTrack)
@@ -281,6 +285,7 @@ private fun NeroApp() {
                                 Text(t.artist + " · " + timestamp(t.duration), fontSize = 12.sp, color = Color.LightGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             IconButton(onClick = { toggle(t.id.toString()) }) { Icon(if (t.id.toString() in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favoritar ${t.title}", tint = if (t.id.toString() in favorites) Green else Color.LightGray) }
+                            QueueAddMenu(controller,t)
                         }
                     }
                 }

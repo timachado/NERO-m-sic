@@ -84,3 +84,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.5-dev
 - NERO Radio local: fila finita de até 40 faixas selecionadas por artistas e gêneros do histórico e favoritos, ou a partir da música atual. Sem streaming externo nem promessa de rádio infinita. Não sugere faixas não relacionadas quando faltam sinais. Capas locais nas recomendações.
 - Testes unitários do algoritmo de rádio adicionados ao CI; resultados dependem da nova execução.
+
+## 0.8.6-dev
+- Fila de reprodução conectada ao MediaController: lista real do serviço, faixa atual, reprodução de qualquer item, mover e remover próximas faixas, limpar próximas após confirmação; não apaga arquivos. Edição de ordem desabilitada quando o modo aleatório está ativo.
+- Menu de músicas locais para adicionar ao fim ou reproduzir em seguida. Fila de sessão, não persistente após encerramento definitivo do serviço; testes em aparelho pendentes.
