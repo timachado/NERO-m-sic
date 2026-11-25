@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 72
-        versionName = "0.9.42-dev"
+        versionCode = 73
+        versionName = "0.9.42.1-dev"
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
         val googleClient = System.getenv("NERO_GOOGLE_CLIENT_ID").orEmpty().trim()
@@ -45,6 +45,8 @@ configurations.configureEach {
     }
 }
 dependencies {
+    debugImplementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+    debugImplementation("androidx.appcompat:appcompat:1.7.0")
     debugImplementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
     debugImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
