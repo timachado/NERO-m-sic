@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
-import coil.compose.AsyncImage
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -77,7 +76,7 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                 if(row.local!=null)LocalArtwork(row.local,Modifier.size(52.dp))
                 else Box(Modifier.size(52.dp),contentAlignment=Alignment.Center){
                     Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
-                    row.cover?.let{AsyncImage(model=it,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)))}
+                    row.cover?.let{NeroArtwork(model=it,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)))}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(row.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor(row.item?.mediaId));NowTrackStatus(row.item?.mediaId)
