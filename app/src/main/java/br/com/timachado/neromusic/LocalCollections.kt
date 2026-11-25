@@ -108,10 +108,11 @@ internal fun LocalCollectionsScreen(kind:Int,tracks:List<Track>,granted:Boolean,
             if(!granted)TextButton(onClick=onPermission){Text("Permitir acesso às músicas")}
         }
         if(group!=null)items(group.tracks,key={it.id}){track ->
-            Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){onPlay(group.tracks,group.tracks.indexOf(track))}.padding(4.dp),verticalAlignment=Alignment.CenterVertically) {
+            val now=LocalNeroNowPlaying.current
+            Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){if(now.matches(track.id.toString()))now.open()else onPlay(group.tracks,group.tracks.indexOf(track))}.padding(4.dp),verticalAlignment=Alignment.CenterVertically) {
                 LocalArtwork(track,Modifier.size(50.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                    Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(track.id.toString()));NowTrackStatus(track.id.toString())
                     Text(track.artist,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))
