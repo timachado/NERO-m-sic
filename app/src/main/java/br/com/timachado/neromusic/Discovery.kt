@@ -118,6 +118,8 @@ internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)-
     if (final.length() == t.size && side.isFile) {progress(1f);return@withContext}
     val partial = File(storage(context),t.id.toString()+".part")
     val meta = File(storage(context),t.id.toString()+".tmp")
+    val networkGuard=DownloadNetworkGuard(context)
+    networkGuard.check(force=true)
     val c = request(t.url)
     try {
         check(c.responseCode == 200)
@@ -127,18 +129,27 @@ internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)-
             val buffer = ByteArray(32768); var total = 0L
             while (true) {
                 currentCoroutineContext().ensureActive()
+                networkGuard.check()
                 val n = input.read(buffer); if (n < 0) break
                 total += n; check(total <= t.size && total <= maxBytes); output.write(buffer,0,n)
                 progress((total.toDouble()/t.size).toFloat().coerceIn(0f,0.99f))
             }
             check(total == t.size)
         } }
+        networkGuard.check(force=true)
         meta.writeText(t.json().toString())
         check(partial.renameTo(final))
         check(meta.renameTo(side))
         progress(1f)
     } finally { c.disconnect(); partial.delete(); meta.delete() }
 } }
+internal suspend fun removeOpenDownload(context:Context,t:OpenTrack):Unit=downloadLock.withLock{withContext(Dispatchers.IO){
+    require(allowed(t))
+    val audio=audioFile(context,t)
+    val meta=File(storage(context),t.id.toString()+".json")
+    check(!audio.exists()||audio.delete())
+    check(!meta.exists()||meta.delete())
+}}
 internal fun openBrowser(context:Context, uri:Uri): Boolean =
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,uri)); true }.getOrDefault(false)
 
