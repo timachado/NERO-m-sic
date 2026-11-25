@@ -63,12 +63,34 @@ internal fun OfflinePlayerButton(track:OpenTrack?,local:Boolean,state:OfflineSta
 internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit){
     val context=androidx.compose.ui.platform.LocalContext.current
     val rows=state.saved
-    val queue=remember(rows){rows.map{it.item(Uri.fromFile(audioFile(context,it)))}.withOrigin(PlaybackOrigin("offline","Downloads",""))}
+    var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    val visible=remember(rows,filter){
+        val term=filter.trim()
+        if(term.isEmpty()) rows else rows.filter{it.title.contains(term,ignoreCase=true)||it.artist.contains(term,ignoreCase=true)}
+    }
+    val queue=remember(visible){visible.map{it.item(Uri.fromFile(audioFile(context,it)))}.withOrigin(PlaybackOrigin("offline","Downloads",""))}
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
             Text("Downloads",fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text(rows.size.toString()+" músicas disponíveis offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",rows.sumOf{it.size}/1048576.0),color=Color.LightGray,fontSize=13.sp)
-            if(rows.isNotEmpty())Button(enabled=canPlay,onClick={onPlay(queue,0)},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir downloads")}
+            if(rows.isNotEmpty()){
+                OutlinedTextField(
+                    value=filter,onValueChange={filter=it.take(100)},modifier=Modifier.fillMaxWidth(),
+                    singleLine=true,placeholder={Text("Buscar nos downloads")},
+                    leadingIcon={Icon(Icons.Default.Search,null)},
+                    trailingIcon={if(filter.isNotEmpty())IconButton(onClick={filter=""}){Icon(Icons.Default.Close,"Limpar busca")}}
+                )
+                if(queue.isNotEmpty()){
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+                        Button(enabled=canPlay,onClick={onPlay(queue,0)},modifier=Modifier.weight(1f)){
+                            Icon(Icons.Default.PlayArrow,null);Spacer(Modifier.width(4.dp));Text("Reproduzir")
+                        }
+                        OutlinedButton(enabled=canPlay,onClick={onPlay(queue.shuffled(),0)},modifier=Modifier.weight(1f)){
+                            Icon(Icons.Default.Shuffle,null);Spacer(Modifier.width(4.dp));Text("Aleatório")
+                        }
+                    }
+                }else Text("Nenhum download corresponde à busca.",color=Color.LightGray,fontSize=13.sp)
+            }
             state.active?.let{track->
                 Text("Baixando "+track.title,maxLines=2)
                 LinearProgressIndicator(progress={state.progress},modifier=Modifier.fillMaxWidth())
@@ -84,15 +106,15 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                 }
             }else TextButton(onClick=onBrowse){Text("Encontrar mais músicas")}
         }
-        items(rows,key={it.id}){track->
+        items(visible,key={it.id}){track->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF39FF14),modifier=Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                     Text(track.artist,maxLines=2,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                    Text("Disponível offline · "+track.license,fontSize=11.sp,color=Color(0xFF39FF14))
+                    Text("Disponível offline · "+track.license+" · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",track.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
                 }
-                IconButton(enabled=canPlay,onClick={onPlay(queue,rows.indexOf(track))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                IconButton(enabled=canPlay,onClick={onPlay(queue,visible.indexOf(track))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
             }
         }
     }
