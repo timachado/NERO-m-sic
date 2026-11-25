@@ -17,7 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,onRestored:()->Unit={}){
+internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var user by remember{mutableStateOf<NeroSession?>(null)}
