@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "0.9.8-dev"
+        versionCode = 31
+        versionName = "0.9.9-dev"
         val catalogEndpoint = System.getenv("NERO_YOUTUBE_ENDPOINT").orEmpty()
         require(catalogEndpoint.isEmpty() || Regex("https://[A-Za-z0-9.-]+(?::443)?/[A-Za-z0-9/_-]+").matches(catalogEndpoint)) { "Invalid YouTube endpoint" }
         buildConfigField("String","YOUTUBE_ENDPOINT","\""+catalogEndpoint+"\"")
@@ -23,6 +23,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+}
+// NewPipe debug brings protobuf-javalite 4.x, which includes descriptor types.
+// Firebase\u0027s legacy companion AAR duplicates those classes. Keep release untouched.
+configurations.configureEach {
+    if (name.contains("debug", ignoreCase = true)) {
+        exclude(group = "com.google.firebase", module = "protolite-well-known-types")
+    }
 }
 dependencies {
     debugImplementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
