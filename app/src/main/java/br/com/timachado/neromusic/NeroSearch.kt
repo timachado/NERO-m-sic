@@ -49,7 +49,7 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),CLIPS("Clipes")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",initialOpenAudio:Boolean=false,onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={},offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={}){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",initialOpenAudio:Boolean=false,onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={},offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onNativeSave:(NativeMusicHit)->Unit={},onOfflineOpen:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
@@ -249,6 +249,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 if(tab==SearchTab.CLIPS)Text("Videoclipe",fontSize=11.sp,color=searchAqua)
                             }
                             IconButton(onClick={onFavorite(hit.reference())}){Icon(if(hit.reference().id in onlineFavoriteIds)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(hit.reference().id in onlineFavoriteIds)searchAccent else Color.LightGray)}
+                            NativeDownloadIcon(hit,offlineState,onNativeSave,onOfflineOpen)
                             SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit})
                             IconButton(enabled=canPlay&&resolving==null,onClick={if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))onCurrentToggle()else playNative(hit)}){Icon(if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)"Pausar" else "Reproduzir no NERO",tint=searchAccent)}
                         }
@@ -321,7 +322,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 if(downloaded){
                                     Icon(Icons.Default.CheckCircle,"Disponível offline",tint=searchAccent)
                                     Text("Baixada",color=searchAccent)
-                                }else TextButton(enabled=offlineState.active==null,onClick={onOfflineSave(audio)}){
+                                }else TextButton(enabled=offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0,onClick={onOfflineSave(audio)}){
                                     Icon(Icons.Default.Download,null)
                                     Spacer(Modifier.width(4.dp))
                                     Text(if(downloading)"Baixando "+(offlineState.progress*100).toInt()+"%" else "Baixar")
