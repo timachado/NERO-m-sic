@@ -73,9 +73,7 @@ private fun RecommendationRow(tracks:List<Track>, canPlay:Boolean,onPlay:(MediaI
         items(tracks,key={it.id}) { track ->
             Column(Modifier.width(132.dp).background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(10.dp),
                 verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).background(Color(0xFF12313A),RoundedCornerShape(8.dp)),contentAlignment=Alignment.Center) {
-                    Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(38.dp))
-                }
+                LocalArtwork(track,Modifier.fillMaxWidth().aspectRatio(1f))
                 Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,fontSize=14.sp)
                 Text(track.artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,fontSize=12.sp)
                 TextButton(enabled=canPlay,onClick={onPlay(track.mediaItem())},contentPadding=PaddingValues(0.dp)) {

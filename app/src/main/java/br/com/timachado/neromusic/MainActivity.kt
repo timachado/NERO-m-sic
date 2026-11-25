@@ -140,6 +140,14 @@ private fun NeroApp() {
         p.setMediaItems(queue.map { it.mediaItem() }, queue.indexOf(t).coerceAtLeast(0), 0L)
         p.prepare(); p.play()
     }
+    fun startRadio(queue:List<Track>) {
+        val p=controller ?: return
+        if(queue.isEmpty())return
+        p.shuffleModeEnabled=false
+        p.repeatMode=Player.REPEAT_MODE_OFF
+        p.setMediaItems(queue.map{it.mediaItem()},0,0L)
+        p.prepare();p.play()
+    }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,6 +208,11 @@ private fun NeroApp() {
                     IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
                     IconButton(onClick = { controller?.repeatMode = when (repeat) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }) { Icon(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repetir", tint = if (repeat != Player.REPEAT_MODE_OFF) Green else Color.White) }
                 }
+                val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
+                if(currentTrack!=null) TextButton(enabled=controller!=null,onClick={
+                    val next=buildRadio(tracks,favorites,history(context),currentTrack)
+                    if(next.isNotEmpty())startRadio(next)
+                }) { Icon(Icons.Default.Radio,null,tint=Cyan);Spacer(Modifier.width(6.dp));Text("Rádio desta faixa (local)") }
                 playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.weight(1f))
             }
@@ -243,7 +256,7 @@ private fun NeroApp() {
                     } })
             } else if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
                 key(tab) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onPlay = { item ->
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
                 })
                 }

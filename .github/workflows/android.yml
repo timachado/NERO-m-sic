@@ -33,7 +33,7 @@ jobs:
           if [ -n "$FIREBASE_CONFIG" ]; then
             printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
           fi
-      - run: gradle :app:assembleDebug :app:lintDebug --no-daemon
+      - run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
       - name: Prepare APK and checksum
         run: |
           mkdir -p dist

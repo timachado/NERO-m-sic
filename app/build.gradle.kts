@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "0.8.4-dev"
+        versionCode = 17
+        versionName = "0.8.5-dev"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
@@ -22,6 +22,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
