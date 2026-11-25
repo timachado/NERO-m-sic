@@ -155,3 +155,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.16-dev
 - Remove chamadas MusicBrainz da busca e home ativas; fonte musical principal YouTube Music. Descoberta de lançamentos via consultas de álbuns por gênero e ano, cache 15 minutos, atualização automática em tela ativa e navegação à página de álbum com fila. Não é feed oficial cronológico; datas não verificadas, portanto retirados filtros de 7/30/90 dias. Paradas Apple Music, áudio aberto e importação Spotify preservados. Referências antigas mantidas, com busca interna para reencontrar músicas. Código legado MusicBrainz permanece inativo e capas antigas podem usar Cover Art Archive. Build/teste físico pendentes.
+
+## 0.9.17-dev
+- Corrige chave de abertura ausente em OnlineListsScreen (falha da 0.9.16). Marca NERO Music nos títulos de catálogo, álbuns e novidades; fonte técnica disponível nas informações do catálogo e nos componentes oficiais. Favoritos online persistidos em arquivo atômico separado, ação no player e nos resultados completos de músicas, aba Favoritos unificada com músicas locais e reprodução em fila. Preserva favoritos locais e playlists existentes. Sem sincronização em nuvem, sem mudanças no provedor. Compilação e teste físico pendentes.

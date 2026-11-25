@@ -88,6 +88,12 @@ private fun NeroApp() {
         favorites = if (id in favorites) favorites - id else favorites + id
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
+    var onlineFavorites by remember { mutableStateOf(runCatching{readOnlineFavorites(context)}) }
+    fun toggleOnline(ref:OnlineRef){
+        try{val current=readOnlineFavorites(context);val next=if(current.any{it.id==ref.id})current.filterNot{it.id==ref.id}else listOf(ref)+current
+            saveOnlineFavorites(context,next);onlineFavorites=Result.success(next)
+        }catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível atualizar favoritos.",android.widget.Toast.LENGTH_SHORT).show()}
+    }
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var connectionError by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
@@ -202,8 +208,8 @@ private fun NeroApp() {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
                 track=currentTrack,remoteCover=nowOpenRef?.coverUrl,title=title,artist=artist,position=pos,duration=duration,playing=playing,
-                favorite=nowId in favorites,shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
-                onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId)},
+                favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowId},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
+                onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else it.play()}},
                 onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
@@ -256,11 +262,16 @@ private fun NeroApp() {
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()},queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if(tab == 1) {
-                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,autoFocus=searchAutoFocus,onExit={tab=3},onPauseAudio={controller?.pause()},onNativeQueue={queue,index->controller?.let{p->
+                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,autoFocus=searchAutoFocus,onExit={tab=3},onlineFavoriteIds=onlineFavorites.getOrDefault(emptyList()).map{it.id}.toSet(),onFavorite={toggleOnline(it)},onPauseAudio={controller?.pause()},onNativeQueue={queue,index->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
                 }},
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
+            } else if(tab==2){
+                FavoritesScreen(localTracks=filtered,online=onlineFavorites.getOrDefault(emptyList()),readError=onlineFavorites.isFailure,canPlay=controller!=null,
+                    onLocalRemove={toggle(it.id.toString())},onOnlineRemove={toggleOnline(it)},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onQueue={queue,index->controller?.let{p->
+                        if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
+                    }})
             } else if (tab == 3 || tab == 4) {
                 key(tab) {
                 DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onSearch = { term -> searchSeed=term;searchAutoFocus=false;tab=1 }, onSearchFocus={searchSeed="";searchAutoFocus=true;tab=1}, onNativeQueue={queue,index->controller?.let{p->

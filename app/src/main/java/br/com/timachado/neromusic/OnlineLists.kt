@@ -86,7 +86,7 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
-internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={})
+internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={}){
     val context=LocalContext.current
     var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
     var selected by remember{mutableStateOf<String?>(null)}
@@ -153,7 +153,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                     Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)
-                    Text(if(s.id in byId)"Disponível no NERO" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"YouTube Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
+                    Text(if(s.id in byId)"Disponível no NERO" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"NERO Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
                     s.openAudio?.takeIf{allowed(it)}?.let{audio->
                         Text(audio.license,fontSize=11.sp,color=Color.LightGray)
                         TextButton(onClick={if(!openBrowser(context,Uri.parse(audio.source)))notice="Não foi possível abrir a fonte."},contentPadding=PaddingValues(0.dp)){Text("Fonte e licença",fontSize=12.sp)}

@@ -45,10 +45,12 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),YOUTUBE("YouTube")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onPauseAudio:()->Unit={},onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={}){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onPauseAudio:()->Unit={},onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
+    var showSource by remember{mutableStateOf(false)}
+    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre o catálogo")},text={Text("Interface NERO Music. Fonte musical experimental: YouTube Music. Disponibilidade depende do serviço de origem.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
     val focusRequester=remember{FocusRequester()}
     val focusManager=LocalFocusManager.current
     val keyboard=LocalSoftwareKeyboardController.current
@@ -226,7 +228,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 item{PremiumGenres(onSearch={submit(it);tab=SearchTab.ALL})}
             }else{
                 if(NativeMusicCatalog.enabled&&tab in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.YOUTUBE)){
-                    item{Text("NERO Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text("Músicas · fonte YouTube Music",fontSize=11.sp,color=Color.LightGray)}
+                    item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("NERO Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text("Músicas · catálogo NERO Music",fontSize=11.sp,color=Color.LightGray)};IconButton(onClick={showSource=true}){Icon(Icons.Default.Info,"Informações sobre a fonte",tint=Color.LightGray)}}}
                     if(tab==SearchTab.ALL&&nativeResults.isNotEmpty())item{
                         val top=nativeResults.first()
                         Text("Resultado principal",fontSize=15.sp,fontWeight=FontWeight.Bold,color=Color.LightGray)
@@ -253,6 +255,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                                 Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
+                            IconButton(onClick={onFavorite(hit.reference())}){Icon(if(hit.reference().id in onlineFavoriteIds)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(hit.reference().id in onlineFavoriteIds)searchAccent else Color.LightGray)}
                             IconButton(onClick={adding=hit.reference()}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=searchAccent)}
                             IconButton(enabled=canPlay&&resolving==null,onClick={playNative(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=searchAccent)}
                         }

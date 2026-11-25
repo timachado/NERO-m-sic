@@ -93,7 +93,7 @@ internal fun ImmersivePlayer(
                     track?.album?.takeUnless{it=="Álbum desconhecido"}?.let{Text(it,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 }
                 FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=neon)}
-                FilledTonalIconButton(onClick=onFavorite,enabled=track!=null){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(favorite)neon else Color.White)}
+                FilledTonalIconButton(onClick=onFavorite,enabled=canSave){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(favorite)neon else Color.White)}
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){

@@ -70,7 +70,7 @@ internal fun NativeAlbumsShelf(onSearch:(String)->Unit,onAlbum:(NativeCollection
     }
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         Text("Explore álbuns",fontSize=21.sp,fontWeight=FontWeight.Bold)
-        Text("Seleção de sertanejo · catálogo YouTube Music",fontSize=12.sp,color=Color.LightGray)
+        Text("Seleção de sertanejo · catálogo NERO Music",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
             items(rows,key={it.url}){entry->
                 Card(onClick={onAlbum(entry)},modifier=Modifier.width(140.dp)){

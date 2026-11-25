@@ -101,7 +101,7 @@ internal fun NativeReleaseShelf(onOpen:()->Unit,onAlbum:(NativeCollection)->Unit
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
             TextButton(onClick=onOpen){Text("Ver tudo")}
         }
-        Text("Busca de novidades · YouTube Music",fontSize=12.sp,color=Color.LightGray)
+        Text("Novidades · catálogo NERO Music",fontSize=12.sp,color=Color.LightGray)
         ReleaseStatus(state)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
             items(state.rows.take(12),key={it.url}){entry->ReleaseAlbumCard(entry,Modifier.width(138.dp),onAlbum)}
@@ -121,7 +121,7 @@ internal fun NativeReleasesScreen(onBack:()->Unit,onAlbum:(NativeCollection)->Un
             Text("Lançamentos",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
         }
-        Text("Resultados de busca por novidades no YouTube Music. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
+        Text("Novidades do catálogo NERO Music. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(genres){label->FilterChip(selected=genre==label,onClick={genre=label},label={Text(label)})}
         }
