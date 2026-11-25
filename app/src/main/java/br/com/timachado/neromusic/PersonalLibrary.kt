@@ -58,7 +58,7 @@ internal fun recordListening(context:Context,id:String,title:String,artist:Strin
 
 @Composable
 internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, granted:Boolean, canPlay:Boolean,
-    onPermission:()->Unit, onPlay:(List<Track>,Int)->Unit) {
+    onPermission:()->Unit, onPlay:(List<Track>,Int)->Unit, onShuffle:(List<Track>)->Unit) {
     val context=LocalContext.current
     var playlists by remember { mutableStateOf(mixes(context)) }
     var recent by remember { mutableStateOf(history(context)) }
@@ -69,6 +69,8 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
     var clearConfirm by remember { mutableStateOf(false) }
     var adding by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var playlistFilter by remember { mutableStateOf("") }
+    var sortByName by remember { mutableStateOf(false) }
     val selected=playlists.firstOrNull { it.id==selectedId }
     val trackMap=remember(tracks) { tracks.associateBy { it.id } }
     fun persist(list:List<Mix>) { playlists=list;saveMixes(context,list) }
@@ -129,12 +131,16 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                     FilledTonalIconButton(onClick={editName="";showEditor=true}){Icon(Icons.Default.Add,"Nova playlist")}
                 }
                 Text("Organize suas músicas do aparelho.",fontSize=12.sp,color=Color.LightGray)
+                OutlinedTextField(playlistFilter,{playlistFilter=it},singleLine=true,modifier=Modifier.fillMaxWidth(),placeholder={Text("Buscar playlists")},leadingIcon={Icon(Icons.Default.Search,null)})
+                FilterChip(selected=sortByName,onClick={sortByName=!sortByName},label={Text(if(sortByName)"Ordem alfabética" else "Ordem de criação")})
             }
             if(playlists.isEmpty()) item { Text("Crie sua primeira playlist.",color=Color.LightGray) }
-            items(playlists,key={it.id}) { mix ->
+            val visible=playlists.filter{it.name.contains(playlistFilter,true)}.let{if(sortByName)it.sortedBy{mix->mix.name.lowercase(java.util.Locale.ROOT)} else it}
+            if(playlists.isNotEmpty()&&visible.isEmpty())item{Text("Nenhuma playlist encontrada.",color=Color.LightGray)}
+            items(visible,key={it.id}) { mix ->
                 Card(onClick={selectedId=mix.id;adding=false;query=""},modifier=Modifier.fillMaxWidth()) {
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(Icons.Default.QueueMusic,null,tint=accent,modifier=Modifier.size(36.dp))
+                        PlaylistArtwork(mix.ids.mapNotNull{trackMap[it]},Modifier.size(64.dp))
                         Column(Modifier.weight(1f).padding(horizontal=12.dp)) {
                             Text(mix.name,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                             Text(mix.ids.size.toString()+" músicas",fontSize=12.sp,color=Color.LightGray)
@@ -152,11 +158,14 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                     IconButton(onClick={editName=selected.name;showEditor=true}){Icon(Icons.Default.Edit,"Renomear")}
                     IconButton(onClick={deleteConfirm=true}){Icon(Icons.Default.Delete,"Excluir playlist")}
                 }
+                Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center){PlaylistArtwork(queue,Modifier.widthIn(max=210.dp).fillMaxWidth().aspectRatio(1f))}
+                Text("${selected.ids.size} músicas · ${queue.size} disponíveis · "+playlistDuration(queue),color=Color.LightGray,fontSize=13.sp)
                 if(!granted) TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")}
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Button(enabled=canPlay && queue.isNotEmpty(),onClick={onPlay(queue,0)},modifier=Modifier.weight(1f)){Text("Reproduzir")}
+                    Button(enabled=canPlay && queue.isNotEmpty(),onClick={onPlay(queue,0)},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
                     OutlinedButton(onClick={adding=!adding;query=""},enabled=granted,modifier=Modifier.weight(1f)){Text(if(adding)"Concluir" else "Adicionar")}
                 }
+                OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onShuffle(queue)},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Shuffle,null);Spacer(Modifier.width(8.dp));Text("Reprodução aleatória")}
                 if(adding) OutlinedTextField(query,{query=it},modifier=Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Filtrar músicas")})
                 else if(queue.size<selected.ids.size) Text("Algumas faixas não estão acessíveis.",color=Color.LightGray,fontSize=12.sp)
             }
@@ -170,6 +179,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                 if(queue.isEmpty()) item { Text("Adicione músicas para começar.",color=Color.LightGray) }
                 items(queue,key={it.id}) { t ->
                     Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                        LocalArtwork(t,Modifier.size(44.dp))
                         IconButton(enabled=canPlay,onClick={onPlay(queue,queue.indexOf(t))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=accent)}
                         Column(Modifier.weight(1f)) {
                             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis)
@@ -185,7 +195,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
 @Composable
 private fun TrackLine(t:Track,icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,onClick:()->Unit) {
     Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
-        Icon(Icons.Default.MusicNote,null,tint=accent)
+        LocalArtwork(t,Modifier.size(44.dp))
         Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis)
             Text(t.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)

@@ -236,7 +236,9 @@ private fun NeroApp() {
                 PersonalLibraryScreen(historyMode = libraryPage == 2, tracks = tracks, granted = granted,
                     canPlay = controller != null, onPermission = { request.launch(permission) },
                     onPlay = { queue, index -> controller?.let { p ->
-                        if(queue.isNotEmpty()) { p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex), 0L); p.prepare(); p.play() }
+                        if(queue.isNotEmpty()) { p.shuffleModeEnabled=false; p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex), 0L); p.prepare(); p.play() }
+                    } }, onShuffle = { queue -> controller?.let { p ->
+                        if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()},queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
                 key(tab) {

@@ -100,3 +100,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Player imersivo Aurora Neon: capa adaptativa, título/álbum/artista, controles grandes, letras, favoritos, fila, equalizador, rádio e menu de ações. Seek confirmado ao soltar o controle. Miniplayer com capa local. Layout rolável para telas menores.
 - Temporizador de sono na sessão do serviço de áudio (10–90 min), pausa ao vencer e opção de cancelar. Não persiste quando o serviço encerra; validação em aparelho necessária.
 - Referência do tutorial do usuário documentada em docs/music-roadmap.md. Vídeo e Music Flow não integrados; catálogo e letras online ainda pendentes.
+
+## 0.9.0-dev
+- Playlists locais com capas reais, mosaico quando há quatro capas de faixas distintas, busca por nome, ordenação alfabética opcional, página de detalhes com contagem de faixas e duração disponível, reprodução sequencial e aleatória. Capas nas linhas de faixas. Preserva criação, edição, remoção e histórico. Dados não alterados até ações explícitas do usuário.
+- Segundo tutorial do usuário (Spotify) documentado no roadmap; não foram adicionados anúncios ou fontes externas sem aprovação.
