@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.collectLatest
 class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private var eq: SessionEqualizer? = null
+    private var favoriteListener:android.content.SharedPreferences.OnSharedPreferenceChangeListener?=null
     private var replaySampler:NeroReplaySampler?=null
     private val timerScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -134,6 +135,21 @@ class PlaybackService : MediaLibraryService() {
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         session = MediaLibrarySession.Builder(this, player, NeroCarLibrary(applicationContext,timerScope)).setSessionActivity(activity).build()
+        var lastLayout=emptyList<androidx.media3.session.CommandButton>()
+        fun refreshLayout(){
+            val layout=NeroMediaActions.layout(applicationContext,player)
+            if(layout!=lastLayout){lastLayout=layout;session?.setCustomLayout(layout)}
+        }
+        favoriteListener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->
+            if(key=="favorites"||key=="online_favorite_revision")refreshLayout()
+        }
+        getSharedPreferences("nero_library",0).registerOnSharedPreferenceChangeListener(favoriteListener)
+        refreshLayout()
+        player.addListener(object:Player.Listener{
+            override fun onEvents(p:Player,events:Player.Events){
+                if(events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||events.contains(Player.EVENT_REPEAT_MODE_CHANGED)||events.contains(Player.EVENT_TIMELINE_CHANGED))refreshLayout()
+            }
+        })
         NeroWidgetState.attach(applicationContext,player)
         player.addListener(object:Player.Listener{
             override fun onEvents(player:Player,events:Player.Events){NeroWidgetState.refresh(applicationContext)}
@@ -157,6 +173,7 @@ class PlaybackService : MediaLibraryService() {
         stopSelf()
     }
     private fun closePlayback() {
+        favoriteListener?.let{getSharedPreferences("nero_library",0).unregisterOnSharedPreferenceChangeListener(it)};favoriteListener=null
         replaySampler?.close();replaySampler=null
         timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
