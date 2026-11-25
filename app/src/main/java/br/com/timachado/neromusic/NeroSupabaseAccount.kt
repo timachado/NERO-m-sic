@@ -74,9 +74,10 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
-        Text("Suas playlists e favoritos continuam neste aparelho. A conta não sincroniza a biblioteca entre dispositivos.",color=Color.LightGray,fontSize=12.sp)
+        Text("Sua biblioteca local permanece neste aparelho. As cópias na conta são opcionais e manuais.",color=Color.LightGray,fontSize=12.sp)
         }
         }
+        user?.let{NeroAccountCloud(it,enabled=!busy)}
         Text("Sua biblioteca",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
