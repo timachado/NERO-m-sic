@@ -11,6 +11,13 @@ internal fun setWifiOnlyDownloads(context:Context,value:Boolean){
     context.getSharedPreferences("nero_downloads",Context.MODE_PRIVATE).edit().putBoolean("wifi_only",value).apply()
 }
 
+internal fun economicalDownloads(context:Context):Boolean =
+    context.getSharedPreferences("nero_downloads",Context.MODE_PRIVATE).getBoolean("economical",false)
+
+internal fun setEconomicalDownloads(context:Context,value:Boolean){
+    context.getSharedPreferences("nero_downloads",Context.MODE_PRIVATE).edit().putBoolean("economical",value).apply()
+}
+
 internal class WifiDownloadRequired:IllegalStateException("Conecte-se a uma rede Wi-Fi para baixar.")
 
 internal fun requireDownloadNetwork(context:Context){
