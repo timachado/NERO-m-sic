@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private data class NeroOutput(val id:Int,val name:String,val type:Int)
 private data class NeroOutputs(val expected:List<NeroOutput> = emptyList(),val connected:List<NeroOutput> = emptyList())
@@ -34,12 +35,24 @@ private fun AudioDeviceInfo.output():NeroOutput {
     }
     return NeroOutput(id,name,type)
 }
+// Exclude virtual routes used for screen capture and internal audio mixing.
+private fun AudioDeviceInfo.isPhysicalOutput():Boolean =
+    type in setOf(
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,AudioDeviceInfo.TYPE_USB_DEVICE,
+        AudioDeviceInfo.TYPE_USB_ACCESSORY,AudioDeviceInfo.TYPE_USB_HEADSET,
+        AudioDeviceInfo.TYPE_HDMI,AudioDeviceInfo.TYPE_HDMI_ARC,
+        AudioDeviceInfo.TYPE_LINE_ANALOG,AudioDeviceInfo.TYPE_LINE_DIGITAL,
+        AudioDeviceInfo.TYPE_HEARING_AID,AudioDeviceInfo.TYPE_BLE_HEADSET,
+        AudioDeviceInfo.TYPE_BLE_SPEAKER,AudioDeviceInfo.TYPE_HDMI_EARC
+    )
 private fun readOutputs(context:Context):NeroOutputs=runCatching{
     val manager=context.getSystemService(AudioManager::class.java)
-    val connected=manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter{it.type !in setOf(AudioDeviceInfo.TYPE_BUILTIN_EARPIECE,AudioDeviceInfo.TYPE_TELEPHONY)}.map{it.output()}
+    val connected=manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter{it.isPhysicalOutput()}.map{it.output()}
     val expected=if(Build.VERSION.SDK_INT>=33)manager.getAudioDevicesForAttributes(
         AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-    ).map{it.output()}else emptyList()
+    ).filter{it.isPhysicalOutput()}.map{it.output()}else emptyList()
     NeroOutputs(expected.distinctBy{it.id},connected.distinctBy{it.id})
 }.getOrDefault(NeroOutputs())
 private fun openOutputSettings(context:Context):Boolean{
@@ -54,9 +67,20 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
     val context=LocalContext.current
     val green=Color(0xFF39FF14)
     var outputs by remember{mutableStateOf(readOutputs(context))}
-    var notice by remember{mutableStateOf<String?>(null)}
+    val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
+    val scope=rememberCoroutineScope()
+    var opening by remember{mutableStateOf(false)}
+    fun handoff(action:()->Boolean){
+        if(opening)return
+        opening=true
+        scope.launch{
+            sheetState.hide()
+            if(!action())android.widget.Toast.makeText(context,"Não foi possível abrir a seleção de dispositivos.",android.widget.Toast.LENGTH_SHORT).show()
+            onClose()
+        }
+    }
     LaunchedEffect(Unit){while(true){outputs=readOutputs(context);delay(2000L)}}
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF10191F),sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)){
+    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF10191F),sheetState=sheetState){
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             Text("Dispositivos",fontSize=26.sp,fontWeight=FontWeight.Bold)
             Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF203139)),modifier=Modifier.fillMaxWidth()){
@@ -80,19 +104,19 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                     if(outputs.expected.any{it.id==device.id})Icon(Icons.Default.Check,null,tint=green)
                 }
             }
-            OutlinedButton(onClick={if(!openOutputSettings(context))notice="Abra as configurações de Bluetooth do Android."},modifier=Modifier.fillMaxWidth()){
+            OutlinedButton(enabled=!opening,onClick={handoff{openOutputSettings(context)}},modifier=Modifier.fillMaxWidth()){
                 Icon(Icons.Default.Devices,null);Spacer(Modifier.width(8.dp));Text(if(Build.VERSION.SDK_INT>=34)"Escolher saída de áudio" else "Dispositivos Bluetooth")
             }
-            OutlinedButton(onClick={if(!runCatching{context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))}.isSuccess)notice="Configurações Bluetooth indisponíveis."},modifier=Modifier.fillMaxWidth()){
+            OutlinedButton(enabled=!opening,onClick={handoff{runCatching{context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS));true}.getOrDefault(false)}},modifier=Modifier.fillMaxWidth()){
                 Icon(Icons.Default.Bluetooth,null);Spacer(Modifier.width(8.dp));Text("Conectar dispositivo Bluetooth")
             }
             if(BuildConfig.DEBUG){
                 HorizontalDivider()
                 Text("TV e Chromecast",fontWeight=FontWeight.Medium)
-                OutlinedButton(enabled=canCast,onClick=onCast,modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Procurar TVs compatíveis")}
+                OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Procurar TVs compatíveis")}
                 Text("Use a mesma rede Wi-Fi. A transmissão atual aceita faixas compatíveis de áudio livre.",fontSize=12.sp,color=Color.LightGray)
             }
-            notice?.let{Text(it,color=MaterialTheme.colorScheme.error,fontSize=12.sp)}
+
         }
     }
 }
