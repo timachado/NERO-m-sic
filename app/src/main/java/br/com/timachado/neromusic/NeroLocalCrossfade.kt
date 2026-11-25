@@ -87,11 +87,13 @@ internal class NeroLocalCrossfade(
                 main.getMediaItemAt(nextIndex)!=nextItem){abort();return}
             if(stage==3){
                 if(index!=nextIndex||current!=nextItem){abort();return}
-                if(main.isPlaying||android.os.SystemClock.elapsedRealtime()-handoffAt>1500L){abort()}
+                val elapsed=android.os.SystemClock.elapsedRealtime()-handoffAt
+                if((main.isPlaying&&elapsed>=80L)||elapsed>1500L){abort()}
                 return
             }
             if(index!=fromIndex||current!=fromItem||!main.isPlaying||
                 main.nextMediaItemIndex!=nextIndex||NeroAudioSettings.crossfadeSeconds*1000L!=fadeMs){abort();return}
+            if(main.duration==C.TIME_UNSET){abort();return}
             val remain=main.duration-main.currentPosition
             if(stage==1){
                 if(remain<=fadeMs&&remain>=fadeMs/2&&aux.playbackState==Player.STATE_READY){
@@ -146,7 +148,9 @@ internal class NeroLocalCrossfade(
         val old=auxiliary?:return
         auxiliary=null
         stage=0;ownSeek=false
-        runCatching{old.volume=0f;old.pause();old.release()}
+        runCatching{old.volume=0f}
+        runCatching{old.pause()}
+        runCatching{old.release()}
         runCatching{main.volume=baseVolume}
     }
     override fun close(){
