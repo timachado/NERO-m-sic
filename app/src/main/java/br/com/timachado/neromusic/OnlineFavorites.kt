@@ -47,10 +47,9 @@ internal fun saveOnlineFavorites(context:Context,rows:List<OnlineRef>){
 }
 private data class FavoriteRow(val id:String,val title:String,val artist:String,val cover:String?,val local:Track?,val online:OnlineRef?,val item:MediaItem?)
 @Composable
-internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,readError:Boolean,canPlay:Boolean,onLocalRemove:(Track)->Unit,onOnlineRemove:(OnlineRef)->Unit,onSearch:(String)->Unit,onQueue:(List<MediaItem>,Int)->Unit){
+internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,readError:Boolean,canPlay:Boolean,onLocalRemove:(Track)->Unit,onOnlineRemove:(OnlineRef)->Unit,onSearch:(String)->Unit,onQueue:(List<MediaItem>,Int)->Unit,offlineState:OfflineState=OfflineState(),onNativeSave:(NativeMusicHit)->Unit={},onOpenSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={}){
     val context=LocalContext.current
-    var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
-    LaunchedEffect(Unit){saved=downloaded(context)}
+    val saved=offlineState.saved
     val rows=remember(localTracks,online,saved){
         online.map{ref->
             val open=ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}
@@ -81,6 +80,17 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(row.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                     Text(row.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+                row.online?.let{ref->
+                    val hit=musicHitFromRef(ref)
+                    val open=ref.openAudio?.takeIf(::allowed)
+                    if(hit!=null&&NativeMusicCatalog.enabled)NativeDownloadIcon(hit,offlineState,onNativeSave,onOfflineOpen)
+                    else if(open!=null){
+                        val ready=saved.any{it==open}
+                        IconButton(enabled=ready||(offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0),onClick={if(ready)onOfflineOpen()else onOpenSave(open)}){
+                            Icon(if(ready)Icons.Default.CheckCircle else Icons.Default.Download,if(ready)"Baixada" else "Baixar",tint=Color(0xFF39FF14))
+                        }
+                    }
                 }
                 IconButton(onClick={row.local?.let(onLocalRemove)?:row.online?.let(onOnlineRemove)}){Icon(Icons.Default.Favorite,"Retirar dos favoritos",tint=Color(0xFF39FF14))}
                 val index=playable.indexOfFirst{it.id==row.id}
