@@ -29,7 +29,7 @@ internal fun NeroArtwork(model:Any?,contentDescription:String?,modifier:Modifier
     val candidates=remember(model,preferred,large){
         val url=original?.toString().orEmpty()
         val id=Regex("^https://i\\.ytimg\\.com/vi(?:_webp)?/([A-Za-z0-9_-]{11})/[^/?]+(?:\\?.*)?$").matchEntire(url)?.groupValues?.get(1)
-        if(large&&id!=null&&preferred==original)listOf("https://i.ytimg.com/vi/$id/maxresdefault.jpg","https://i.ytimg.com/vi/$id/sddefault.jpg","https://i.ytimg.com/vi/$id/hqdefault.jpg",original).distinct()
+        if(large&&id!=null)listOf("https://i.ytimg.com/vi/$id/maxresdefault.jpg","https://i.ytimg.com/vi/$id/sddefault.jpg",preferred,"https://i.ytimg.com/vi/$id/hqdefault.jpg",original).distinct()
         else listOf(preferred,original).distinct()
     }
     var index by remember(candidates){mutableIntStateOf(0)}
