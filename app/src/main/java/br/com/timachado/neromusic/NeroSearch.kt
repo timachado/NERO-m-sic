@@ -53,6 +53,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
+    var showIdentify by remember{mutableStateOf(false)}
     var showSource by remember{mutableStateOf(false)}
     if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre o catálogo")},text={Text("Interface NERO Music. Fonte musical experimental: YouTube Music. Disponibilidade depende do serviço de origem.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
     val focusRequester=remember{FocusRequester()}
@@ -174,12 +175,16 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     }
     addingLocal?.let{SaveLocalTrackDialog(it,onClose={addingLocal=null})}
     adding?.let{SaveOnlineDialog(listOf(it),onClose={adding=null})}
+    if(showIdentify&&BuildConfig.DEBUG)NeroIdentifyDialog(onClose={showIdentify=false},onSearch={tab=SearchTab.ALL;submit(it)})
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick={startVoice()}){Icon(Icons.Default.Mic,"Pesquisar por voz",tint=searchAqua)}
             IconButton(onClick={focusManager.clearFocus();keyboard?.hide();onExit()}){Icon(Icons.Default.ArrowBack,"Voltar")}
             OutlinedTextField(query,{query=it.take(100);tab=SearchTab.ALL},modifier=Modifier.weight(1f).focusRequester(focusRequester).onFocusChanged{editing=it.isFocused},singleLine=true,shape=RoundedCornerShape(28.dp),
                 placeholder={Text("Digite para pesquisar")},leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Limpar busca")}},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}))
+        }
+        if(BuildConfig.DEBUG&&!editing)OutlinedButton(onClick={focusManager.clearFocus();keyboard?.hide();showIdentify=true},modifier=Modifier.fillMaxWidth()){
+            Icon(Icons.Default.Mic,null,tint=searchAqua);Spacer(Modifier.width(8.dp));Text("NERO Identify · Identificar música")
         }
         if(editing&&term.isNotBlank()){
             LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
