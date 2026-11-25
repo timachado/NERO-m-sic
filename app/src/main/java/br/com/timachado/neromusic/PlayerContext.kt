@@ -18,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
 internal data class PlaybackOrigin(val kind:String,val name:String,val id:String,val artist:String="",val cover:String?=null){
@@ -98,7 +97,7 @@ internal fun PlayerContextShelf(ref:OnlineRef?,artist:String,origin:PlaybackOrig
                 result.album?.let{album->
                     Card(onClick={onAlbum(album)},modifier=Modifier.fillMaxWidth()){
                         Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-                            AsyncImage(model=album.artwork?:seed.thumbnail,contentDescription=null,modifier=Modifier.size(76.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
+                            NeroArtwork(model=album.artwork?:seed.thumbnail,contentDescription=null,modifier=Modifier.size(76.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
                             Column(Modifier.weight(1f).padding(start=12.dp)){Text("Do mesmo álbum",color=Color(0xFF00E5FF),fontSize=12.sp);Text(album.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)}
                             Icon(Icons.Default.ChevronRight,"Abrir álbum")
                         }
@@ -124,7 +123,7 @@ private fun PlayerRelatedRows(rows:List<NativeMusicHit>,canPlay:Boolean,onPlay:(
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         rows.forEach{hit->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                AsyncImage(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
+                NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(hit.artist,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 IconButton(enabled=canPlay,onClick={onPlay(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
             }
