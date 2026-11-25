@@ -314,7 +314,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     else->showQueue=true
                 }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->playerArtist=term},
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
-                favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowId},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
+                favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else {if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play()}}},
