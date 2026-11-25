@@ -17,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -56,7 +55,7 @@ internal fun ArtistProfileCard(artist:String,onOpen:(()->Unit)?=null,expanded:Bo
         Column{
             Box(Modifier.fillMaxWidth().height(if(expanded)220.dp else 180.dp).background(MaterialTheme.colorScheme.primaryContainer),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Person,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(64.dp))
-                profile?.avatar?.let{AsyncImage(model=it,contentDescription="Imagem do perfil de "+artist,contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize())}
+                profile?.avatar?.let{NeroArtwork(model=it,contentDescription="Imagem do perfil de "+artist,contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize())}
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.35f),Color.Transparent,Color.Black.copy(alpha=.65f)))))
                 Text("Sobre o artista",fontWeight=FontWeight.Bold,fontSize=17.sp,color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(14.dp))
             }
