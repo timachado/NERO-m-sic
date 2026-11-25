@@ -116,3 +116,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.9.3-dev
 - Busca principal e cartões de gêneros do início encaminham à pesquisa interna NERO, preservando o termo. Removido o redirecionamento externo como ação principal da home. A aba Tudo inclui amostra de áudio aberto e resultados locais e MusicBrainz (debug). Resultados MusicBrainz com correspondência local única por título/artista permitem reprodução interna; demais referências podem ser salvas e o link externo é opcional.
 - Sem integração direta do catálogo ou áudio comercial YouTube Music. Assinatura comum Premium não comprova licença de redistribuição; eventual contrato específico deve definir direitos e interface técnica autorizada.
+
+## 0.9.4-dev
+- Salvar áudios de licença aberta da pesquisa nas mesmas playlists de referências online. Reprodução interna de faixas autorizadas ou correspondências locais únicas, em fila sequencial/aleatória; indicação explícita de disponibilidade e fonte/licença para cada áudio aberto. Preferência por cópia offline validada quando disponível. Referências sem áudio ficam preservadas; formato compatível com listas anteriores. Não ativa catálogo YouTube Music nem usa credenciais de assinatura.

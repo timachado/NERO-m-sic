@@ -1,6 +1,8 @@
 package br.com.timachado.neromusic
 
 import android.content.Context
+import android.net.Uri
+import androidx.media3.common.MediaItem
 import android.util.AtomicFile
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -27,7 +29,7 @@ import org.json.JSONObject
 import java.io.File
 import java.util.UUID
 
-internal data class OnlineRef(val id:String,val title:String,val artist:String,val artworkReleaseId:String?=null){
+internal data class OnlineRef(val id:String,val title:String,val artist:String,val artworkReleaseId:String?=null,val openAudio:OpenTrack?=null){
     val coverUrl:String? get()=artworkReleaseId?.takeIf{Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").matches(it)}?.let{"https://coverartarchive.org/release/$it/front-250"}
 }
 internal data class OnlineList(val id:String,val name:String,val songs:List<OnlineRef>)
@@ -39,12 +41,12 @@ internal fun onlineLists(context:Context):List<OnlineList>{
     return (0 until array.length()).map{i->
         val o=array.getJSONObject(i);val rows=o.getJSONArray("songs")
         OnlineList(o.getString("id"),o.getString("name"),(0 until rows.length()).map{j->
-            val song=rows.getJSONObject(j);OnlineRef(song.getString("id"),song.getString("title"),song.getString("artist"),song.optString("artworkReleaseId").takeIf{it.isNotBlank()&&it!="null"})
+            val song=rows.getJSONObject(j);OnlineRef(song.getString("id"),song.getString("title"),song.getString("artist"),song.optString("artworkReleaseId").takeIf{it.isNotBlank()&&it!="null"},song.optJSONObject("openAudio")?.let{runCatching{decodeOpenTrack(it)}.getOrNull()}?.takeIf{allowed(it)&&song.getString("id")=="commons:"+it.id})
         })
     }
 }
 private fun saveOnlineLists(context:Context,lists:List<OnlineList>){
-    val data=JSONArray(lists.map{l->JSONObject().put("id",l.id).put("name",l.name).put("songs",JSONArray(l.songs.map{s->JSONObject().put("id",s.id).put("title",s.title).put("artist",s.artist).put("artworkReleaseId",s.artworkReleaseId)}))})
+    val data=JSONArray(lists.map{l->JSONObject().put("id",l.id).put("name",l.name).put("songs",JSONArray(l.songs.map{s->JSONObject().put("id",s.id).put("title",s.title).put("artist",s.artist).put("artworkReleaseId",s.artworkReleaseId).put("openAudio",s.openAudio?.json())}))})
     val bytes=data.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=4*1024*1024)
     val file=listFile(context);val out=file.startWrite()
     try{out.write(bytes);file.finishWrite(out)}catch(e:Exception){file.failWrite(out);throw e}
@@ -82,13 +84,29 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
-internal fun OnlineListsScreen(){
+internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit){
     val context=LocalContext.current
     var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
     var selected by remember{mutableStateOf<String?>(null)}
     var remove by remember{mutableStateOf<OnlineRef?>(null)}
     var notice by remember{mutableStateOf<String?>(null)}
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
+    var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
+    LaunchedEffect(Unit){saved=downloaded(context)}
+    val localIndex=remember(tracks){tracks.groupBy{it.title.trim().lowercase(java.util.Locale.ROOT) to it.artist.trim().lowercase(java.util.Locale.ROOT)}}
+    val available=remember(active,localIndex,saved){
+        active?.songs?.mapNotNull{s->
+            val audio=s.openAudio?.takeIf{allowed(it)&&s.id=="commons:"+it.id}
+            val local=if(s.artist.isBlank())null else localIndex[s.title.trim().lowercase(java.util.Locale.ROOT) to s.artist.trim().lowercase(java.util.Locale.ROOT)]?.singleOrNull()
+            val media=if(audio!=null){
+                val copy=saved.firstOrNull{it==audio}
+                audio.item(if(copy!=null)Uri.fromFile(audioFile(context,copy))else Uri.parse(audio.url))
+            }else local?.mediaItem()
+            media?.let{s.id to it}
+        }.orEmpty()
+    }
+    val queue=remember(available){available.map{it.second}}
+    val byId=remember(available){available.toMap()}
     BackHandler(active!=null){selected=null}
     val pending=remove
     if(pending!=null&&active!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Retirar referência?")},text={Text(pending.title+" será retirada desta playlist.")},
@@ -102,7 +120,15 @@ internal fun OnlineListsScreen(){
         item{
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
-            Text("Referências do catálogo, sem baixar áudio. A reprodução externa abre o YouTube Music oficial.",fontSize=12.sp,color=Color.LightGray)
+            Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO.",fontSize=12.sp,color=Color.LightGray)
+            if(active!=null){
+                Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Text("Reproduzir")}
+                    OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true)},modifier=Modifier.weight(1f)){Text("Aleatório")}
+                }
+                if(queue.size<active.songs.size)Text("As referências sem áudio disponível serão preservadas e não entram na fila.",fontSize=11.sp,color=Color.LightGray)
+            }
             if(lists.isFailure)Text("Não foi possível ler as playlists.")
             if(active==null&&lists.getOrDefault(emptyList()).isEmpty())Text("Busque uma música e use o botão adicionar.")
             notice?.let{Text(it,color=Color.LightGray)}
@@ -121,8 +147,17 @@ internal fun OnlineListsScreen(){
                     Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
                     s.coverUrl?.let{AsyncImage(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
                 }
-                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)}
-                IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar no YouTube Music")}
+                Column(Modifier.weight(1f).padding(horizontal=8.dp)){
+                    Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)
+                    Text(if(s.id in byId)"Disponível no NERO" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
+                    s.openAudio?.takeIf{allowed(it)}?.let{audio->
+                        Text(audio.license,fontSize=11.sp,color=Color.LightGray)
+                        TextButton(onClick={if(!openBrowser(context,Uri.parse(audio.source)))notice="Não foi possível abrir a fonte."},contentPadding=PaddingValues(0.dp)){Text("Fonte e licença",fontSize=12.sp)}
+                    }
+                }
+                val position=available.indexOfFirst{it.first==s.id}
+                if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
+                else IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar externamente no YouTube Music")}
                 IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
             }
         }

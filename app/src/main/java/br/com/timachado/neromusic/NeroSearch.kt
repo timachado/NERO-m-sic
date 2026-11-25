@@ -153,6 +153,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         Column(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(10.dp)){
                             Row(verticalAlignment=Alignment.CenterVertically){
                                 Column(Modifier.weight(1f)){Text(audio.title);Text(audio.artist,fontSize=12.sp,color=Color.LightGray);Text(audio.license,fontSize=11.sp,color=searchAccent)}
+                                IconButton(onClick={adding=OnlineRef("commons:"+audio.id,audio.title,audio.artist,openAudio=audio)}){Icon(Icons.Default.PlaylistAdd,"Adicionar áudio à playlist",tint=searchAccent)}
                                 IconButton(enabled=canPlay,onClick={onOpenPlay(audio.item(if(downloaded)Uri.fromFile(audioFile(context,audio))else Uri.parse(audio.url)))}){Icon(Icons.Default.PlayArrow,"Reproduzir áudio autorizado")}
                             }
                             Row(verticalAlignment=Alignment.CenterVertically){

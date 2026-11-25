@@ -43,7 +43,7 @@ internal data class OpenTrack(val id: Long, val title: String, val artist: Strin
     fun item(uri: Uri) = MediaItem.Builder().setMediaId("commons:"+id).setUri(uri).setMimeType(mime)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build()).build()
 }
-private fun decode(o: JSONObject) = OpenTrack(o.getLong("id"),o.getString("title"),o.getString("artist"),
+internal fun decodeOpenTrack(o: JSONObject) = OpenTrack(o.getLong("id"),o.getString("title"),o.getString("artist"),
     o.getString("license"),o.getString("source"),o.getString("url"),o.getString("mime"),o.getLong("size"))
 private fun storage(context: Context) = File(context.filesDir,"open-audio").apply { mkdirs() }
 internal fun audioFile(context: Context,t: OpenTrack) = File(storage(context),t.id.toString()+when(t.mime) {
@@ -53,7 +53,7 @@ private fun trusted(url: String, host: String): Boolean {
     val u = Uri.parse(url)
     return u.scheme == "https" && u.host == host
 }
-private fun allowed(t: OpenTrack): Boolean {
+internal fun allowed(t: OpenTrack): Boolean {
     val license = t.license.trim()
     val open = license.equals("Public domain",true) || license.equals("CC0",true) ||
         license.equals("CC0 1.0",true) || Regex("CC BY(?:-SA)? [1-4]\\.[0-9]",RegexOption.IGNORE_CASE).matches(license)
@@ -96,7 +96,7 @@ internal suspend fun searchOpen(query: String): List<OpenTrack> = withContext(Di
 }
 internal suspend fun downloaded(context: Context): List<OpenTrack> = withContext(Dispatchers.IO) {
     storage(context).listFiles()?.filter { it.extension == "json" }?.mapNotNull {
-        runCatching { decode(JSONObject(it.readText())) }.getOrNull()?.takeIf { t -> allowed(t) && audioFile(context,t).length() == t.size }
+        runCatching { decodeOpenTrack(JSONObject(it.readText())) }.getOrNull()?.takeIf { t -> allowed(t) && audioFile(context,t).length() == t.size }
     }?.sortedBy { it.title.lowercase() } ?: emptyList()
 }
 internal suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Dispatchers.IO) {
