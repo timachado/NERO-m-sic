@@ -41,11 +41,12 @@ class PlaybackService : MediaSessionService() {
                 val id=uri.lastPathSegment.orEmpty()
                 if(!NativeMusicCatalog.enabled||uri.host !in setOf("track","video")||!Regex("[A-Za-z0-9_-]{11}").matches(id))throw IOException("Fonte musical indisponível")
                 val video=uri.host=="video"
-                val cacheKey=(if(video)"video:"else "audio:")+id
+                val quality=if(video)uri.getQueryParameter("quality")?.toIntOrNull()?.takeIf{it in listOf(0,360,480,720,1080)}?:0 else 0
+                val cacheKey=(if(video)"video:"+quality+":"else "audio:")+id
                 val cached=synchronized(resolved){resolved[cacheKey]}
                 val now=android.os.SystemClock.elapsedRealtime()
                 val address=if(cached!=null&&now-cached.second in 0L..300000L)cached.first else try{
-                    val item=runBlocking{val hit=NativeMusicHit(id,"","",0L);if(video)NativeMusicCatalog.resolveVideo(hit)else NativeMusicCatalog.resolve(hit)}
+                    val item=runBlocking{val hit=NativeMusicHit(id,"","",0L);if(video)NativeMusicCatalog.resolveVideo(hit,quality)else NativeMusicCatalog.resolve(hit)}
                     val direct=item.localConfiguration?.uri?:throw IOException("Áudio indisponível")
                     synchronized(resolved){resolved[cacheKey]=direct to android.os.SystemClock.elapsedRealtime()}
                     direct

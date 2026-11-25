@@ -197,3 +197,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.30-dev
 - Native music video mode in debug: Clips search uses music-video catalog filter; selected clip opens Media3 PlayerView in NERO, no browser or external app. Music/video toggle for same recording preserves timeline index, position and play intent using replaceMediaItem. Audio and video use separate resolver cache keys. Video limited to compatible publicly accessible muxed MP4 (prefer <=720p); no video-only merging, no restricted stream or download, no automatic match of official video when recording differs. A source may provide static artwork or no compatible video; return to Music on failure. Video autoplay extension disabled at queue end; audio autoplay preserved. Build/device/network validation pending.
+
+## 0.9.31-dev
+- Tela cheia imersiva de clipes em paisagem, restauração da orientação e barras ao sair, controles de reprodução e seleção de limite de qualidade por faixa (Auto até 720p, 360/480/720/1080p). Escolhe melhor MP4 muxado compatível até o limite; não garante disponibilidade de 1080p nem adaptação dinâmica de bitrate. Mantém índice, posição e metadados da fila ao trocar qualidade, com cache separado. Mesmo MediaController; sem player externo. Build e validação física pendentes.

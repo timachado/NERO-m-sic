@@ -76,7 +76,7 @@ internal object NativeMusicCatalog{
             rows
         }
     }
-    suspend fun resolveVideo(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){
+    suspend fun resolveVideo(hit:NativeMusicHit,quality:Int=0):MediaItem = withContext(Dispatchers.IO){
         lock.withLock{
             initialize()
             require(Regex("[A-Za-z0-9_-]{11}").matches(hit.id))
@@ -87,7 +87,7 @@ internal object NativeMusicCatalog{
                 val uri=Uri.parse(stream.content)
                 stream.isUrl&&!stream.isVideoOnly&&stream.format==MediaFormat.MPEG_4&&stream.deliveryMethod==DeliveryMethod.PROGRESSIVE_HTTP&&
                     uri.scheme=="https"&&(uri.host=="googlevideo.com"||uri.host?.endsWith(".googlevideo.com")==true)
-            }.let{rows->rows.filter{it.height in 1..720}.maxByOrNull{it.height}?:rows.filter{it.height>0}.minByOrNull{it.height}}
+            }.let{rows->val cap=if(quality==0)720 else quality;rows.filter{it.height in 1..cap}.maxByOrNull{it.height}}
                 ?:error("Vídeo compatível indisponível")
             MediaItem.Builder().setMediaId("youtube:"+hit.id).setUri(stream.content).build()
         }

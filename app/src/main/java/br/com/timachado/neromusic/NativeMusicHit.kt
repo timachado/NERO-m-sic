@@ -37,8 +37,10 @@ internal enum class NativeCollectionKind { ARTIST, ALBUM }
 internal data class NativeCollection(val url:String,val title:String,val credit:String,val artwork:String?,val kind:NativeCollectionKind)
 
 internal fun MediaItem.isNeroVideo():Boolean=mediaMetadata.extras?.getBoolean("nero_video_mode",false)==true
-internal fun MediaItem.withVideoMode(video:Boolean):MediaItem?{
+internal fun MediaItem.videoQuality():Int=mediaMetadata.extras?.getInt("nero_video_quality",0)?.takeIf{it in listOf(0,360,480,720,1080)}?:0
+internal fun MediaItem.withVideoMode(video:Boolean,quality:Int=videoQuality()):MediaItem?{
     val hit=youtubeRefFromItem(this)?.let(::musicHitFromRef)?:return null
-    val extras=Bundle(mediaMetadata.extras?:Bundle()).apply{putBoolean("nero_video_mode",video)}
-    return hit.queueItem(video).buildUpon().setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build()).build()
+    val extras=Bundle(mediaMetadata.extras?:Bundle()).apply{putBoolean("nero_video_mode",video);putInt("nero_video_quality",quality)}
+    require(quality in listOf(0,360,480,720,1080))
+    return hit.queueItem(video).buildUpon().setUri("nero-music://"+(if(video)"video" else "track")+"/"+hit.id+if(video)"?quality="+quality else "").setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build()).build()
 }

@@ -119,6 +119,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     }
     var nowId by remember { mutableStateOf("") }
     var videoMode by remember{mutableStateOf(false)}
+    var videoQuality by remember{mutableIntStateOf(0)}
     var nowOrigin by remember{mutableStateOf<PlaybackOrigin?>(null)}
     var nowOpenRef by remember { mutableStateOf<OnlineRef?>(null) }
     var addLocal by remember { mutableStateOf<Track?>(null) }
@@ -138,6 +139,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             nowId = currentItem?.mediaId.orEmpty()
             nowOrigin=currentItem?.playbackOrigin()
             videoMode=currentItem?.isNeroVideo()==true
+            videoQuality=currentItem?.videoQuality()?:0
             nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
             title = p.mediaMetadata.title?.toString().orEmpty()
             artist = p.mediaMetadata.artist?.toString().orEmpty()
@@ -251,6 +253,15 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             ImmersivePlayer(
                 track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,mediaId=nowId,origin=nowOrigin,
                 videoPlayer=controller,videoMode=videoMode,canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
+                videoQuality=videoQuality,onVideoQuality={quality->controller?.let{p->
+                    val item=p.currentMediaItem
+                    val index=p.currentMediaItemIndex
+                    val replacement=item?.takeIf{it.isNeroVideo()}?.withVideoMode(true,quality)
+                    if(replacement!=null&&index>=0&&quality!=item?.videoQuality()&&p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)){
+                        val at=p.currentPosition.coerceAtLeast(0L);val resume=p.playWhenReady
+                        p.replaceMediaItem(index,replacement);p.seekTo(index,at);p.prepare();p.playWhenReady=resume
+                    }
+                }},
                 onVideoToggle={controller?.let{p->
                     val item=p.currentMediaItem
                     val index=p.currentMediaItemIndex
