@@ -46,7 +46,8 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
         finally{loading=false}
     }
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
-    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("artist",artist,artist)),index)}
+    val now=LocalNeroNowPlaying.current
+    fun play(hit:NativeMusicHit){if(now.matches(hit.reference().id)){now.open();return};val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("artist",artist,artist)),index)}
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
         item{
             Row(verticalAlignment=Alignment.CenterVertically){
@@ -82,11 +83,11 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                    Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                    Text(hit.artist,fontSize=12.sp,color=Color.LightGray)
+                    Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id))
+                    Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)
                 }
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
-                IconButton(enabled=canPlay,onClick={play(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                NowTrackAction(hit.reference().id,canPlay){play(hit)}
             }
         }
     }
