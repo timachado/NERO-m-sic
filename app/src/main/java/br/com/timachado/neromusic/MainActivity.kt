@@ -117,17 +117,37 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     val radioScope=rememberCoroutineScope()
     var radioBusy by remember{mutableStateOf(false)}
     var autoplay by remember{mutableStateOf(NeroAutoplay.enabled(context))}
-    var onlineFavorites by remember { mutableStateOf(runCatching{readOnlineFavorites(context)}) }
-    DisposableEffect(prefs){
+    val accountUid by NeroSupabase.activeUid.collectAsState()
+    val accountReady by NeroSupabase.identityReady.collectAsState()
+    val accountChanges by NeroAccountSync.changes.collectAsState()
+    val accountEdits by NeroAccountSync.edits.collectAsState()
+    fun scopedFavorites(uid:String?):List<OnlineRef> =
+        if(uid==null)readOnlineFavorites(context)
+        else NeroAccountLibraryStore.read(context,uid)?.pending?.favorites.orEmpty()
+    var onlineFavorites by remember(accountUid,accountReady) {
+        mutableStateOf(runCatching{if(accountReady)scopedFavorites(accountUid)else emptyList()})
+    }
+    LaunchedEffect(accountUid,accountReady,accountChanges){
+        if(accountReady)onlineFavorites=runCatching{scopedFavorites(accountUid)}
+    }
+    DisposableEffect(prefs,accountUid,accountReady){
         val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->
             if(key=="favorites")favorites=prefs.getStringSet("favorites",emptySet()).orEmpty().toSet()
-            if(key=="online_favorite_revision")onlineFavorites=runCatching{readOnlineFavorites(context)}
+            if(key=="online_favorite_revision"&&accountReady&&accountUid==null)onlineFavorites=runCatching{readOnlineFavorites(context)}
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
     }
     fun toggleOnline(ref:OnlineRef){
-        try{val current=readOnlineFavorites(context);val next=if(current.any{it.id==ref.id})current.filterNot{it.id==ref.id}else listOf(ref)+current
+        if(!accountReady||NeroSupabase.activeUid.value!=accountUid)return
+        val uid=accountUid
+        if(uid!=null){
+            radioScope.launch{
+                try{NeroAccountSync.toggleFavorite(context,uid,ref)}
+                catch(e:kotlinx.coroutines.CancellationException){throw e}
+                catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível salvar este favorito na conta.",android.widget.Toast.LENGTH_SHORT).show()}
+            }
+        }else try{val current=readOnlineFavorites(context);val next=if(current.any{it.id==ref.id})current.filterNot{it.id==ref.id}else listOf(ref)+current
             saveOnlineFavorites(context,next);onlineFavorites=Result.success(next)
         }catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível atualizar favoritos.",android.widget.Toast.LENGTH_SHORT).show()}
     }
@@ -144,9 +164,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         lifecycle?.addObserver(observer)
         onDispose{lifecycle?.removeObserver(observer)}
     }
-    val accountUid by NeroSupabase.activeUid.collectAsState()
-    LaunchedEffect(foreground,accountUid){
-        if(!foreground||!NeroSupabase.configured)return@LaunchedEffect
+    LaunchedEffect(foreground,accountUid,accountEdits){
+        if(!foreground)return@LaunchedEffect
+        if(!NeroSupabase.configured){NeroSupabase.markGuestReady();return@LaunchedEffect}
+        if(accountUid!=null)delay(650)
         try{
             val signed=NeroSupabase.session(context,false)
             if(accountUid==signed.uid)NeroAccountSync.pull(context,signed.uid)
