@@ -38,9 +38,18 @@ internal suspend fun nativeOfflineTracks(context:Context):List<NativeOfflineTrac
         nativeOfflineCopy(context,it.nameWithoutExtension)
     }?.sortedBy{it.hit.title.lowercase()}?:emptyList()
 }
+internal suspend fun removeNativeDownload(context:Context,id:String):Unit=withContext(Dispatchers.IO){
+    require(nativeOfflineId.matches(id))
+    val audio=nativeAudioFile(context,id)
+    val meta=nativeMetaFile(context,id)
+    check(!audio.exists()||audio.delete())
+    check(!meta.exists()||meta.delete())
+}
 internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress:(Float)->Unit):NativeOfflineTrack = withContext(Dispatchers.IO){
     require(nativeOfflineId.matches(hit.id)&&NativeMusicCatalog.enabled)
     nativeOfflineCopy(context,hit.id)?.let{progress(1f);return@withContext it}
+    val networkGuard=DownloadNetworkGuard(context)
+    networkGuard.check(force=true)
     val item=NativeMusicCatalog.resolve(hit)
     val uri=item.localConfiguration?.uri?:error("Áudio indisponível")
     val host=uri.host.orEmpty()
@@ -50,6 +59,7 @@ internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress
     val pendingMeta=File(dir,hit.id+".tmp")
     val final=nativeAudioFile(context,hit.id)
     val side=nativeMetaFile(context,hit.id)
+    networkGuard.check(force=true)
     val connection=URL(uri.toString()).openConnection() as HttpURLConnection
     connection.connectTimeout=15000
     connection.readTimeout=20000
@@ -66,6 +76,7 @@ internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress
             val buffer=ByteArray(65536)
             while(true){
                 currentCoroutineContext().ensureActive()
+                networkGuard.check()
                 val n=input.read(buffer)
                 if(n<0)break
                 size+=n
@@ -76,6 +87,7 @@ internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress
         }}
         check(size>0&&(expected<0||size==expected))
         currentCoroutineContext().ensureActive()
+        networkGuard.check(force=true)
         pendingMeta.writeText(JSONObject().put("id",hit.id).put("title",hit.title)
             .put("artist",hit.artist).put("duration",hit.duration).put("size",size).toString())
         check(partial.renameTo(final))
