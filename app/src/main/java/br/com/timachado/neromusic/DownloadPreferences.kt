@@ -38,3 +38,12 @@ internal class DownloadNetworkGuard(private val context:Context){
         }
     }
 }
+
+
+// Streaming and offline download preferences are independent.
+internal fun economicalStreaming(context:Context):Boolean =
+    context.getSharedPreferences("nero_playback",Context.MODE_PRIVATE).getBoolean("economical_streaming",false)
+
+internal fun setEconomicalStreaming(context:Context,value:Boolean){
+    context.getSharedPreferences("nero_playback",Context.MODE_PRIVATE).edit().putBoolean("economical_streaming",value).apply()
+}
