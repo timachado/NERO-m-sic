@@ -98,8 +98,8 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
             persist(playlists.filterNot { it.id==selected.id });selectedId=null;adding=false;deleteConfirm=false
         }){Text("Excluir")}},dismissButton={TextButton(onClick={deleteConfirm=false}){Text("Cancelar")}})
     if(clearConfirm) AlertDialog(onDismissRequest={clearConfirm=false},title={Text("Limpar histórico?")},
-        text={Text("As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
-            prefs(context).edit().remove("history").apply();recent=emptyList();clearConfirm=false
+        text={Text("O histórico e as estatísticas Replay serão limpos. As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
+            NeroReplay.clear(context);prefs(context).edit().remove("history").apply();recent=emptyList();clearConfirm=false
         }){Text("Limpar")}},dismissButton={TextButton(onClick={clearConfirm=false}){Text("Cancelar")}})
 
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=12.dp)) {
