@@ -1,5 +1,7 @@
 package br.com.timachado.neromusic
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -15,7 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
+internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,onRestored:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var user by remember{mutableStateOf<NeroSession?>(null)}
@@ -26,7 +28,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
         catch(e:CancellationException){throw e}catch(_:Exception){}
         finally{busy=false}
     }
-    Column(modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Minha conta",fontSize=24.sp,fontWeight=FontWeight.Bold)}
         Icon(Icons.Default.AccountCircle,null,tint=Color(0xFF00E5FF),modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
         if(!NeroSupabase.configured)Text("O login Google aguarda configuração do Supabase. Sua biblioteca local permanece disponível.",color=Color.LightGray)
@@ -47,6 +49,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
+        if(BuildConfig.DEBUG)user?.let{session->NeroCloudBackupCard(session.uid,!busy,onRestored)}
         Text("Suas playlists e favoritos existentes continuam no aparelho.",color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         notice?.let{Text(it,color=Color.LightGray)}
