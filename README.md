@@ -1,3 +1,7 @@
+# NERO Music — direção 0.9.42-dev
+
+Versão focada em música: Início, Buscar e Biblioteca (músicas curtidas e downloads dentro da Biblioteca). Preserva reprodução padrão Media3, busca, playlists e importação, letras, rádio, recomendações, histórico, clipes, equalizador e widget. NERO Identify, Connect, Together, Cast, Auto, backup Cloud experimental e efeitos de áudio experimentais foram retirados do código ativo; o snapshot anterior está em `archive/experimental-0.9.41.3`. Nenhuma biblioteca ou credencial foi apagada. O histórico de versões abaixo descreve experimentos passados, não a disponibilidade atual. Compilação e testes físicos da nova versão pendentes.
+
 # NERO Music
 
 O som da sua liberdade.
