@@ -40,7 +40,7 @@ internal fun authOrNull(context:Context): FirebaseAuth? = runCatching {
         ?: FirebaseApp.initializeApp(context)
     app?.let { FirebaseAuth.getInstance(it) }
 }.getOrNull()
-private fun webClientId(context:Context):String {
+internal fun webClientId(context:Context):String {
     val id=context.resources.getIdentifier("default_web_client_id","string",context.packageName)
     return if(id==0) "" else context.getString(id)
 }

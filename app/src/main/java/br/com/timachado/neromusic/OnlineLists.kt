@@ -99,26 +99,18 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     val scope=rememberCoroutineScope()
     var resolving by remember{mutableStateOf<String?>(null)}
     var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
-    var pendingImport by remember{mutableStateOf<SharedPlaylist?>(null)}
-    var importBusy by remember{mutableStateOf(false)}
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
-        if(uri!=null)scope.launch{
-            importBusy=true;notice=null
-            try{pendingImport=readSharedPlaylist(context,uri)}
-            catch(e:CancellationException){throw e}catch(_:Exception){notice="Arquivo de playlist NERO inválido ou grande demais."}
-            finally{importBusy=false}
-        }
-    }
+    var openShared by remember{mutableStateOf(false)}
     sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
-    pendingImport?.let{incoming->
-        AlertDialog(onDismissRequest={pendingImport=null},title={Text("Importar playlist")},text={Text(incoming.name+" · "+incoming.songs.size+" faixas. Uma nova playlist será criada; as existentes serão preservadas. Faixas sem identificador online precisam ser encontradas no NERO.")},
-            confirmButton={TextButton(onClick={
-                try{
-                    val next=onlineLists(context)+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
-                    saveOnlineLists(context,next);lists=Result.success(next);notice="Playlist importada.";pendingImport=null
-                }catch(_:Exception){notice="Não foi possível importar a playlist.";pendingImport=null}
-            }){Text("Importar")}},dismissButton={TextButton(onClick={pendingImport=null}){Text("Cancelar")}})
-    }
+    if(openShared)ReceiveShareDialog(onClose={openShared=false},
+        onImport={incoming->
+            val next=onlineLists(context)+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+            saveOnlineLists(context,next);lists=Result.success(next);selected=next.last().id;openShared=false
+        },
+        onPlay=if(canPlay) { incoming:SharedPlaylist ->
+            val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem() else null}
+            if(queue.isNotEmpty()){onPlay(queue,0,false);openShared=false}
+            else {val first=incoming.songs.first();openShared=false;onSearch(first.title+" "+first.artist)}
+        } else null)
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
     var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
     LaunchedEffect(Unit){saved=downloaded(context)}
@@ -150,7 +142,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO.",fontSize=12.sp,color=Color.LightGray)
-            if(active==null){OutlinedButton(enabled=!importBusy,onClick={picker.launch(arrayOf("application/json","text/plain","application/octet-stream"))},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.FileOpen,null);Spacer(Modifier.width(8.dp));Text(if(importBusy)"Lendo playlist…" else "Importar playlist compartilhada")}}
+            if(active==null){OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
             if(active!=null){
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)

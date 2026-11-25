@@ -61,7 +61,7 @@ internal fun sharedPlaylistRefs(playlist:SharedPlaylist):List<OnlineRef> =
         OnlineRef(id,song.title,song.artist)
     }.distinctBy{it.id}
 
-private fun encodePlaylist(playlist:SharedPlaylist):ByteArray{
+internal fun encodePlaylist(playlist:SharedPlaylist):ByteArray{
     require(playlist.name.isNotBlank()&&playlist.songs.size in 1..MAX_SHARE_SONGS)
     val bytes=JSONObject().put("format","nero-playlist-v1").put("name",playlist.name.take(100))
         .put("songs",JSONArray(playlist.songs.map{song->
@@ -76,7 +76,11 @@ internal suspend fun readSharedPlaylist(context:Context,uri:Uri):SharedPlaylist=
         while(true){val n=input.read(buffer);if(n<0)break;require(out.size()+n<=MAX_SHARE_BYTES);out.write(buffer,0,n)}
         out.toByteArray()
     }?:error("Arquivo indisponível")
-    val json=JSONObject(bytes.toString(Charsets.UTF_8))
+    decodeSharedPlaylist(bytes.toString(Charsets.UTF_8))
+}
+internal fun decodeSharedPlaylist(payload:String):SharedPlaylist{
+    require(payload.toByteArray(Charsets.UTF_8).size<=MAX_SHARE_BYTES)
+    val json=JSONObject(payload)
     require(json.getString("format")=="nero-playlist-v1")
     val name=json.getString("name").trim();require(name.isNotEmpty()&&name.length<=100)
     val rows=json.getJSONArray("songs");require(rows.length() in 1..MAX_SHARE_SONGS)
@@ -86,7 +90,7 @@ internal suspend fun readSharedPlaylist(context:Context,uri:Uri):SharedPlaylist=
         val id=row.optString("videoId").takeIf{shareVideoId.matches(it)}
         SharedSong(title,artist,id)
     }
-    SharedPlaylist(name,songs)
+    return SharedPlaylist(name,songs)
 }
 private fun songLine(song:SharedSong)=listOf(song.title,song.artist).filter{it.isNotBlank()}.joinToString(" · ")
 private fun trackMessage(song:SharedSong)=listOf("🎧 Ouvindo no NERO Music",songLine(song),shareLink(song)).filterNotNull().joinToString("\n")
@@ -98,7 +102,7 @@ private fun playlistMessage(playlist:SharedPlaylist):String=buildString{
     }
     if(playlist.songs.size>50)append("\n\nCompartilhe o arquivo NERO para enviar a playlist completa.")
 }
-private fun sendText(context:Context,subject:String,text:String){
+internal fun sendText(context:Context,subject:String,text:String){
     val intent=Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT,subject).putExtra(Intent.EXTRA_TEXT,text)
     context.startActivity(Intent.createChooser(intent,"Compartilhar"))
 }
@@ -158,57 +162,18 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
 @Composable
 internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:String?,onClose:()->Unit){
     val context=LocalContext.current
-    val scope=rememberCoroutineScope()
-    var busy by remember{mutableStateOf(false)}
-    var error by remember{mutableStateOf<String?>(null)}
     val song=ref?.let(::sharedSong)?:SharedSong(title,artist)
-    AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text("Compartilhar música")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(songLine(song))
-            Text("Envie o link, quando disponível, ou uma arte vertical para Status e Stories. A arte não inclui áudio.",style=MaterialTheme.typography.bodySmall)
-            OutlinedButton(enabled=!busy,onClick={
-                try{sendText(context,song.title,trackMessage(song));onClose()}catch(_:Exception){error="Não foi possível compartilhar."}
-            },modifier=Modifier.fillMaxWidth()){Text("Compartilhar link e texto")}
-            Button(enabled=!busy,onClick={
-                busy=true;error=null
-                scope.launch{
-                    try{val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",trackMessage(song));onClose()}
-                    catch(e:CancellationException){throw e}catch(_:Exception){error="Não foi possível gerar o card."}
-                    finally{busy=false}
-                }
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Gerando card…" else "Card para Status e Stories")}
-            if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-            error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        }
-    },confirmButton={TextButton(enabled=!busy,onClick=onClose){Text("Fechar")}})
+    ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,
+        send={code,card->
+            val message="🎧 NERO Music · música compartilhada\nCódigo: "+code+"\nAbra Biblioteca > Online > Abrir compartilhamento no NERO e entre com Google."
+            if(card){val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",message)}
+            else sendText(context,"NERO Music",message)
+        })
 }
-
 @Composable
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
-    val scope=rememberCoroutineScope()
-    var busy by remember{mutableStateOf(false)}
-    var error by remember{mutableStateOf<String?>(null)}
-    AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text("Compartilhar playlist")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(playlist.name+" · "+playlist.songs.size+" faixas")
-            Text("A lista em mensagem inclui até 50 faixas. O arquivo NERO inclui até 1.000 referências e pode ser importado em Biblioteca > Online. Não envia arquivos de áudio.",style=MaterialTheme.typography.bodySmall)
-            OutlinedButton(enabled=!busy,onClick={
-                try{sendText(context,playlist.name,playlistMessage(playlist));onClose()}catch(_:Exception){error="Não foi possível compartilhar."}
-            },modifier=Modifier.fillMaxWidth()){Text("Enviar lista por mensagem")}
-            Button(enabled=!busy&&playlist.songs.size in 1..MAX_SHARE_SONGS,onClick={
-                busy=true;error=null
-                scope.launch{
-                    try{
-                        val file=withContext(Dispatchers.IO){
-                            File(shareDir(context),"nero-playlist-"+UUID.randomUUID()+".json").apply{writeBytes(encodePlaylist(playlist))}
-                        }
-                        sendFile(context,file,"application/json","Playlist NERO Music: "+playlist.name);onClose()
-                    }catch(e:CancellationException){throw e}catch(_:Exception){error="Não foi possível exportar a playlist."}
-                    finally{busy=false}
-                }
-            },modifier=Modifier.fillMaxWidth()){Text(if(busy)"Preparando…" else "Enviar arquivo para importar")}
-            error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        }
-    },confirmButton={TextButton(enabled=!busy,onClick=onClose){Text("Fechar")}})
+    ProtectedShareDialog(playlist,single=false,onClose=onClose,send={code,_->
+        sendText(context,"Playlist NERO Music","🎧 Playlist compartilhada no NERO Music\nCódigo: "+code+"\nAbra Biblioteca > Online > Abrir compartilhamento e entre com Google.")
+    })
 }

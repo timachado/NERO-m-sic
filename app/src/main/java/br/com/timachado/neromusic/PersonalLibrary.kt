@@ -71,6 +71,8 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
     var query by remember { mutableStateOf("") }
     var playlistFilter by remember { mutableStateOf("") }
     var sortByName by remember { mutableStateOf(false) }
+    var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
+    sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
     val selected=playlists.firstOrNull { it.id==selectedId }
     val trackMap=remember(tracks) { tracks.associateBy { it.id } }
     fun persist(list:List<Mix>) { playlists=list;saveMixes(context,list) }

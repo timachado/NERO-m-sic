@@ -13,6 +13,28 @@ service cloud.firestore {
         && request.resource.data.payload.size() <= 180000
         && request.resource.data.updatedAt == request.time;
     }
+    match /nero_shared/{code} {
+      function googleSession() {
+        return request.auth != null
+          && request.auth.token.firebase.sign_in_provider == 'google.com';
+      }
+      function validCode() { return code.matches('^[0-9a-f]{32} { allow read, write: if false; }
+  }
+}
+); }
+      allow get: if googleSession() && validCode()
+        && resource.data.createdAt is timestamp
+        && request.time < resource.data.createdAt + duration.value(7, 'd');
+      allow list, update: if false;
+      allow create: if googleSession() && validCode()
+        && request.resource.data.keys().hasOnly(['owner', 'createdAt', 'payload'])
+        && request.resource.data.keys().hasAll(['owner', 'createdAt', 'payload'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.payload is string
+        && request.resource.data.payload.size() <= 180000;
+      allow delete: if googleSession() && resource.data.owner == request.auth.uid;
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }
