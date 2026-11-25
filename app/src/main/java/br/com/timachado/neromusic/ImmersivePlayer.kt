@@ -59,6 +59,11 @@ internal fun ImmersivePlayer(
     var showTimer by remember{mutableStateOf(false)}
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
+    var showDevices by remember{mutableStateOf(false)}
+    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,onCast={
+        showDevices=false
+        runCatching{castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity"))}.onFailure{android.widget.Toast.makeText(castContext,"Transmissão indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
+    },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
@@ -100,10 +105,7 @@ internal fun ImmersivePlayer(
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
                         if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Equalizador")},onClick={showMore=false;onEqualizer()})
-                        if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Transmitir para TV")},enabled=ready&&!videoMode,onClick={
-                            showMore=false
-                            castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity"))
-                        })
+                        DropdownMenuItem(text={Text("Dispositivos")},onClick={showMore=false;showDevices=true},leadingIcon={Icon(Icons.Default.Devices,null)})
                         DropdownMenuItem(text={Text("Fila de reprodução")},enabled=ready,onClick={showMore=false;onQueue()})
                         DropdownMenuItem(text={Text("Temporizador")},enabled=ready,onClick={showMore=false;showTimer=true})
                     }
@@ -148,6 +150,7 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(62.dp),shape=RoundedCornerShape(20.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
                 IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Bedtime,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
                 IconButton(onClick=onShuffle,enabled=ready){Icon(Icons.Default.Shuffle,"Aleatório",tint=if(shuffle)neon else Color.White)}
