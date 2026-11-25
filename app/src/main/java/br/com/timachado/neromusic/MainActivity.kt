@@ -364,7 +364,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }
             if(tab==0&&libraryPage==8){
                 PlaylistHub(tracks=tracks,onlineFavoriteCount=onlineFavorites.getOrDefault(emptyList()).size,localFavoriteCount=favorites.size,
-                    onAccount={showAccount=true},onFavorites={tab=2},onDownloads={tab=4},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
+                    onAccount={showAccount=true},onFavorites={tab=2},onDownloads={tab=4},onArtist={artist->playerArtist=artist},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
                     onSearch={searchSeed="";searchAutoFocus=true;tab=1},onCreate={libraryPage=7;librarySelection=null;libraryCreate=true})
             }else if(tab == 0 && libraryPage == 7) {
                 OnlineListsScreen(tracks=tracks,canPlay=controller!=null,offlineState=offlineState,onDownloadPlaylist={rows->radioScope.launch{offlineManager.savePlaylist(rows)}},initialSelection=librarySelection,createOnOpen=libraryCreate,onCreated={libraryCreate=false},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
