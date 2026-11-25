@@ -57,6 +57,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var addingLocal by remember{mutableStateOf<Track?>(null)}
     var detail by remember{mutableStateOf<List<CatalogEntry>>(emptyList())}
     var youtube by remember{mutableStateOf<YouTubeHit?>(null)}
+    var youtubeBrowser by remember{mutableStateOf<String?>(null)}
     var youtubeResults by remember{mutableStateOf(emptyList<YouTubeHit>())}
     var youtubeBusy by remember{mutableStateOf(false)}
     var youtubeError by remember{mutableStateOf<String?>(null)}
@@ -85,11 +86,17 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     LaunchedEffect(term,tab,revision){
         youtubeResults=emptyList();youtubeError=null;youtubeBusy=false
         if(term.length<3||tab!=SearchTab.YOUTUBE)return@LaunchedEffect
-        if(!YouTubeCatalog.configured){youtubeError="Catálogo YouTube ainda não ativado neste build.";return@LaunchedEffect}
+        if(!YouTubeCatalog.configured)return@LaunchedEffect
         delay(700);youtubeBusy=true
         try{youtubeResults=YouTubeCatalog.search(context,term)}
         catch(e:CancellationException){throw e}catch(e:Exception){youtubeError=e.message?.takeIf{it in setOf("Entre na conta NERO para consultar o YouTube.","Limite de consultas atingido. Tente mais tarde.")}?:"Não foi possível consultar o YouTube."}
         finally{youtubeBusy=false}
+    }
+    val browserQuery=youtubeBrowser
+    BackHandler(browserQuery!=null){youtubeBrowser=null}
+    if(browserQuery!=null){
+        key(browserQuery){YouTubeWebSearchScreen(browserQuery,onBack={youtubeBrowser=null})}
+        return
     }
     val selectedVideo=youtube
     BackHandler(selectedVideo!=null){youtube=null}
@@ -165,7 +172,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         if(tab==SearchTab.ALL&&all.size>5)item{TextButton(onClick={tab=when(kind){CatalogKind.SONG->SearchTab.SONG;CatalogKind.ARTIST->SearchTab.ARTIST;CatalogKind.ALBUM->SearchTab.ALBUM}}){Text("Ver mais: "+kind.label)}}
                     }
                     if(errors.isNotEmpty())item{Text("Algumas consultas falharam.",color=Color.LightGray);TextButton(onClick={revision++}){Text("Tentar novamente")}}
-                    item{TextButton(onClick={if(!openYouTubeMusic(context,term))message="Não foi possível abrir o YouTube Music."}){Text("Continuar busca no YouTube Music oficial")}}
+                    item{TextButton(onClick={onPauseAudio();youtubeBrowser=term}){Text("Pesquisar no YouTube dentro do NERO")}}
                 }
                 if(tab==SearchTab.OPEN||tab==SearchTab.ALL){
                     item{Text("Áudio com licença aberta",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Fonte: Wikimedia Commons",fontSize=12.sp,color=Color.LightGray)}
@@ -191,8 +198,14 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 if(tab==SearchTab.ALL)item{OutlinedButton(onClick={tab=SearchTab.YOUTUBE},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.PlayCircle,null);Spacer(Modifier.width(8.dp));Text("Vídeos musicais do YouTube")}}
                 if(tab==SearchTab.YOUTUBE){
                     item{Text("YouTube · vídeos musicais",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Reprodução no player oficial incorporado.",fontSize=12.sp,color=Color.LightGray)}
+                    item{
+                        if(!YouTubeCatalog.configured)Text("Busca pela página oficial, dentro do NERO.",fontSize=12.sp,color=Color.LightGray)
+                        Button(enabled=term.length>=3,onClick={onPauseAudio();youtubeBrowser=term},modifier=Modifier.fillMaxWidth()){
+                            Icon(Icons.Default.Search,null);Spacer(Modifier.width(8.dp));Text("Pesquisar YouTube dentro do NERO")
+                        }
+                    }
                     youtubeError?.let{err->item{Text(err,color=Color.LightGray);if(YouTubeCatalog.configured)TextButton(onClick={revision++}){Text("Tentar novamente")}}}
-                    if(!youtubeBusy&&youtubeError==null&&youtubeResults.isEmpty()&&term.length>=3)item{Text("Nenhum vídeo musical encontrado.",color=Color.LightGray)}
+                    if(YouTubeCatalog.configured&&!youtubeBusy&&youtubeError==null&&youtubeResults.isEmpty()&&term.length>=3)item{Text("Nenhum vídeo musical encontrado.",color=Color.LightGray)}
                     items(youtubeResults,key={it.id}){hit->
                         Row(Modifier.fillMaxWidth().clickable{onPauseAudio();youtube=hit}.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
                             AsyncImage(model=hit.thumbnail,contentDescription="Miniatura do YouTube",contentScale=ContentScale.Crop,modifier=Modifier.size(88.dp,54.dp).clip(RoundedCornerShape(8.dp)))

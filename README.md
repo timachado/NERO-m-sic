@@ -125,3 +125,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.6-dev
 - YouTube: pesquisa nativa de vídeos musicais com API oficial via backend autenticado, player de vídeo incorporado e pausa do player de áudio. Integração preparada, não ativada: endpoint e projeto Firebase ainda precisam ser configurados. Não equivale a streaming do catálogo YouTube Music. Ver docs/youtube-catalog.md.
+
+## 0.9.7-dev
+- Busca alternativa pela página oficial YouTube dentro do NERO, sem exigir configuração de servidor. Não é integração nativa de áudio; funcionamento da página e reprodução depende de validação física. Adaptador oficial existente preservado. Revisão do BEAT flow em docs/beatflow-youtube-reference.md.

@@ -1,0 +1,5 @@
+# Revisão BEAT flow — referência da pesquisa YouTube
+Repositório: timachado/PitchStudio, branch feature/beatflow-playback-polish-1121, commit b1f37d686835784c8d57c25613a94a2d2f9f6e24.
+Arquivos inspecionados: .pitchstudio/v12/YouTubeImporter.kt, ExtractorDownloader.kt, .pitchstudio/v16/YouTubeBrowserActivity.kt e workflow pitchstudio-android-qa.yml.
+A implementação usa NewPipeExtractor 0.26.5, inicializado no Android, SearchInfo e StreamInfo. Não foi encontrado endpoint de servidor/API oficial configurado nesses componentes. Nenhum segredo foi copiado nem serviço existente alterado.
+NERO 0.9.7: mantém o adaptador oficial YouTube Data API (ainda sem endpoint configurado) e inclui uma tela alternativa de pesquisa pela página oficial do YouTube em WebView, sem chave ou login NERO, sem redirecionar para outro aplicativo. Não extrai nem baixa áudio do YouTube. A página pode recusar WebView ou reprodução conforme o dispositivo/serviço; teste físico necessário. O código de BEAT flow não foi incorporado, nem alterada a licença do NERO. A pesquisa nativa com resultados e playlist de vídeos permanece dependente da integração do provedor.

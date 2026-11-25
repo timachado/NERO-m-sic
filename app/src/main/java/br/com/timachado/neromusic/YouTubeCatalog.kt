@@ -105,3 +105,52 @@ internal fun YouTubePlayerScreen(hit:YouTubeHit,onBack:()->Unit){
         Text("Toque em reproduzir no player do YouTube. Disponibilidade depende do vídeo e da região.",fontSize=12.sp)
     }
 }
+
+@Composable
+internal fun YouTubeWebSearchScreen(query:String,onBack:()->Unit){
+    val context=LocalContext.current
+    val lifecycle=(context as? LifecycleOwner)?.lifecycle
+    val close by rememberUpdatedState(onBack)
+    var failed by remember(query){mutableStateOf(false)}
+    var reload by remember(query){mutableIntStateOf(0)}
+    DisposableEffect(lifecycle){
+        val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP)close()}
+        lifecycle?.addObserver(observer)
+        onDispose{lifecycle?.removeObserver(observer)}
+    }
+    Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar à busca NERO")}
+            Text("YouTube · "+query,fontSize=18.sp,modifier=Modifier.weight(1f),maxLines=1)
+        }
+        Text("Página oficial integrada. Use os controles do próprio YouTube.",fontSize=12.sp)
+        if(failed){
+            Text("A página não carregou. Verifique a conexão ou tente novamente.")
+            TextButton(onClick={failed=false;reload++}){Text("Tentar novamente")}
+        }
+        key(query,reload){
+            AndroidView(factory={ctx->
+                WebView(ctx).apply{
+                    settings.javaScriptEnabled=true
+                    settings.domStorageEnabled=true
+                    settings.allowFileAccess=false
+                    settings.allowContentAccess=false
+                    settings.mixedContentMode=WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                    settings.mediaPlaybackRequiresUserGesture=true
+                    settings.setSupportMultipleWindows(false)
+                    webViewClient=object:WebViewClient(){
+                        override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest):Boolean {
+                            if(!request.isForMainFrame)return false
+                            val u=request.url
+                            return u.scheme!="https"||u.host !in setOf("m.youtube.com","www.youtube.com","music.youtube.com","youtube.com")
+                        }
+                        override fun onReceivedError(view:WebView,request:WebResourceRequest,error:android.webkit.WebResourceError){
+                            if(request.isForMainFrame)failed=true
+                        }
+                    }
+                    loadUrl(Uri.parse("https://m.youtube.com/results").buildUpon().appendQueryParameter("search_query",query+" música").build().toString())
+                }
+            },modifier=Modifier.weight(1f).fillMaxWidth(),onReset=null,onRelease={view->view.stopLoading();view.destroy()})
+        }
+    }
+}
