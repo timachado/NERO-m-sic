@@ -60,18 +60,24 @@ internal fun saveOnlineLists(context:Context,lists:List<OnlineList>){
 internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
     val incoming=remember(songs){songs.distinctBy{it.id}}
     val context=LocalContext.current
-    var loaded by remember{mutableStateOf(runCatching{onlineLists(context)})}
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
+    val scope=rememberCoroutineScope()
+    var loaded by remember(uid,ready){mutableStateOf(runCatching{if(ready)scopedOnlineLists(context,uid)else emptyList()})}
+    LaunchedEffect(uid,ready,changes){if(ready)loaded=runCatching{scopedOnlineLists(context,uid)}}
     var name by remember{mutableStateOf("")}
     var message by remember{mutableStateOf<String?>(null)}
     fun add(list:OnlineList?){
-        try{
-            val current=onlineLists(context)
+        val owner=uid
+        scope.launch{try{
+            val current=scopedOnlineLists(context,owner)
             val next=if(list==null)current+OnlineList(UUID.randomUUID().toString(),name.trim(),incoming)
             else current.map{if(it.id==list.id)it.copy(songs=(it.songs+incoming).distinctBy{s->s.id})else it}
-            saveOnlineLists(context,next)
+            saveScopedOnlineLists(context,owner,current,next)
             android.widget.Toast.makeText(context,"Referência salva na playlist",android.widget.Toast.LENGTH_SHORT).show()
             onClose()
-        }catch(_:Exception){message="Não foi possível salvar. Nenhuma lista foi substituída."}
+        }catch(e:CancellationException){throw e}catch(_:Exception){message="Não foi possível salvar. Nenhuma lista foi substituída."}}
     }
     AlertDialog(onDismissRequest=onClose,title={Text("Adicionar à playlist")},
         text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
@@ -85,31 +91,38 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
                 OutlinedTextField(name,{name=it.take(80)},label={Text("Nova playlist online")},singleLine=true)
             }
             message?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        }},confirmButton={TextButton(enabled=loaded.isSuccess&&name.isNotBlank()&&incoming.isNotEmpty(),onClick={add(null)}){Text("Criar e adicionar")}},
+        }},confirmButton={TextButton(enabled=ready&&loaded.isSuccess&&name.isNotBlank()&&incoming.isNotEmpty(),onClick={add(null)}){Text("Criar e adicionar")}},
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
 internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={},offlineState:OfflineState=OfflineState(),onDownloadPlaylist:(List<OpenTrack>)->Unit={}){
     val context=LocalContext.current
-    var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
-    var selected by remember(initialSelection){mutableStateOf(initialSelection)}
-    var remove by remember{mutableStateOf<OnlineRef?>(null)}
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
+    var lists by remember(uid,ready){mutableStateOf(runCatching{if(ready)scopedOnlineLists(context,uid)else emptyList()})}
+    LaunchedEffect(uid,ready,changes){if(ready)lists=runCatching{scopedOnlineLists(context,uid)}}
+    var selected by remember(uid,initialSelection){mutableStateOf(initialSelection)}
+    var remove by remember(uid){mutableStateOf<OnlineRef?>(null)}
     var notice by remember{mutableStateOf<String?>(null)}
     val scope=rememberCoroutineScope()
     var resolving by remember{mutableStateOf<String?>(null)}
-    var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
-    var openShared by remember{mutableStateOf(false)}
-    var create by remember{mutableStateOf(createOnOpen)}
+    var sharing by remember(uid){mutableStateOf<SharedPlaylist?>(null)}
+    var openShared by remember(uid){mutableStateOf(false)}
+    var create by remember(uid){mutableStateOf(createOnOpen)}
     var newName by remember{mutableStateOf("")}
-    if(create)AlertDialog(onDismissRequest={create=false;onCreated()},title={Text("Nova playlist")},text={OutlinedTextField(newName,{newName=it.take(80)},label={Text("Nome da playlist")},singleLine=true)},confirmButton={TextButton(enabled=newName.isNotBlank(),onClick={
-        try{val new=OnlineList(UUID.randomUUID().toString(),newName.trim(),emptyList());val next=onlineLists(context)+new;saveOnlineLists(context,next);lists=Result.success(next);selected=new.id;newName="";create=false;onCreated()}
-        catch(_:Exception){notice="Não foi possível criar a playlist.";create=false;onCreated()}
+    if(create)AlertDialog(onDismissRequest={create=false;onCreated()},title={Text("Nova playlist")},text={OutlinedTextField(newName,{newName=it.take(80)},label={Text("Nome da playlist")},singleLine=true)},confirmButton={TextButton(enabled=ready&&newName.isNotBlank(),onClick={
+        val owner=uid;scope.launch{try{val new=OnlineList(UUID.randomUUID().toString(),newName.trim(),emptyList());val current=scopedOnlineLists(context,owner);val next=current+new;saveScopedOnlineLists(context,owner,current,next);lists=Result.success(next);selected=new.id;newName="";create=false;onCreated()}
+        catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível criar a playlist.";create=false;onCreated()}}
     }){Text("Criar")}},dismissButton={TextButton(onClick={create=false;onCreated()}){Text("Cancelar")}})
     sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
     if(openShared)ReceiveShareDialog(onClose={openShared=false},
         onImport={incoming->
-            val next=onlineLists(context)+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
-            saveOnlineLists(context,next);lists=Result.success(next);selected=next.last().id;openShared=false
+            val owner=uid;scope.launch{try{
+                val current=scopedOnlineLists(context,owner)
+                val next=current+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+                saveScopedOnlineLists(context,owner,current,next);lists=Result.success(next);selected=next.last().id;openShared=false
+            }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível importar a playlist.";openShared=false}}
         },
         onPlay=if(canPlay) { incoming:SharedPlaylist ->
             val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem() else null}
@@ -143,24 +156,24 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     BackHandler(active!=null){selected=null}
     fun moveSong(id:String,delta:Int){
         val list=active?:return
-        try{
-            val current=onlineLists(context)
-            val live=current.firstOrNull{it.id==list.id}?:return
-            if(live.songs!=list.songs){lists=Result.success(current);notice="A playlist mudou. Tente novamente.";return}
+        val owner=uid;scope.launch{try{
+            val current=scopedOnlineLists(context,owner)
+            val live=current.firstOrNull{it.id==list.id}?:return@launch
+            if(live.songs!=list.songs){lists=Result.success(current);notice="A playlist mudou. Tente novamente.";return@launch}
             val from=live.songs.indexOfFirst{it.id==id};val to=from+delta
-            if(from<0||to !in live.songs.indices)return
+            if(from<0||to !in live.songs.indices)return@launch
             val songs=live.songs.toMutableList();songs.add(to,songs.removeAt(from))
             val updated=current.map{if(it.id==live.id)it.copy(songs=songs)else it}
-            saveOnlineLists(context,updated);lists=Result.success(updated);notice=null
-        }catch(_:Exception){notice="Não foi possível reorganizar a playlist."}
+            saveScopedOnlineLists(context,owner,current,updated);lists=Result.success(updated);notice=null
+        }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível reorganizar a playlist."}}
     }
     val pending=remove
     if(pending!=null&&active!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Retirar referência?")},text={Text(pending.title+" será retirada desta playlist.")},
         confirmButton={TextButton(onClick={
-            try{val updated=onlineLists(context).map{if(it.id==active.id)it.copy(songs=it.songs.filterNot{s->s.id==pending.id})else it}
-                saveOnlineLists(context,updated);lists=Result.success(updated)
-            }catch(_:Exception){notice="Não foi possível atualizar a playlist."}
-            remove=null
+            val owner=uid;scope.launch{try{val current=scopedOnlineLists(context,owner);val updated=current.map{if(it.id==active.id)it.copy(songs=it.songs.filterNot{s->s.id==pending.id})else it}
+                saveScopedOnlineLists(context,owner,current,updated);lists=Result.success(updated)
+            }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar a playlist."}
+            remove=null}
         }){Text("Retirar")}},dismissButton={TextButton(onClick={remove=null}){Text("Cancelar")}})
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=12.dp)){
         item{
@@ -253,13 +266,13 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                     NeroArtwork(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
                     Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title);Text(hit.artist,fontSize=12.sp,color=Color.LightGray)}
                     IconButton(onClick={
-                        try{
-                            val current=onlineLists(context)
+                        val owner=uid;scope.launch{try{
+                            val current=scopedOnlineLists(context,owner)
                             val live=current.firstOrNull{it.id==active.id}?:throw IllegalStateException()
                             val ref=hit.reference()
                             val updated=current.map{if(it.id==live.id)it.copy(songs=(it.songs+ref).distinctBy{song->song.id})else it}
-                            saveOnlineLists(context,updated);lists=Result.success(updated)
-                        }catch(_:Exception){notice="Não foi possível adicionar a sugestão."}
+                            saveScopedOnlineLists(context,owner,current,updated);lists=Result.success(updated)
+                        }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível adicionar a sugestão."}}
                     }){Icon(Icons.Default.AddCircleOutline,"Adicionar sugestão",tint=Color(0xFF39FF14))}
                 }
             }
