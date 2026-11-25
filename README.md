@@ -104,3 +104,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.9.0-dev
 - Playlists locais com capas reais, mosaico quando há quatro capas de faixas distintas, busca por nome, ordenação alfabética opcional, página de detalhes com contagem de faixas e duração disponível, reprodução sequencial e aleatória. Capas nas linhas de faixas. Preserva criação, edição, remoção e histórico. Dados não alterados até ações explícitas do usuário.
 - Segundo tutorial do usuário (Spotify) documentado no roadmap; não foram adicionados anúncios ou fontes externas sem aprovação.
+
+## 0.9.1-dev
+- Busca unificada em NERO: cartões de gêneros, resultados locais, abas de músicas/artistas/álbuns do MusicBrainz (debug), áudio aberto com reprodução e download autorizados. Consulta com debounce e limite compartilhado. Capas quando há referência de lançamento.
+- Playlists online locais: guardar referências MusicBrainz sem baixar o áudio, criar/selecionar listas, abrir pesquisa externa no YouTube Music e retirar referência mediante confirmação. Separadas das playlists locais e importadas. Não há fila de áudio comercial nem API YouTube Music ativa.

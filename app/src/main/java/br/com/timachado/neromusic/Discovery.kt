@@ -36,7 +36,7 @@ private val neon = Color(0xFF39FF14)
 private val aqua = Color(0xFF00E5FF)
 private const val maxBytes = 50L * 1024 * 1024
 
-private data class OpenTrack(val id: Long, val title: String, val artist: String, val license: String,
+internal data class OpenTrack(val id: Long, val title: String, val artist: String, val license: String,
     val source: String, val url: String, val mime: String, val size: Long) {
     fun json() = JSONObject().put("id",id).put("title",title).put("artist",artist).put("license",license)
         .put("source",source).put("url",url).put("mime",mime).put("size",size)
@@ -46,7 +46,7 @@ private data class OpenTrack(val id: Long, val title: String, val artist: String
 private fun decode(o: JSONObject) = OpenTrack(o.getLong("id"),o.getString("title"),o.getString("artist"),
     o.getString("license"),o.getString("source"),o.getString("url"),o.getString("mime"),o.getLong("size"))
 private fun storage(context: Context) = File(context.filesDir,"open-audio").apply { mkdirs() }
-private fun audioFile(context: Context,t: OpenTrack) = File(storage(context),t.id.toString()+when(t.mime) {
+internal fun audioFile(context: Context,t: OpenTrack) = File(storage(context),t.id.toString()+when(t.mime) {
     "audio/mpeg" -> ".mp3"; "audio/flac","audio/x-flac" -> ".flac"; "audio/wav","audio/x-wav" -> ".wav"; else -> ".ogg"
 })
 private fun trusted(url: String, host: String): Boolean {
@@ -68,7 +68,7 @@ private fun request(url: String): HttpURLConnection {
     return c
 }
 private fun plain(s:String) = Html.fromHtml(s, Html.FROM_HTML_MODE_LEGACY).toString().trim()
-private suspend fun searchOpen(query: String): List<OpenTrack> = withContext(Dispatchers.IO) {
+internal suspend fun searchOpen(query: String): List<OpenTrack> = withContext(Dispatchers.IO) {
     val u = Uri.parse("https://commons.wikimedia.org/w/api.php").buildUpon()
         .appendQueryParameter("action","query").appendQueryParameter("format","json")
         .appendQueryParameter("formatversion","2").appendQueryParameter("generator","search")
@@ -94,12 +94,12 @@ private suspend fun searchOpen(query: String): List<OpenTrack> = withContext(Dis
         }
     } finally { c.disconnect() }
 }
-private suspend fun downloaded(context: Context): List<OpenTrack> = withContext(Dispatchers.IO) {
+internal suspend fun downloaded(context: Context): List<OpenTrack> = withContext(Dispatchers.IO) {
     storage(context).listFiles()?.filter { it.extension == "json" }?.mapNotNull {
         runCatching { decode(JSONObject(it.readText())) }.getOrNull()?.takeIf { t -> allowed(t) && audioFile(context,t).length() == t.size }
     }?.sortedBy { it.title.lowercase() } ?: emptyList()
 }
-private suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Dispatchers.IO) {
+internal suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Dispatchers.IO) {
     check(allowed(t))
     val final = audioFile(context,t)
     val side = File(storage(context),t.id.toString()+".json")
@@ -124,7 +124,7 @@ private suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Disp
         check(meta.renameTo(side))
     } finally { c.disconnect(); partial.delete(); meta.delete() }
 }
-private fun openBrowser(context:Context, uri:Uri): Boolean =
+internal fun openBrowser(context:Context, uri:Uri): Boolean =
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,uri)); true }.getOrDefault(false)
 
 internal fun openYouTubeMusic(context: Context, query: String): Boolean {

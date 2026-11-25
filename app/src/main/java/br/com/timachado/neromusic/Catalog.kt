@@ -40,8 +40,8 @@ internal enum class CatalogKind(val label:String,val resource:String,val resultK
     ALBUM("Álbuns","release-group","release-groups"),
     ARTIST("Artistas","artist","artists")
 }
-internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind,val releaseDate:String="") {
-    val coverUrl: String? get() = if(kind == CatalogKind.ALBUM) "https://coverartarchive.org/release-group/$id/front-250" else null
+internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind,val releaseDate:String="",val artworkReleaseId:String?=null) {
+    val coverUrl: String? get() = if(kind == CatalogKind.ALBUM) "https://coverartarchive.org/release-group/$id/front-250" else artworkReleaseId?.let{"https://coverartarchive.org/release/$it/front-250"}
     val searchText: String get() = listOf(title,credit).filter { it.isNotBlank() }.joinToString(" ")
 }
 private val idPattern = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
@@ -88,7 +88,8 @@ internal object DevCatalog {
                             val part=creditArray.optJSONObject(idx)
                             if(part==null) "" else part.optString("name")+part.optString("joinphrase")
                         }.trim()
-                    CatalogEntry(id,title,credit,kind)
+                    val releaseId=if(kind==CatalogKind.SONG)obj.optJSONArray("releases")?.optJSONObject(0)?.optString("id")?.takeIf{idPattern.matches(it)} else null
+                    CatalogEntry(id,title,credit,kind,artworkReleaseId=releaseId)
                 }.distinctBy { it.id }
                 if(cache.size>=32) cache.remove(cache.keys.first())
                 cache[key]=entries

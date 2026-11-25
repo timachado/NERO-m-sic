@@ -120,7 +120,7 @@ private fun NeroApp() {
         }
     }
     var tab by remember { mutableIntStateOf(3) }
-    var localSearch by remember { mutableStateOf(false) }
+
     var libraryPage by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
@@ -212,16 +212,14 @@ private fun NeroApp() {
             }
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)
             Spacer(Modifier.height(22.dp))
-            if(tab == 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !localSearch, onClick = { localSearch = false }, label = { Text("Online") })
-                FilterChip(selected = localSearch, onClick = { localSearch = true }, label = { Text("No aparelho") })
-            }
             if(tab == 0) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros","Importadas").withIndex().toList()) { entry ->
+                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros","Importadas","Online").withIndex().toList()) { entry ->
                     FilterChip(selected = libraryPage == entry.index, onClick = { libraryPage = entry.index }, label = { Text(entry.value) })
                 }
             }
-            if(tab == 0 && libraryPage == 6) {
+            if(tab == 0 && libraryPage == 7) {
+                OnlineListsScreen()
+            } else if(tab == 0 && libraryPage == 6) {
                 TransferScreen(tracks = tracks, canPlay = controller != null, onPlay = { queue, index, random -> controller?.let { p ->
                     if(queue.isNotEmpty()) { p.shuffleModeEnabled = random; p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex),0L); p.prepare();p.play() }
                 } })
@@ -240,7 +238,11 @@ private fun NeroApp() {
                     } }, onShuffle = { queue -> controller?.let { p ->
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()},queue.indices.random(),0L);p.prepare();p.play() }
                     } })
-            } else if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
+            } else if(tab == 1) {
+                NeroSearch(tracks=tracks,canPlay=controller!=null,
+                    onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
+                    onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
+            } else if (tab == 3 || tab == 4) {
                 key(tab) {
                 DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
