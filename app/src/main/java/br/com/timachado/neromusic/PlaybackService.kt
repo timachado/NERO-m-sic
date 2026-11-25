@@ -83,6 +83,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onEvents(p: Player, events: Player.Events) {
                 if(events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) lastRecorded = null
+                if(events.contains(Player.EVENT_IS_PLAYING_CHANGED)||events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||events.contains(Player.EVENT_POSITION_DISCONTINUITY))NeroResumeStore.save(applicationContext,p)
                 if(!p.isPlaying) return
                 val id = p.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() } ?: return
                 if(lastRecorded == id) return
@@ -144,6 +145,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         NeroSleepTimer.cancel()
         session?.player?.let { player ->
+            NeroResumeStore.save(applicationContext,player)
             player.pause()
             player.stop()
             player.clearMediaItems()
