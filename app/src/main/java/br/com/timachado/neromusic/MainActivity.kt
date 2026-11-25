@@ -256,12 +256,12 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     }) { padding ->
         if(playerAlbum!=null){
             val album=playerAlbum!!
-            BackHandler{playerAlbum=null;fullPlayer=true}
-            key(album.url){NativeAlbumScreen(album,controller!=null,onBack={playerAlbum=null;fullPlayer=true},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerAlbum=null;fullPlayer=true})}
+            BackHandler{playerAlbum=null}
+            key(album.url){NativeAlbumScreen(album,controller!=null,onBack={playerAlbum=null},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerAlbum=null;fullPlayer=true})}
         } else if(playerArtist!=null){
             val name=playerArtist!!
-            BackHandler{playerArtist=null;fullPlayer=true}
-            key(name){NativeArtistScreen(name,emptyList(),controller!=null,onBack={playerArtist=null;fullPlayer=true},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerArtist=null;fullPlayer=true},onExplore={term->playerArtist=null;fullPlayer=false;searchSeed=term;searchAutoFocus=false;tab=1},onAlbum={playerAlbum=it})}
+            BackHandler{playerArtist=null}
+            key(name){NativeArtistScreen(name,emptyList(),controller!=null,onBack={playerArtist=null},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerArtist=null;fullPlayer=true},onExplore={term->playerArtist=null;fullPlayer=false;searchSeed=term;searchAutoFocus=false;tab=1},onAlbum={playerAlbum=it})}
         } else if (showQueue) {
             QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false;fullPlayer=true }, modifier = Modifier.padding(padding),sourceTitle=nowOrigin?.name?.takeIf{it.isNotBlank()},onHome={showQueue=false;fullPlayer=false;tab=3})
         } else if (showLyrics) {
