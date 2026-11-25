@@ -113,11 +113,9 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("NERO Audio",fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Text("Equalizador",fontSize=23.sp,fontWeight=FontWeight.Bold)
         }
-        Text("Ajustes de som · desenvolvimento",color=Color(0xFF00E5FF),fontSize=12.sp)
-        Text("Nivelamento e crossfade temporariamente desativados para recuperar a estabilidade da reprodução. Suas preferências foram preservadas.",color=Color.LightGray)
-        Text("Gapless: a fila padrão usa a continuidade do Media3 quando os arquivos e a saída permitem. Sem garantia de ausência de pausas.",fontSize=12.sp,color=Color.LightGray)
+        Text("Ajustes de som",color=Color(0xFF00E5FF),fontSize=12.sp)
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("Equalização",modifier=Modifier.weight(1f),fontSize=18.sp)
