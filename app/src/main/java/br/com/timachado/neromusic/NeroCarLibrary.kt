@@ -33,6 +33,28 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     private val favorites="nero-car-favorites"
     private fun own(controller:MediaSession.ControllerInfo)=controller.uid==android.os.Process.myUid()
     private fun trusted(controller:MediaSession.ControllerInfo)=own(controller)||controller.isTrusted
+    override fun onConnect(session:MediaSession,controller:MediaSession.ControllerInfo):MediaSession.ConnectionResult{
+        if(!trusted(controller))return MediaSession.ConnectionResult.reject()
+        return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+            .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+                .add(NeroMediaActions.favorite).add(NeroMediaActions.repeat).build())
+            .build()
+    }
+    override fun onCustomCommand(session:MediaSession,controller:MediaSession.ControllerInfo,customCommand:androidx.media3.session.SessionCommand,args:android.os.Bundle):ListenableFuture<androidx.media3.session.SessionResult>{
+        val result=when{
+            !trusted(controller)->SessionError.ERROR_PERMISSION_DENIED
+            customCommand==NeroMediaActions.favorite->if(NeroMediaActions.toggle(context,session.player.currentMediaItem))androidx.media3.session.SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE
+            customCommand==NeroMediaActions.repeat->{
+                val p=session.player
+                if(p.currentMediaItem==null)SessionError.ERROR_BAD_VALUE else{
+                    p.repeatMode=when(p.repeatMode){androidx.media3.common.Player.REPEAT_MODE_OFF->androidx.media3.common.Player.REPEAT_MODE_ALL;androidx.media3.common.Player.REPEAT_MODE_ALL->androidx.media3.common.Player.REPEAT_MODE_ONE;else->androidx.media3.common.Player.REPEAT_MODE_OFF}
+                    androidx.media3.session.SessionResult.RESULT_SUCCESS
+                }
+            }
+            else->SessionError.ERROR_NOT_SUPPORTED
+        }
+        return Futures.immediateFuture(androidx.media3.session.SessionResult(result))
+    }
     private fun folder(id:String,title:String)=MediaItem.Builder().setMediaId(id)
         .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setIsBrowsable(true).setIsPlayable(false).build()).build()
     private fun folders()=listOf(folder(local,"Músicas do aparelho"),folder(offline,"Downloads"),folder(favorites,"Favoritos offline"))
