@@ -104,7 +104,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var artistPage by remember{mutableStateOf<String?>(null)}
     var resolving by remember{mutableStateOf<String?>(null)}
     val term=query.trim()
-    val local=remember(tracks,term){if(term.isBlank())emptyList()else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
+    val local=remember(tracks,term,tab){if(term.isBlank()){if(tab==SearchTab.LOCAL)tracks else emptyList()}else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
     LaunchedEffect(term,tab,revision,editing){
         openResults=emptyList();openError=false;busy=false;openBusy=false;message=null
         if(term.length<3||editing)return@LaunchedEffect
@@ -178,7 +178,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick={startVoice()}){Icon(Icons.Default.Mic,"Pesquisar por voz",tint=searchAqua)}
             IconButton(onClick={focusManager.clearFocus();keyboard?.hide();onExit()}){Icon(Icons.Default.ArrowBack,"Voltar")}
-            OutlinedTextField(query,{query=it.take(100);tab=SearchTab.ALL},modifier=Modifier.weight(1f).focusRequester(focusRequester).onFocusChanged{editing=it.isFocused},singleLine=true,shape=RoundedCornerShape(28.dp),
+            OutlinedTextField(query,{query=it.take(100)},modifier=Modifier.weight(1f).focusRequester(focusRequester).onFocusChanged{editing=it.isFocused},singleLine=true,shape=RoundedCornerShape(28.dp),
                 placeholder={Text("Digite para pesquisar")},leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Limpar busca")}},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}))
         }
         if(editing&&term.isNotBlank()){
@@ -205,17 +205,34 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
             return
         }
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
-            items(SearchTab.entries.filter{BuildConfig.DEBUG||it in setOf(SearchTab.ALL,SearchTab.LOCAL,SearchTab.OPEN)}){f->FilterChip(selected=tab==f,onClick={tab=f},label={Text(f.label)})}
+            items(SearchTab.entries.filter{BuildConfig.DEBUG||it in setOf(SearchTab.ALL,SearchTab.LOCAL,SearchTab.OPEN)}){f->FilterChip(selected=tab==f,onClick={tab=f;editing=false;focusManager.clearFocus();keyboard?.hide()},label={Text(f.label)})}
         }
         if(busy||openBusy||nativeBusy||resolving!=null)LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=searchAqua,fontSize=12.sp)}
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(9.dp),contentPadding=PaddingValues(bottom=14.dp)){
-            if(term.isBlank()){
+            if(term.isBlank()&&tab!=SearchTab.LOCAL){
+                if(tab!=SearchTab.ALL)item{
+                    Text(tab.label,fontSize=21.sp,fontWeight=FontWeight.Bold)
+                    Text(when(tab){
+                        SearchTab.SONG->"Pesquise pelo nome da música ou do artista."
+                        SearchTab.ARTIST->"Pesquise pelo nome do artista."
+                        SearchTab.ALBUM->"Pesquise pelo nome do álbum ou do artista."
+                        SearchTab.OPEN->"Pesquise áudios com licença aberta no Wikimedia Commons."
+                        SearchTab.CLIPS->"Pesquise o nome de uma música ou artista para encontrar videoclipes."
+                        else->"Digite para pesquisar."
+                    },color=Color.LightGray,fontSize=13.sp)
+                    OutlinedButton(onClick={focusRequester.requestFocus();keyboard?.show()},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Search,null);Spacer(Modifier.width(8.dp));Text("Pesquisar "+tab.label.lowercase(java.util.Locale.ROOT))}
+                }
                 if(recent.isNotEmpty())item{
                     Row(verticalAlignment=Alignment.CenterVertically){Text("Pesquisas recentes",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));TextButton(onClick={recent=emptyList();recentPrefs.edit().remove("queries").apply()}){Text("Limpar")}}
                     recent.take(6).forEach{value->Row(Modifier.fillMaxWidth().clickable{submit(value)}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.History,null,tint=Color.LightGray);Text(value,Modifier.padding(start=12.dp))}}
                 }
-                item{PremiumGenres(onSearch={submit(it);tab=SearchTab.ALL})}
+                if(tab==SearchTab.ALL)item{PremiumGenres(onSearch={submit(it);tab=SearchTab.ALL})}
+                else if(tab in setOf(SearchTab.SONG,SearchTab.ARTIST,SearchTab.ALBUM,SearchTab.CLIPS))item{
+                    Text("Explore nesta categoria",fontSize=18.sp,fontWeight=FontWeight.Bold)
+                    LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items(genres){genre->AssistChip(onClick={submit(genre)},label={Text(genre)})}}
+                }
+                else if(tab==SearchTab.OPEN&&offlineState.saved.isNotEmpty())item{TextButton(onClick=onOfflineOpen){Text("Ver áudios baixados")}}
             }else{
                 if(NativeMusicCatalog.enabled&&tab in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.CLIPS)){
                     item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("NERO Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text(if(tab==SearchTab.CLIPS)"Clipes · catálogo NERO Music" else "Músicas · catálogo NERO Music",fontSize=11.sp,color=Color.LightGray)};IconButton(onClick={showSource=true}){Icon(Icons.Default.Info,"Informações sobre a fonte",tint=Color.LightGray)}}}
@@ -272,7 +289,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 if(tab==SearchTab.ALL||tab==SearchTab.LOCAL){
                     item{Text("No aparelho",fontWeight=FontWeight.Bold,fontSize=19.sp)}
                     val rows=if(tab==SearchTab.ALL)local.take(5)else local
-                    if(rows.isEmpty())item{Text("Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)}
+                    if(rows.isEmpty())item{Text(if(term.isBlank())"Nenhuma música local disponível. Verifique a permissão de acesso ao áudio e os arquivos do aparelho." else "Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)}
                     items(rows,key={it.id}){track->
                         Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){if(currentId==track.id.toString())onOpenPlayer()else onPlay(track)},verticalAlignment=Alignment.CenterVertically){
                             LocalArtwork(track,Modifier.size(52.dp))
@@ -332,7 +349,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         }
                     }
                 }
-                if(term.length<3)item{Text("Digite pelo menos três caracteres para consultar o catálogo online.",fontSize=12.sp,color=Color.LightGray)}
+                if(term.length<3&&tab!=SearchTab.LOCAL)item{Text("Digite pelo menos três caracteres para consultar o catálogo online.",fontSize=12.sp,color=Color.LightGray)}
             }
             if(currentId.isNotBlank()&&currentTitle.isNotBlank()&&tab in setOf(SearchTab.ALL,SearchTab.SONG)){
                 item(key="current_playback_card"){
