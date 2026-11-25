@@ -152,7 +152,7 @@ private fun NeroApp() {
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.GraphicEq, null, tint = Cyan)
+                LocalArtwork(tracks.firstOrNull{it.id.toString()==nowId},Modifier.size(48.dp))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                     Text(artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
@@ -187,40 +187,19 @@ private fun NeroApp() {
         } else if (showAccount) {
             AccountScreen(onBack = { showAccount = false }, onPlans = { showPlans = true }, onCloud = { showCloud = true }, modifier = Modifier.padding(padding))
         } else if (fullPlayer) {
-            Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { fullPlayer = false }) { Icon(Icons.Default.KeyboardArrowDown, "Minimizar") }
-                    Text("REPRODUZINDO", color = Cyan, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { showLyrics = true }, enabled = nowId.isNotEmpty()) { Icon(Icons.Default.Lyrics, "Letras", tint = Green) }
-                    if(BuildConfig.DEBUG) IconButton(onClick = { showEq = true }) { Icon(Icons.Default.Equalizer, "Equalizador", tint = Green) }
-                }
-                Spacer(Modifier.weight(1f))
-                Box(Modifier.fillMaxWidth().aspectRatio(1f).background(Brush.linearGradient(listOf(Blue.copy(alpha=.65f), SurfaceDark, Green.copy(alpha=.35f))), RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
-                    LocalArtwork(track = tracks.firstOrNull { it.id.toString() == nowId }, modifier = Modifier.fillMaxSize(), large = true)
-                }
-                Spacer(Modifier.height(24.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis); Text(artist, color = Color.LightGray, maxLines = 1) }
-                    IconButton(enabled = nowId.toLongOrNull() != null, onClick = { if (nowId.toLongOrNull() != null) toggle(nowId) }) { Icon(if (nowId in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favoritar", tint = Green) }
-                }
-                Slider(value = if (duration > 0) (pos.toFloat()/duration).coerceIn(0f,1f) else 0f, onValueChange = { if (duration > 0) controller?.seekTo((it*duration).toLong()) }, enabled = duration > 0)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(timestamp(pos)); Text(timestamp(duration)) }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { controller?.shuffleModeEnabled = !shuffle }) { Icon(Icons.Default.Shuffle, "Aleatório", tint = if (shuffle) Green else Color.White) }
-                    IconButton(onClick = { controller?.seekToPreviousMediaItem() }) { Icon(Icons.Default.SkipPrevious, "Anterior") }
-                    FilledIconButton(onClick = { controller?.let { if (it.isPlaying) it.pause() else it.play() } }, modifier = Modifier.size(72.dp)) { Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Reproduzir ou pausar", Modifier.size(34.dp)) }
-                    IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
-                    IconButton(onClick = { controller?.repeatMode = when (repeat) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }) { Icon(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repetir", tint = if (repeat != Player.REPEAT_MODE_OFF) Green else Color.White) }
-                }
-                TextButton(onClick={showQueue=true},enabled=controller!=null) { Icon(Icons.Default.QueueMusic,null,tint=Cyan); Spacer(Modifier.width(6.dp));Text("Fila de reprodução") }
-                val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
-                if(currentTrack!=null) TextButton(enabled=controller!=null,onClick={
-                    val next=buildRadio(tracks,favorites,history(context),currentTrack)
-                    if(next.isNotEmpty())startRadio(next)
-                }) { Icon(Icons.Default.Radio,null,tint=Cyan);Spacer(Modifier.width(6.dp));Text("Rádio desta faixa (local)") }
-                playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Spacer(Modifier.weight(1f))
-            }
+            val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
+            ImmersivePlayer(
+                track=currentTrack,title=title,artist=artist,position=pos,duration=duration,playing=playing,
+                favorite=nowId in favorites,shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
+                onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId)},
+                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else it.play()}},
+                onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
+                onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
+                onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
+                onLyrics={showLyrics=true},onQueue={showQueue=true},onEqualizer={showEq=true},
+                onRadio={if(currentTrack!=null){val next=buildRadio(tracks,favorites,history(context),currentTrack);if(next.isNotEmpty())startRadio(next)}},
+                modifier=Modifier.padding(padding)
+            )
         } else Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

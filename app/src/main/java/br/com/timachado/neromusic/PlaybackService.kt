@@ -8,10 +8,18 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private var eq: SessionEqualizer? = null
+    private val timerScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
@@ -40,12 +48,21 @@ class PlaybackService : MediaSessionService() {
                 lastRecorded = id
             }
         })
+        timerScope.launch {
+            NeroSleepTimer.deadline.collectLatest { deadline ->
+                if(deadline!=null){
+                    delay((deadline-android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+                    if(NeroSleepTimer.deadline.value==deadline){player.pause();NeroSleepTimer.cancel()}
+                }
+            }
+        }
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         session = MediaSession.Builder(this, player).setSessionActivity(activity).build()
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onDestroy() {
+        timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
         session?.let { it.player.release(); it.release() }
         session = null

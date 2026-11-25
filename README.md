@@ -95,3 +95,8 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.8.8-dev
 - Seção Lançamentos experimental: consulta MusicBrainz por data inicial de publicação oficial, período de 7/30/90 dias e tags de gênero, com capas e navegação por álbum. Amostra de até 50 resultados ordenada localmente por data; não é ranking, catálogo completo nem garantia de disponibilidade. Mantém restrição DEBUG, limite de requisições compartilhado e busca externa no YouTube Music. Integração real ainda precisa de testes em aparelho.
+
+## 0.8.9-dev
+- Player imersivo Aurora Neon: capa adaptativa, título/álbum/artista, controles grandes, letras, favoritos, fila, equalizador, rádio e menu de ações. Seek confirmado ao soltar o controle. Miniplayer com capa local. Layout rolável para telas menores.
+- Temporizador de sono na sessão do serviço de áudio (10–90 min), pausa ao vencer e opção de cancelar. Não persiste quando o serviço encerra; validação em aparelho necessária.
+- Referência do tutorial do usuário documentada em docs/music-roadmap.md. Vídeo e Music Flow não integrados; catálogo e letras online ainda pendentes.
