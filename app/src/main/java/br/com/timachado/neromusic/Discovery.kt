@@ -138,7 +138,7 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showCatalog by remember { mutableStateOf(false) }
     var showReleases by remember { mutableStateOf(false) }
@@ -177,29 +177,17 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
     LazyColumn(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text(if(offline) "Downloads" else if(searchOnly) "Buscar músicas" else "Descubra novos sons",fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text(if(offline) "Áudios autorizados salvos no NERO Music." else "YouTube Music e catálogo aberto", color=Color.LightGray,fontSize=13.sp)
+            Text(if(offline) "Áudios autorizados salvos no NERO Music." else "Explore sua biblioteca e descubra músicas", color=Color.LightGray,fontSize=13.sp)
         }
         if(!offline) {
             item {
                 OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Música, artista ou gênero")})
-                Button(onClick={
-                    if(!openYouTubeMusic(context,query)) notice="Não foi possível abrir o YouTube Music."
-                },modifier=Modifier.fillMaxWidth()) {
+                Button(onClick={onSearch(query.trim())},modifier=Modifier.fillMaxWidth()){
                     Icon(Icons.Default.Search,null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Buscar no YouTube Music")
+                    Text("Buscar no NERO")
                 }
-                OutlinedButton(onClick={submitted=query.trim(); generation++},modifier=Modifier.fillMaxWidth()) {
-                    Text("Buscar áudios com licença aberta")
-                }
-                Text("A busca no YouTube Music abre o aplicativo oficial ou o navegador. Downloads do YouTube Music ficam no serviço oficial; o NERO salva os áudios autorizados do catálogo aberto.",fontSize=12.sp,color=Color.LightGray)
-            }
-            if (BuildConfig.DEBUG) item {
-                OutlinedButton(onClick = { catalogQuery = query.trim(); catalogKind = CatalogKind.SONG; showCatalog = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.LibraryMusic, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Explorar músicas, álbuns e artistas")
-                }
+                Text("Músicas, artistas e álbuns em um só lugar.",fontSize=12.sp,color=Color.LightGray)
             }
             if (!searchOnly) item {
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
@@ -222,7 +210,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             items(genres.chunked(2)) { pair ->
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     pair.forEach { (name,term) ->
-                        Button(onClick={query=name;submitted=term;generation++},modifier=Modifier.weight(1f).height(56.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF102B23),contentColor=aqua)){
+                        Button(onClick={onSearch(name)},modifier=Modifier.weight(1f).height(56.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF102B23),contentColor=aqua)){
                             Icon(Icons.Default.MusicNote,null,modifier=Modifier.size(18.dp))
                             Spacer(Modifier.width(5.dp))
                             Text(name)
@@ -235,7 +223,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
         notice?.let { msg -> item { Text(msg,color=aqua) } }
         val list=if(offline)saved else tracks
         if(list.isEmpty() && !busy) item {
-            Text(if(offline) "Nenhum áudio salvo." else if(submitted==null) "Escolha um gênero ou faça uma busca." else "Nenhum áudio compatível e licenciado encontrado.",color=Color.LightGray)
+            Text(if(offline) "Nenhum áudio salvo." else if(submitted==null) "Explore um gênero ou pesquise no NERO." else "Nenhum áudio compatível e licenciado encontrado.",color=Color.LightGray)
         }
         items(list,key={it.id}) { track ->
             val isSaved = saved.any { it.id == track.id }

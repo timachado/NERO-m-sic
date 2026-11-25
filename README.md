@@ -112,3 +112,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.9.2-dev
 - Salvar uma faixa ou as gravações identificadas da edição de um álbum diretamente em playlists online próprias. Usa identificadores reais de gravações MusicBrainz, créditos e referência opcional à capa; preserva ordem da inclusão e não duplica o mesmo ID. Capas nas listas online quando disponíveis. Compatível com referências antigas sem capa.
 - Continua sendo armazenamento de metadados; abrir faixa encaminha ao YouTube Music oficial, sem integração direta da API ou streaming comercial. Importação Spotify permanece independente.
+
+## 0.9.3-dev
+- Busca principal e cartões de gêneros do início encaminham à pesquisa interna NERO, preservando o termo. Removido o redirecionamento externo como ação principal da home. A aba Tudo inclui amostra de áudio aberto e resultados locais e MusicBrainz (debug). Resultados MusicBrainz com correspondência local única por título/artista permitem reprodução interna; demais referências podem ser salvas e o link externo é opcional.
+- Sem integração direta do catálogo ou áudio comercial YouTube Music. Assinatura comum Premium não comprova licença de redistribuição; eventual contrato específico deve definir direitos e interface técnica autorizada.

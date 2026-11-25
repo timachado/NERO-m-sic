@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "0.9.2-dev"
+        versionCode = 25
+        versionName = "0.9.3-dev"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

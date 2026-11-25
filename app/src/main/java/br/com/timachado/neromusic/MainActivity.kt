@@ -120,6 +120,7 @@ private fun NeroApp() {
         }
     }
     var tab by remember { mutableIntStateOf(3) }
+    var searchSeed by remember { mutableStateOf("") }
 
     var libraryPage by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
@@ -163,7 +164,7 @@ private fun NeroApp() {
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 1, onClick = { if(tab!=1)searchSeed="";tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favoritos") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 4, onClick = { tab = 4 }, icon = { Icon(Icons.Default.Download, null) }, label = { Text("Offline") })
             }
@@ -239,12 +240,12 @@ private fun NeroApp() {
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()},queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if(tab == 1) {
-                NeroSearch(tracks=tracks,canPlay=controller!=null,
+                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
             } else if (tab == 3 || tab == 4) {
                 key(tab) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onSearch = { term -> searchSeed=term;tab=1 }, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
                 })
                 }

@@ -37,10 +37,10 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String=""){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
-    var query by remember{mutableStateOf("")}
+    var query by remember{mutableStateOf(initialQuery)}
     var tab by remember{mutableStateOf(SearchTab.ALL)}
     var revision by remember{mutableIntStateOf(0)}
     var results by remember{mutableStateOf<Map<CatalogKind,List<CatalogEntry>>>(emptyMap())}
@@ -69,7 +69,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 catch(e:CancellationException){throw e}catch(_:Exception){errors=errors+kind}
             }}finally{busy=false}
         }
-        if(tab==SearchTab.OPEN){
+        if(tab==SearchTab.OPEN||tab==SearchTab.ALL){
             openBusy=true
             try{openResults=searchOpen(term)}
             catch(e:CancellationException){throw e}catch(_:Exception){openError=true}
@@ -116,7 +116,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     if(tab==SearchTab.ALL&&local.size>5)item{TextButton(onClick={tab=SearchTab.LOCAL}){Text("Ver todas as faixas locais")}}
                 }
                 if(BuildConfig.DEBUG&&tab !in setOf(SearchTab.LOCAL,SearchTab.OPEN)){
-                    item{Text("Catálogo musical · MusicBrainz (prévia)",fontSize=12.sp,color=Color.LightGray)}
+                    item{Text("Catálogo musical · MusicBrainz (prévia)",fontSize=12.sp,color=Color.LightGray);Text("Referências sem áudio disponível no NERO podem ser salvas; a reprodução externa é opcional.",fontSize=11.sp,color=Color.LightGray)}
                     for(kind in CatalogKind.entries){
                         val all=results[kind]?:continue
                         item{Text(kind.label,fontSize=19.sp,fontWeight=FontWeight.Bold)}
@@ -133,7 +133,9 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 }
                                 if(kind==CatalogKind.SONG){
                                     IconButton(onClick={adding=OnlineRef(song.id,song.title,song.credit,song.artworkReleaseId)}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist online",tint=searchAccent)}
-                                    IconButton(onClick={if(!openYouTubeMusic(context,song.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar no YouTube Music")}
+                                    val matching=tracks.filter{it.title.trim().equals(song.title.trim(),true)&&it.artist.trim().equals(song.credit.trim(),true)}.singleOrNull()
+                                    if(matching!=null)IconButton(enabled=canPlay,onClick={onPlay(matching)}){Icon(Icons.Default.PlayArrow,"Reproduzir arquivo correspondente no NERO",tint=searchAccent)}
+                                    else IconButton(onClick={if(!openYouTubeMusic(context,song.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Abrir no YouTube Music oficial")}
                                 }else IconButton(onClick={detail=listOf(song)}){Icon(Icons.Default.KeyboardArrowRight,"Abrir detalhes")}
                             }
                         }
@@ -142,11 +144,11 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     if(errors.isNotEmpty())item{Text("Algumas consultas falharam.",color=Color.LightGray);TextButton(onClick={revision++}){Text("Tentar novamente")}}
                     item{TextButton(onClick={if(!openYouTubeMusic(context,term))message="Não foi possível abrir o YouTube Music."}){Text("Continuar busca no YouTube Music oficial")}}
                 }
-                if(tab==SearchTab.OPEN){
+                if(tab==SearchTab.OPEN||tab==SearchTab.ALL){
                     item{Text("Áudio com licença aberta",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Fonte: Wikimedia Commons",fontSize=12.sp,color=Color.LightGray)}
                     if(openError)item{TextButton(onClick={revision++}){Text("Falha na consulta. Tentar novamente")}}
                     if(!openBusy&&!openError&&openResults.isEmpty())item{Text("Nenhum áudio compatível encontrado.",color=Color.LightGray)}
-                    items(openResults,key={it.id}){audio->
+                    items(if(tab==SearchTab.ALL)openResults.take(5)else openResults,key={it.id}){audio->
                         val downloaded=saved.any{it.id==audio.id}
                         Column(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(10.dp)){
                             Row(verticalAlignment=Alignment.CenterVertically){
