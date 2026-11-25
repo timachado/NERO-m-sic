@@ -1,5 +1,5 @@
 # NERO Music — assinaturas (proposta de arquitetura)
-Status: planejamento; nenhuma cobrança habilitada, nenhum preço aprovado, nenhum produto comercial criado.
+Status: planejamento. Decisão do proprietário: distribuição direta de APK pelo site da T.I. Machado (https://timachado.ifree.page/), seguindo o modelo dos demais aplicativos. Google Play não integra o plano de lançamento atual. Nenhuma cobrança habilitada, nenhum preço aprovado, nenhum produto comercial criado.
 
 ## Produto
 - NERO Free: player local, biblioteca, busca, favoritos e playlists básicas.
@@ -11,26 +11,27 @@ Status: planejamento; nenhuma cobrança habilitada, nenhum preço aprovado, nenh
 Firebase Authentication exclusivo do NERO, UID estável, login Google ou e-mail. Visitante pode utilizar funções gratuitas. Nenhum dado dos outros aplicativos deve ser modificado.
 
 ## Distribuição e cobrança
-- Google Play: Google Play Billing, salvo exceções e programas aplicáveis; produtos e planos criados apenas após aprovação comercial. Usar preços e ofertas retornados pela loja, nunca valores fictícios no checkout.
-- APK distribuído diretamente pelo site: avaliar checkout externo separado e provedor autorizado, com verificação de webhook. Não alterar o checkout ou a configuração de pagamentos existente da T.I. Machado. Não direcionar usuários da versão Play a checkout externo sem enquadramento nas políticas.
-- Separar canais de distribuição e manter uma identidade de conta comum. Sem alterar assinatura do APK ou configurar chaves sem autorização apropriada.
+- Canal de lançamento: página oficial do NERO Music no site da T.I. Machado, com APK release assinado, versão, requisitos Android, instruções de instalação, checksum SHA-256 e política de privacidade.
+- Google Sign-In continua sendo autenticação, independente da distribuição pela Google Play. Google Play Billing não faz parte do lançamento direto.
+- Checkout hospedado pelo provedor de pagamentos, associado à conta NERO autenticada pelo backend. Escolher provedor e condições comerciais antes de ativar cobrança. Pix e cartão são opções a avaliar; renovação automática depende do suporte real do provedor.
+- Não alterar o checkout nem as configurações dos pagamentos existentes da T.I. Machado. Nenhum produto ou cobrança real criado.
+- Atualizações por HTTPS, com metadados de versão e integridade e APK assinado pela mesma chave de release, preservando o applicationId. Instalação e atualização mediante confirmação do usuário no Android; não contornar proteções do sistema.
+- Nunca distribuir APK debug como release comercial. Guardar chave de assinatura com segurança e configurar SHA-1/SHA-256 no Firebase para o certificado de release.
 
 ## Entitlement no backend
-- Validar identidade Firebase no servidor, associar compra à conta, verificar o purchase token com a Google Play Developer API e confirmar produto, pacote, estado e validade.
-- Processar notificações RTDN com idempotência; reconsultar estado oficial e tratar renovação, cancelamento, carência, suspensão, expiração, reembolso e revogação.
-- Apenas o backend concede Premium. Estado local é cache, nunca fonte de autorização. Não conceder acesso por compra pendente ou não verificada. Reconhecer compras válidas conforme as regras da loja.
-- Restaurar compras com verificação no servidor; não reutilizar tokens entre contas. Nunca publicar credenciais administrativas, chaves de assinatura ou dados privados.
-- Antes de produção: LGPD, termos, privacidade, cancelamento, exclusão de conta, testes com compras de licença, isolamento de usuários, persistência e recuperação.
+- Validar o token Firebase no servidor e associar o UID à assinatura via checkout criado pelo backend. Não confiar em UID, preço, plano ou status enviados pelo cliente.
+- Processar webhooks com verificação de autenticidade, proteção contra replay e idempotência; confirmar estado pela API oficial do provedor. Tratar renovação, cancelamento, expiração, falha, reembolso e revogação.
+- Apenas o backend concede Premium. O estado local é cache com validade limitada, nunca fonte de autorização. Não liberar por comprovantes, retorno de checkout ou pagamentos pendentes.
+- Permitir acesso à conta e gerenciamento/cancelamento da assinatura pelo canal oficial; restaurar acesso após autenticação e consulta ao backend.
+- Nunca publicar credenciais administrativas, chaves privadas de assinatura ou dados privados. Antes de produção: LGPD, termos, privacidade, cancelamento, exclusão de conta, testes de isolamento e recuperação.
 
 ## Dependências e próximos marcos
 1. Compilar e testar a versão de autenticação existente; configurar Firebase e certificado estável.
 2. Implementar benefícios premium reais, provedor de entitlement e tela de planos sem checkout ativo.
-3. Configurar ambiente sandbox de cobrança, backend seguro e testes de ciclo de vida.
+3. Selecionar provedor de checkout recorrente, configurar sandbox isolado, backend seguro e testes de ciclo de vida.
 4. Validar direitos do catálogo comercial e distribuição offline antes de cobrar por esses conteúdos.
-5. Aprovar preços, publicar versão assinada e habilitar pagamentos apenas após validação.
+5. Aprovar preços, assinar e validar APK release, preparar página de download e habilitar pagamentos apenas após validação.
 
-## Referências oficiais
-- https://support.google.com/googleplay/android-developer/answer/9858738
-- https://developer.android.com/google/play/billing/integrate
-- https://developer.android.com/google/play/billing/backend
-- https://developer.android.com/google/play/billing/subscriptions
+## Referências
+- https://developer.android.com/studio/publish/app-signing
+- https://firebase.google.com/docs/auth/android/google-signin
