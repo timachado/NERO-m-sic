@@ -22,13 +22,20 @@ internal object NeroArtworkSources{
 }
 
 @Composable
-internal fun NeroArtwork(model:Any?,contentDescription:String?,modifier:Modifier=Modifier,contentScale:ContentScale=ContentScale.Fit){
+internal fun NeroArtwork(model:Any?,contentDescription:String?,modifier:Modifier=Modifier,contentScale:ContentScale=ContentScale.Fit,large:Boolean=false){
     val context=LocalContext.current
     val original=model
     val preferred=remember(model){when(model){is String->NeroArtworkSources.preferred(model);is android.net.Uri->NeroArtworkSources.preferred(model.toString());else->model}}
-    var failed by remember(model,preferred){mutableStateOf(false)}
-    val data=if(failed)original else preferred
-    val request=remember(context,data){ImageRequest.Builder(context).data(data).allowRgb565(false).crossfade(120).build()}
+    val candidates=remember(model,preferred,large){
+        val url=original?.toString().orEmpty()
+        val id=Regex("^https://i\\.ytimg\\.com/vi(?:_webp)?/([A-Za-z0-9_-]{11})/[^/?]+(?:\\?.*)?$").matchEntire(url)?.groupValues?.get(1)
+        if(large&&id!=null&&preferred==original)listOf("https://i.ytimg.com/vi/$id/maxresdefault.jpg","https://i.ytimg.com/vi/$id/sddefault.jpg","https://i.ytimg.com/vi/$id/hqdefault.jpg",original).distinct()
+        else listOf(preferred,original).distinct()
+    }
+    var index by remember(candidates){mutableIntStateOf(0)}
+    val data=candidates[index]
+    val request=remember(context,data,large){ImageRequest.Builder(context).data(data).allowRgb565(false).crossfade(120).build()}
     AsyncImage(model=request,contentDescription=contentDescription,modifier=modifier,contentScale=contentScale,
-        filterQuality=FilterQuality.High,onError={if(preferred!=original)failed=true})
+        filterQuality=FilterQuality.High,onError={if(index<candidates.lastIndex)index++},
+        onSuccess={state->if(large&&index<candidates.lastIndex&&state.result.drawable.intrinsicWidth in 1..160)index++})
 }
