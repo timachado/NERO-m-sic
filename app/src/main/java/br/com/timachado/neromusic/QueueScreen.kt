@@ -31,7 +31,7 @@ private fun snapshot(p:MediaController?):QueueSnapshot {
 internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:()->Unit,modifier:Modifier=Modifier){
     var queue by remember(controller){mutableStateOf(snapshot(controller))}
     var message by remember{mutableStateOf<String?>(null)}
-    var confirmClear by remember{mutableStateOf(false)}
+    var confirmClear by remember{mutableStateOf<QueueSnapshot?>(null)}
     val byId=remember(tracks){tracks.associateBy{it.id.toString()}}
     DisposableEffect(controller){
         val player=controller
@@ -51,14 +51,15 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         try{action(p);queue=snapshot(p);message=null}
         catch(_:Exception){queue=snapshot(p);message="Não foi possível alterar a fila."}
     }
-    if(confirmClear){
-        val expected=queue
-        AlertDialog(onDismissRequest={confirmClear=false},title={Text("Limpar próximas faixas?")},
+    val expectedClear=confirmClear
+    if(expectedClear!=null){
+        val expected=expectedClear
+        AlertDialog(onDismissRequest={confirmClear=null},title={Text("Limpar próximas faixas?")},
             text={Text("Remove apenas as faixas depois da música atual. A reprodução atual e os arquivos permanecem intactos.")},
             confirmButton={TextButton(onClick={
-                confirmClear=false
+                confirmClear=null
                 act(expected,true){p->if(expected.current in expected.items.indices&&expected.current+1<expected.items.size)p.removeMediaItems(expected.current+1,expected.items.size)}
-            }){Text("Limpar próximas")}},dismissButton={TextButton(onClick={confirmClear=false}){Text("Cancelar")}})
+            }){Text("Limpar próximas")}},dismissButton={TextButton(onClick={confirmClear=null}){Text("Cancelar")}})
     }
     Column(modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
@@ -67,7 +68,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         }
         Text("${queue.items.size} faixas · ordem da lista",color=Color.LightGray,fontSize=12.sp)
         if(queue.shuffle)Text("Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas.",color=Color(0xFF00E5FF),fontSize=12.sp)
-        OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=true},modifier=Modifier.fillMaxWidth()){Text("Limpar próximas faixas")}
+        OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.fillMaxWidth()){Text("Limpar próximas faixas")}
         message?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
         if(queue.items.isEmpty())Text("A fila está vazia. Adicione músicas pela biblioteca.",color=Color.LightGray)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)){
@@ -88,7 +89,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                     IconButton(enabled=queue.canSeek,onClick={act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(Icons.Default.PlayArrow,"Reproduzir "+title)}
                     if(upcoming)Box{
                         IconButton(enabled=editable,onClick={menu=true}){Icon(Icons.Default.MoreVert,"Opções da faixa")}
-                        DropdownMenu(expanded=menu,dismissRequest={menu=false}){
+                        DropdownMenu(expanded=menu,onDismissRequest={menu=false}){
                             DropdownMenuItem(text={Text("Mover para cima")},enabled=editable&&i>queue.current+1,onClick={menu=false;act(queue,true){it.moveMediaItem(i,i-1)}})
                             DropdownMenuItem(text={Text("Mover para baixo")},enabled=editable&&i<queue.items.lastIndex,onClick={menu=false;act(queue,true){it.moveMediaItem(i,i+1)}})
                             DropdownMenuItem(text={Text("Remover da fila")},enabled=editable,onClick={menu=false;act(queue,true){it.removeMediaItem(i)}})
@@ -121,7 +122,7 @@ internal fun QueueAddMenu(controller:MediaController?,track:Track){
     LaunchedEffect(notice){notice?.let{android.widget.Toast.makeText(context,it,android.widget.Toast.LENGTH_SHORT).show();notice=null}}
     Box{
         IconButton(onClick={open=true},enabled=p!=null){Icon(Icons.Default.MoreVert,"Opções de "+track.title)}
-        DropdownMenu(expanded=open,dismissRequest={open=false}){
+        DropdownMenu(expanded=open,onDismissRequest={open=false}){
             DropdownMenuItem(text={Text("Reproduzir em seguida")},onClick={open=false;add(true)})
             DropdownMenuItem(text={Text("Adicionar ao fim da fila")},onClick={open=false;add(false)})
         }
