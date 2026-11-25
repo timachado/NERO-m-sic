@@ -64,3 +64,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Capas do aparelho no player e listas, com fallback; busca local também por álbum e gênero.
 - Letras no player: importação LRC sincronizado ou TXT UTF-8, destaque e rolagem pela posição real, toque na linha para buscar posição, armazenamento privado por faixa. Sem busca automática online; apenas arquivos autorizados pelo usuário.
 - Preparação comercial suspensa até validação funcional. Ver docs/music-roadmap.md.
+
+## 0.8.1-dev
+- Catálogo experimental: páginas de artistas, discografia, páginas de álbuns, seleção de edição oficial, ordem das faixas e duração quando disponível. Busca de reprodução no YouTube Music externo.
+- Consultas por identificadores MusicBrainz com limitação compartilhada de uma requisição por segundo. Continua somente debug, sem licença comercial de catálogo ou streaming.

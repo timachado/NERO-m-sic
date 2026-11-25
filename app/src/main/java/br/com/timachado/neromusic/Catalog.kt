@@ -40,12 +40,12 @@ internal enum class CatalogKind(val label:String,val resource:String,val resultK
     ALBUM("Álbuns","release-group","release-groups"),
     ARTIST("Artistas","artist","artists")
 }
-private data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind) {
+internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind) {
     val coverUrl: String? get() = if(kind == CatalogKind.ALBUM) "https://coverartarchive.org/release-group/$id/front-250" else null
     val searchText: String get() = listOf(title,credit).filter { it.isNotBlank() }.joinToString(" ")
 }
 private val idPattern = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
-private object DevCatalog {
+internal object DevCatalog {
     private val lock = Mutex()
     private var lastRequest = 0L
     private val cache = LinkedHashMap<String,List<CatalogEntry>>()
@@ -96,6 +96,70 @@ private object DevCatalog {
             } finally { connection.disconnect() }
         }
     }
+    private suspend fun fetchDetails(path:String, params:Map<String,String>):JSONObject = withContext(Dispatchers.IO) {
+        check(BuildConfig.DEBUG)
+        lock.withLock {
+            val remaining=1100-(SystemClock.elapsedRealtime()-lastRequest)
+            if(remaining>0)delay(remaining)
+            val u=Uri.parse("https://musicbrainz.org/ws/2/"+path).buildUpon().appendQueryParameter("fmt","json")
+            params.forEach{(key,value)->u.appendQueryParameter(key,value)}
+            val connection=URL(u.build().toString()).openConnection() as HttpURLConnection
+            connection.connectTimeout=15000;connection.readTimeout=20000
+            connection.instanceFollowRedirects=false
+            connection.setRequestProperty("User-Agent","NeroMusic/0.8-dev (https://github.com/timachado/NERO-m-sic)")
+            connection.setRequestProperty("Accept","application/json")
+            lastRequest=SystemClock.elapsedRealtime()
+            try {
+                check(connection.responseCode==200)
+                JSONObject(connection.inputStream.bufferedReader().use{it.readText()})
+            }finally{connection.disconnect()}
+        }
+    }
+    suspend fun discography(id:String):List<CatalogEntry> {
+        require(idPattern.matches(id))
+        val data=fetchDetails("release-group",mapOf("artist" to id,"type" to "album|ep|single","inc" to "artist-credits","limit" to "50"))
+        val list=data.optJSONArray("release-groups") ?: return emptyList()
+        return (0 until list.length()).mapNotNull { index ->
+            val row=list.optJSONObject(index)?:return@mapNotNull null
+            val rid=row.optString("id");val title=row.optString("title")
+            if(!idPattern.matches(rid)||title.isBlank())return@mapNotNull null
+            val credits=row.optJSONArray("artist-credit")
+            val artist=if(credits==null)"" else (0 until credits.length()).joinToString(""){i->
+                credits.optJSONObject(i)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
+            }
+            CatalogEntry(rid,title,artist,CatalogKind.ALBUM)
+        }.distinctBy{it.id}
+    }
+    suspend fun editions(id:String):List<AlbumEdition> {
+        require(idPattern.matches(id))
+        val data=fetchDetails("release",mapOf("release-group" to id,"status" to "official","limit" to "25"))
+        val list=data.optJSONArray("releases")?:return emptyList()
+        return (0 until list.length()).mapNotNull { i ->
+            val o=list.optJSONObject(i)?:return@mapNotNull null
+            val rid=o.optString("id")
+            if(!idPattern.matches(rid))return@mapNotNull null
+            AlbumEdition(rid,o.optString("title"),o.optString("date"),o.optString("country"),o.optString("disambiguation"))
+        }.distinctBy{it.id}.sortedWith(compareBy<AlbumEdition>{it.date.ifBlank{"9999"}}.thenBy{it.title})
+    }
+    suspend fun albumTracks(id:String):List<AlbumSong> {
+        require(idPattern.matches(id))
+        val data=fetchDetails("release/"+id,mapOf("inc" to "recordings+artist-credits"))
+        val media=data.optJSONArray("media")?:return emptyList()
+        val result=mutableListOf<AlbumSong>()
+        for(i in 0 until media.length()){
+            val disc=media.optJSONObject(i)?:continue
+            val tracks=disc.optJSONArray("tracks")?:continue
+            for(j in 0 until tracks.length()){
+                val track=tracks.optJSONObject(j)?:continue
+                val recording=track.optJSONObject("recording")
+                val title=track.optString("title").ifBlank{recording?.optString("title").orEmpty()}
+                if(title.isBlank())continue
+                result.add(AlbumSong(i+1,track.optString("number").ifBlank{(j+1).toString()},title,track.optLong("length",recording?.optLong("length",0L)?:0L)))
+            }
+        }
+        return result
+    }
+
 }
 
 @Composable
@@ -107,6 +171,13 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
     var reload by remember { mutableIntStateOf(0) }
     var result by remember { mutableStateOf(emptyList<CatalogEntry>()) }
     var busy by remember { mutableStateOf(false) }
+    var details by remember { mutableStateOf<List<CatalogEntry>>(emptyList()) }
+    val currentDetail=details.lastOrNull()
+    androidx.activity.compose.BackHandler(currentDetail!=null){details=details.dropLast(1)}
+    if(currentDetail!=null){
+        key(currentDetail.id){CatalogDetailsScreen(currentDetail,onBack={details=details.dropLast(1)},onAlbum={details=details+it})}
+        return
+    }
     var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(submitted,kind,reload) {
         result=emptyList();message=null
@@ -146,7 +217,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
                                 }
                                 Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold)
                                 Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                                TextButton(onClick={if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."}) { Text("Ouvir",color=green) }
+                                TextButton(onClick={details=listOf(entry)}) { Text("Ver álbum",color=green) }
                             }
                         }
                         if(pair.size==1) Spacer(Modifier.weight(1f))
@@ -160,7 +231,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
                             Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                             if(entry.credit.isNotBlank())Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                         }
-                        IconButton(onClick={if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.PlayArrow,"Buscar no YouTube Music",tint=green)}
+                        IconButton(onClick={if(entry.kind==CatalogKind.ARTIST) details=listOf(entry) else if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(if(entry.kind==CatalogKind.ARTIST)Icons.Default.KeyboardArrowRight else Icons.Default.PlayArrow,if(entry.kind==CatalogKind.ARTIST)"Ver artista" else "Buscar no YouTube Music",tint=green)}
                     }
                 }
             }
