@@ -58,3 +58,9 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.7.0-dev
 - NERO Cloud: backup manual experimental no Firestore por UID, somente debug; salva metadados de favoritos locais e playlists e permite restauração por correspondência única de título/artista/duração, mesclando dados. Não copia arquivos, histórico ou IDs locais entre aparelhos.
 - Regras propostas em firebase/firestore.rules; NÃO implantadas. Exige Firebase configurado e testes de isolamento; conta e backup devem ser excluídos integralmente antes da liberação comercial. Não há sincronização automática nem cobrança.
+
+## 0.8.0-dev
+- Biblioteca local por álbuns, artistas e gêneros (gêneros indexados no Android 11+), grade de capas locais e listas de faixas, com reprodução em fila.
+- Capas do aparelho no player e listas, com fallback; busca local também por álbum e gênero.
+- Letras no player: importação LRC sincronizado ou TXT UTF-8, destaque e rolagem pela posição real, toque na linha para buscar posição, armazenamento privado por faixa. Sem busca automática online; apenas arquivos autorizados pelo usuário.
+- Preparação comercial suspensa até validação funcional. Ver docs/music-roadmap.md.

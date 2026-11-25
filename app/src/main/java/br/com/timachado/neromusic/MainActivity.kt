@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -127,10 +128,11 @@ private fun NeroApp() {
     var showPlans by remember { mutableStateOf(false) }
     var showCloud by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud) { if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
+    var showLyrics by remember { mutableStateOf(false) }
+    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud || showLyrics) { if(showLyrics) showLyrics = false else if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
-            (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true)) }
+            (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true) || t.album.contains(query,true) || t.genre.contains(query,true)) }
     }
     fun play(t: Track) {
         val p = controller ?: return
@@ -139,7 +141,7 @@ private fun NeroApp() {
         p.prepare(); p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud) Column {
+        if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -158,7 +160,11 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (showCloud && BuildConfig.DEBUG) {
+        if (showLyrics) {
+            LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
+                onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else it.play() } },
+                onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
+        } else if (showCloud && BuildConfig.DEBUG) {
             CloudLibraryScreen(tracks = tracks, favoriteIds = favorites, granted = granted,
                 onMergeFavorites = { ids -> favorites = favorites + ids; prefs.edit().putStringSet("favorites", favorites).apply() },
                 onBack = { showCloud = false }, modifier = Modifier.padding(padding))
@@ -173,11 +179,12 @@ private fun NeroApp() {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { fullPlayer = false }) { Icon(Icons.Default.KeyboardArrowDown, "Minimizar") }
                     Text("REPRODUZINDO", color = Cyan, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { showLyrics = true }, enabled = nowId.isNotEmpty()) { Icon(Icons.Default.Lyrics, "Letras", tint = Green) }
                     if(BuildConfig.DEBUG) IconButton(onClick = { showEq = true }) { Icon(Icons.Default.Equalizer, "Equalizador", tint = Green) }
                 }
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.fillMaxWidth().aspectRatio(1f).background(Brush.linearGradient(listOf(Blue.copy(alpha=.65f), SurfaceDark, Green.copy(alpha=.35f))), RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.GraphicEq, null, Modifier.size(116.dp), tint = Cyan)
+                    LocalArtwork(track = tracks.firstOrNull { it.id.toString() == nowId }, modifier = Modifier.fillMaxSize(), large = true)
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -212,12 +219,19 @@ private fun NeroApp() {
                 FilterChip(selected = !localSearch, onClick = { localSearch = false }, label = { Text("Online") })
                 FilterChip(selected = localSearch, onClick = { localSearch = true }, label = { Text("No aparelho") })
             }
-            if(tab == 0) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Músicas","Playlists","Histórico").forEachIndexed { index, label ->
-                    FilterChip(selected = libraryPage == index, onClick = { libraryPage = index }, label = { Text(label) })
+            if(tab == 0) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros").withIndex().toList()) { entry ->
+                    FilterChip(selected = libraryPage == entry.index, onClick = { libraryPage = entry.index }, label = { Text(entry.value) })
                 }
             }
-            if(tab == 0 && libraryPage != 0) {
+            if(tab == 0 && libraryPage >= 3) {
+                key(libraryPage) {
+                    LocalCollectionsScreen(kind = libraryPage, tracks = tracks, granted = granted, canPlay = controller != null,
+                        onPermission = { request.launch(permission) }, onPlay = { queue, index -> controller?.let { p ->
+                            if(queue.isNotEmpty()) { p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex),0L);p.prepare();p.play() }
+                        } })
+                }
+            } else if(tab == 0 && libraryPage != 0) {
                 PersonalLibraryScreen(historyMode = libraryPage == 2, tracks = tracks, granted = granted,
                     canPlay = controller != null, onPermission = { request.launch(permission) },
                     onPlay = { queue, index -> controller?.let { p ->
@@ -244,7 +258,7 @@ private fun NeroApp() {
                 LazyColumn(Modifier.weight(1f)) {
                     items(filtered, key = { it.id }) { t ->
                         Row(Modifier.fillMaxWidth().clickable(enabled = controller != null) { play(t) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(48.dp).background(SurfaceDark, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.MusicNote, null, tint = if (nowId == t.id.toString()) Green else Cyan) }
+                            LocalArtwork(t, Modifier.size(48.dp))
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(t.title, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (nowId == t.id.toString()) Green else Color.White)
                                 Text(t.artist + " · " + timestamp(t.duration), fontSize = 12.sp, color = Color.LightGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
