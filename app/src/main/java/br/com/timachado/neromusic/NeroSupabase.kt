@@ -35,6 +35,9 @@ internal object NeroSupabase{
     private val mutex=Mutex()
     private val identity=kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val activeUid: kotlinx.coroutines.flow.StateFlow<String?> = identity
+    private val readyState=kotlinx.coroutines.flow.MutableStateFlow(false)
+    val identityReady: kotlinx.coroutines.flow.StateFlow<Boolean> = readyState
+    fun markGuestReady(){if(!configured){identity.value=null;readyState.value=true}}
     private const val alias="nero.supabase.session.v1"
     private fun prefs(context:Context)=context.getSharedPreferences("nero_supabase_session",Context.MODE_PRIVATE)
     private fun key():SecretKey{
@@ -102,6 +105,8 @@ internal object NeroSupabase{
     suspend fun session(context:Context,interactive:Boolean):NeroSession=mutex.withLock{
         if(!configured)throw ShareNotConfigured()
         val cached=withContext(Dispatchers.IO){load(context)}
+        identity.value=cached?.uid
+        readyState.value=true
         if(cached!=null){
             if(cached.expiresAt-System.currentTimeMillis()>60000){identity.value=cached.uid;return@withLock cached}
             try{
