@@ -16,7 +16,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -222,7 +221,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
                     Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
-                    s.coverUrl?.let{AsyncImage(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
+                    s.coverUrl?.let{NeroArtwork(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                     Text(s.title,fontWeight=FontWeight.Medium,color=nowTrackColor(byId[s.id]?.mediaId));Text(s.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(byId[s.id]?.mediaId)
@@ -251,7 +250,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             item{Text("Sugestões para sua playlist",fontSize=20.sp,fontWeight=FontWeight.Bold);Text("Baseadas nos artistas da lista. Adicione apenas as que quiser.",fontSize=12.sp,color=Color.LightGray)}
             items(visibleSuggestions,key={"suggestion:"+it.id}){hit->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                    AsyncImage(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
+                    NeroArtwork(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
                     Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title);Text(hit.artist,fontSize=12.sp,color=Color.LightGray)}
                     IconButton(onClick={
                         try{
