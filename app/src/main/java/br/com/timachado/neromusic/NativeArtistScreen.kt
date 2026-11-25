@@ -23,10 +23,10 @@ import androidx.media3.common.MediaItem
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
-internal fun artistKey(value:String):String=value.trim().removeSuffix(" - Topic").trim().lowercase(java.util.Locale.ROOT)
+internal fun nativeArtistKey(value:String):String=value.trim().removeSuffix(" - Topic").trim().lowercase(java.util.Locale.ROOT)
 internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMusicHit>{
-    val key=artistKey(artist)
-    return if(key.isBlank())emptyList()else hits.filter{artistKey(it.artist)==key}.distinctBy{it.id}.take(30)
+    val key=nativeArtistKey(artist)
+    return if(key.isBlank())emptyList()else hits.filter{nativeArtistKey(it.artist)==key}.distinctBy{it.id}.take(30)
 }
 @Composable
 internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit,onExplore:(String)->Unit){

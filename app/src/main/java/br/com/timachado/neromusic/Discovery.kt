@@ -145,7 +145,7 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showCatalog by remember { mutableStateOf(false) }
     var showReleases by remember { mutableStateOf(false) }
@@ -187,13 +187,11 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
         }
         if(!offline) {
             item {
-                OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Música, artista ou gênero")})
-                Button(onClick={onSearch(query.trim())},modifier=Modifier.fillMaxWidth()){
+                OutlinedButton(onClick=onSearchFocus,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(28.dp)){
                     Icon(Icons.Default.Search,null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Buscar no NERO")
+                    Text("Música, artista ou gênero",modifier=Modifier.weight(1f))
                 }
-                Text("Músicas, artistas e álbuns em um só lugar.",fontSize=12.sp,color=Color.LightGray)
             }
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
@@ -213,7 +211,8 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                     }
                 }
                 DynamicReleaseShelf(onOpen={showReleases=true},onSearch={onSearch(it)})
-                CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true },onSearch=onSearch)
+                if(NativeMusicCatalog.enabled)NativeAlbumsShelf(onSearch=onSearch)
+                else CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true },onSearch=onSearch)
             }
             item { PremiumGenres(onSearch=onSearch) }
 

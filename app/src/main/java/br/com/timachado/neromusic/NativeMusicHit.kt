@@ -31,3 +31,6 @@ internal fun nativeQueue(hits:List<NativeMusicHit>,selected:NativeMusicHit):Pair
     val rows=if(all.any{it.id==selected.id})all else listOf(selected)+all.take(29)
     return rows.map{it.queueItem()} to rows.indexOfFirst{it.id==selected.id}.coerceAtLeast(0)
 }
+
+internal enum class NativeCollectionKind { ARTIST, ALBUM }
+internal data class NativeCollection(val url:String,val title:String,val credit:String,val artwork:String?,val kind:NativeCollectionKind)

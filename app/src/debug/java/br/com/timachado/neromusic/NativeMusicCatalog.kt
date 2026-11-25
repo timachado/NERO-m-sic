@@ -14,6 +14,9 @@ import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQu
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
+import org.schabi.newpipe.extractor.playlist.PlaylistInfo
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 
 // Personal debug build. Publicly accessible catalog only; no account credentials.
 internal object NativeMusicCatalog{
@@ -22,7 +25,7 @@ internal object NativeMusicCatalog{
     private var initialized=false
     private data class CachedSearch(val at:Long,val hits:List<NativeMusicHit>)
     private val searchCache=LinkedHashMap<String,CachedSearch>(32,0.75f,true)
-    private fun initialize(){
+    @Synchronized private fun initialize(){
         if(!initialized){NewPipe.init(NeroExtractorDownloader());initialized=true}
     }
     private fun idFromUrl(value:String):String?{
@@ -50,6 +53,51 @@ internal object NativeMusicCatalog{
             searchCache[cacheKey]=CachedSearch(android.os.SystemClock.elapsedRealtime(),hits)
             if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
             hits
+        }
+    }
+
+    suspend fun suggestions(query:String):List<String> = withContext(Dispatchers.IO){
+        initialize()
+        val term=query.trim().take(100);require(term.length>=2)
+        ServiceList.YouTube.suggestionExtractor.suggestionList(term)
+            .map{it.trim().take(100)}.filter{it.isNotBlank()}.distinct().take(6)
+    }
+    suspend fun collections(query:String,kind:NativeCollectionKind):List<NativeCollection> = withContext(Dispatchers.IO){
+        lock.withLock{
+            initialize()
+            val term=query.trim().take(100);require(term.length>=3)
+            val filter=when(kind){
+                NativeCollectionKind.ARTIST->YoutubeSearchQueryHandlerFactory.MUSIC_ARTISTS
+                NativeCollectionKind.ALBUM->YoutubeSearchQueryHandlerFactory.MUSIC_ALBUMS
+            }
+            val service=ServiceList.YouTube
+            val info=SearchInfo.getInfo(service,service.searchQHFactory.fromQuery(term,listOf(filter),""))
+            info.relatedItems.mapNotNull{row->
+                val credit=when(kind){
+                    NativeCollectionKind.ARTIST->if(row is ChannelInfoItem)"" else return@mapNotNull null
+                    NativeCollectionKind.ALBUM->if(row is PlaylistInfoItem)row.uploaderName.orEmpty() else return@mapNotNull null
+                }
+                val url=Uri.parse(row.url)
+                if(url.scheme!="https"||url.host !in setOf("youtube.com","www.youtube.com","music.youtube.com","m.youtube.com")||row.name.isBlank())return@mapNotNull null
+                val cover=row.thumbnails.firstOrNull()?.url?.takeIf{value->
+                    val u=Uri.parse(value);u.scheme=="https"&&(u.host=="i.ytimg.com"||u.host?.endsWith(".googleusercontent.com")==true||u.host?.endsWith(".ggpht.com")==true)
+                }
+                NativeCollection(row.url,row.name,credit,cover,kind)
+            }.distinctBy{it.url}.take(20)
+        }
+    }
+    suspend fun albumTracks(album:NativeCollection):List<NativeMusicHit> = withContext(Dispatchers.IO){
+        lock.withLock{
+            initialize()
+            require(album.kind==NativeCollectionKind.ALBUM)
+            val url=Uri.parse(album.url)
+            val id=url.getQueryParameter("list").orEmpty()
+            require(url.scheme=="https"&&url.host in setOf("youtube.com","www.youtube.com","music.youtube.com","m.youtube.com")&&Regex("[A-Za-z0-9_-]{8,100}").matches(id))
+            PlaylistInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/playlist?list="+id).relatedItems.mapNotNull{item->
+                val trackId=idFromUrl(item.url)?:return@mapNotNull null
+                if(item.name.isBlank())return@mapNotNull null
+                NativeMusicHit(trackId,item.name,item.uploaderName.orEmpty().ifBlank{album.credit},item.duration.coerceAtLeast(0))
+            }.distinctBy{it.id}.take(30)
         }
     }
     suspend fun resolve(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){

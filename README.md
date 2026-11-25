@@ -149,3 +149,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.14-dev
 - Página NERO de artista derivada de resultados reais, com arte de faixa, lista filtrada pelo crédito exato, reprodução em fila e inclusão individual ou em conjunto nas playlists. Pesquisa, páginas de álbum e lançamentos agora encaminham ações de busca para o NERO; não garantem correspondência exata do áudio. Preserva MusicBrainz como fonte de metadados identificada, sem integração Spotify ativa. Testes unitários adicionados para normalização e deduplicação de artista. Compilação e teste Android pendentes.
+
+## 0.9.15-dev
+- Corrige colisão artistKey da 0.9.14. Busca abre diretamente no campo com teclado, sugestões online do YouTube durante digitação, prévias de até seis faixas, histórico local de termos e confirmação IME. Consulta de músicas sinaliza carregamento durante debounce. Artistas/álbuns da pesquisa principal passam a usar filtros nativos YouTube Music, com página de álbum e fila; home substitui vitrine antiga por álbuns dessa fonte. MusicBrainz permanece apenas como fallback e fonte de datas de lançamento; Spotify continua importação, não API de metadados. Compilação e testes físicos pendentes.
