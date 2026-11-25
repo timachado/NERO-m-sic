@@ -34,6 +34,7 @@ internal fun NeroConnectShelf(){
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf("")}
     var proofOpen by remember{mutableStateOf(false)}
+    var lanOpen by remember{mutableStateOf(false)}
     LaunchedEffect(open){
         if(open){
             busy=true
@@ -50,11 +51,12 @@ internal fun NeroConnectShelf(){
     }
     if(open)AlertDialog(onDismissRequest={if(!busy)open=false},title={Text("NERO Connect")},text={
         Column(Modifier.heightIn(max=460.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("Prévia de pareamento local. Ainda não controla outro aparelho nem envia dados pela rede.",fontSize=13.sp)
+            Text("Pareamento e controle experimental pela mesma rede Wi-Fi.",fontSize=13.sp)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             if(saved!=null){
                 Text("Chave pública do outro dispositivo confirmada.")
                 OutlinedButton(enabled=!busy,onClick={proofOpen=true}){Text("Verificar identidade do aparelho")}
+                OutlinedButton(enabled=!busy,onClick={lanOpen=true}){Text("Controlar pela rede Wi-Fi")}
                 OutlinedButton(enabled=!busy,onClick={
                     busy=true;scope.launch{
                         try{withContext(Dispatchers.IO){NeroConnectIdentity(context.applicationContext).revoke()};saved=null;peer="";code="";checked=false;notice="Pareamento local removido."}
@@ -102,4 +104,5 @@ internal fun NeroConnectShelf(){
         }
     },confirmButton={TextButton(enabled=!busy,onClick={open=false}){Text("Fechar")}})
     if(open&&proofOpen&&saved!=null)NeroConnectProofDialog(onClose={proofOpen=false})
+    if(open&&lanOpen&&saved!=null)NeroConnectLanDialog(onClose={lanOpen=false})
 }
