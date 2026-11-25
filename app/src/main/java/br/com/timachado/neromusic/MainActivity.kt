@@ -269,7 +269,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (showEq && BuildConfig.DEBUG) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
-            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding),onRestored={onlineFavorites=runCatching{readOnlineFavorites(context)}})
+            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding))
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
