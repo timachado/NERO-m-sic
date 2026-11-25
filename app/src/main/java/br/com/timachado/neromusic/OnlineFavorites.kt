@@ -44,6 +44,8 @@ internal fun saveOnlineFavorites(context:Context,rows:List<OnlineRef>){
     require(bytes.size<=4*1024*1024)
     val file=favoritesFile(context);val out=file.startWrite()
     try{out.write(bytes);file.finishWrite(out)}catch(e:Exception){file.failWrite(out);throw e}
+    val prefs=context.getSharedPreferences("nero_library",0)
+    prefs.edit().putLong("online_favorite_revision",prefs.getLong("online_favorite_revision",0L)+1L).apply()
 }
 private data class FavoriteRow(val id:String,val title:String,val artist:String,val cover:String?,val local:Track?,val online:OnlineRef?,val item:MediaItem?)
 @Composable
