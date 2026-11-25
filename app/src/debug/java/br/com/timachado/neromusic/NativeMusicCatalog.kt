@@ -36,6 +36,12 @@ internal object NativeMusicCatalog{
         val id=if(uri.host=="youtu.be")uri.pathSegments.firstOrNull()else uri.getQueryParameter("v")
         return id?.takeIf{Regex("[A-Za-z0-9_-]{11}").matches(it)}
     }
+    private fun bestArtwork(images:List<org.schabi.newpipe.extractor.Image>):String? =
+        images.filter{image->
+            val uri=Uri.parse(image.url)
+            uri.scheme=="https"&&uri.userInfo==null&&(uri.host=="i.ytimg.com"||uri.host?.endsWith(".googleusercontent.com")==true||uri.host?.endsWith(".ggpht.com")==true)
+        }.maxByOrNull{it.width.coerceAtLeast(0).toLong()*it.height.coerceAtLeast(0)}?.url
+
     suspend fun search(query:String):List<NativeMusicHit> = withContext(Dispatchers.IO){
         lock.withLock{
             initialize()
@@ -50,7 +56,7 @@ internal object NativeMusicCatalog{
             val hits=info.relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
                 val id=idFromUrl(item.url)?:return@mapNotNull null
                 val title=item.name.takeIf{it.isNotBlank()}?:return@mapNotNull null
-                NativeMusicHit(id,title,item.uploaderName.orEmpty(),item.duration.coerceAtLeast(0))
+                NativeMusicHit(id,title,item.uploaderName.orEmpty(),item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails))}
             }.distinctBy{it.id}.take(30)
             searchCache[cacheKey]=CachedSearch(android.os.SystemClock.elapsedRealtime(),hits)
             if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
@@ -70,7 +76,7 @@ internal object NativeMusicCatalog{
             val rows=SearchInfo.getInfo(service,handler).relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
                 val id=idFromUrl(item.url)?:return@mapNotNull null
                 if(item.name.isBlank()||item.duration<=0)return@mapNotNull null
-                NativeMusicHit(id,item.name,item.uploaderName.orEmpty(),item.duration)
+                NativeMusicHit(id,item.name,item.uploaderName.orEmpty(),item.duration).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails))}
             }.distinctBy{it.id}.take(30)
             searchCache[key]=CachedSearch(android.os.SystemClock.elapsedRealtime(),rows)
             if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
@@ -116,9 +122,7 @@ internal object NativeMusicCatalog{
                 }
                 val url=Uri.parse(row.url)
                 if(url.scheme!="https"||url.host !in setOf("youtube.com","www.youtube.com","music.youtube.com","m.youtube.com")||row.name.isBlank())return@mapNotNull null
-                val cover=row.thumbnails.firstOrNull()?.url?.takeIf{value->
-                    val u=Uri.parse(value);u.scheme=="https"&&(u.host=="i.ytimg.com"||u.host?.endsWith(".googleusercontent.com")==true||u.host?.endsWith(".ggpht.com")==true)
-                }
+                val cover=bestArtwork(row.thumbnails)
                 NativeCollection(row.url,row.name,credit,cover,kind)
             }.distinctBy{it.url}.take(20)
         }
@@ -133,10 +137,7 @@ internal object NativeMusicCatalog{
             initialize()
             val info=ChannelInfo.getInfo(ServiceList.YouTube,match.url)
             if(nativeArtistKey(info.name)!=name)return@withLock null
-            val avatar=info.avatars.map{it.url}.firstOrNull{value->
-                val uri=Uri.parse(value)
-                uri.scheme=="https"&&(uri.host=="i.ytimg.com"||uri.host?.endsWith(".googleusercontent.com")==true||uri.host?.endsWith(".ggpht.com")==true)
-            }?:match.artwork
+            val avatar=bestArtwork(info.avatars)?:match.artwork
             ArtistProfile(info.name,avatar,info.description.orEmpty().trim().take(2400))
         }
     }
@@ -150,7 +151,7 @@ internal object NativeMusicCatalog{
             PlaylistInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/playlist?list="+id).relatedItems.mapNotNull{item->
                 val trackId=idFromUrl(item.url)?:return@mapNotNull null
                 if(item.name.isBlank())return@mapNotNull null
-                NativeMusicHit(trackId,item.name,item.uploaderName.orEmpty().ifBlank{album.credit},item.duration.coerceAtLeast(0))
+                NativeMusicHit(trackId,item.name,item.uploaderName.orEmpty().ifBlank{album.credit},item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(trackId,bestArtwork(item.thumbnails))}
             }.distinctBy{it.id}.take(30)
         }
     }
@@ -172,7 +173,7 @@ internal object NativeMusicCatalog{
             rows.take(100).mapIndexedNotNull{i,item->
                 val id=idFromUrl(item.url)?:return@mapIndexedNotNull null
                 if(item.name.isBlank())return@mapIndexedNotNull null
-                ChartSong(i+1,id,item.name,item.uploaderName.orEmpty(),"https://i.ytimg.com/vi/"+id+"/mqdefault.jpg","https://music.youtube.com/watch?v="+id)
+                ChartSong(i+1,id,item.name,item.uploaderName.orEmpty(),bestArtwork(item.thumbnails)?:"https://i.ytimg.com/vi/"+id+"/hqdefault.jpg","https://music.youtube.com/watch?v="+id)
             }.distinctBy{it.id}
         }
     }
