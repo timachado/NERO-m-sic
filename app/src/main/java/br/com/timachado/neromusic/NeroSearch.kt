@@ -1,6 +1,10 @@
 package br.com.timachado.neromusic
 
 import android.net.Uri
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,7 +49,7 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),CLIPS("Clipes")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={}){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",initialOpenAudio:Boolean=false,onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
@@ -70,7 +74,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var albums by remember{mutableStateOf(emptyList<NativeCollection>())}
     var artists by remember{mutableStateOf(emptyList<NativeCollection>())}
     var albumPage by remember{mutableStateOf<NativeCollection?>(null)}
-    var tab by remember{mutableStateOf(SearchTab.ALL)}
+    var tab by remember{mutableStateOf(if(initialOpenAudio)SearchTab.OPEN else SearchTab.ALL)}
     var revision by remember{mutableIntStateOf(0)}
 
     var busy by remember{mutableStateOf(false)}
@@ -81,6 +85,14 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var openError by remember{mutableStateOf(false)}
     var saving by remember{mutableStateOf<Long?>(null)}
     var message by remember{mutableStateOf<String?>(null)}
+    val voice=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+        val spoken=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
+        if(result.resultCode==android.app.Activity.RESULT_OK&&!spoken.isNullOrBlank()){submit(spoken);revision++}
+    }
+    fun startVoice(){
+        try{voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM).putExtra(RecognizerIntent.EXTRA_LANGUAGE,"pt-BR").putExtra(RecognizerIntent.EXTRA_PROMPT,"Diga o nome da música ou artista").putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,1))}
+        catch(_:Exception){message="Pesquisa por voz indisponível neste aparelho."}
+    }
     var adding by remember{mutableStateOf<OnlineRef?>(null)}
     var sharing by remember{mutableStateOf<NativeMusicHit?>(null)}
     sharing?.let{hit->TrackShareDialog(hit.title,hit.artist,hit.reference(),hit.thumbnail,onClose={sharing=null})}
@@ -167,6 +179,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     adding?.let{SaveOnlineDialog(listOf(it),onClose={adding=null})}
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            IconButton(onClick={startVoice()}){Icon(Icons.Default.Mic,"Pesquisar por voz",tint=searchAqua)}
             IconButton(onClick={focusManager.clearFocus();keyboard?.hide();onExit()}){Icon(Icons.Default.ArrowBack,"Voltar")}
             OutlinedTextField(query,{query=it.take(100);tab=SearchTab.ALL},modifier=Modifier.weight(1f).focusRequester(focusRequester).onFocusChanged{editing=it.isFocused},singleLine=true,shape=RoundedCornerShape(28.dp),
                 placeholder={Text("Digite para pesquisar")},leadingIcon={Icon(Icons.Default.Search,null)},trailingIcon={if(query.isNotEmpty())IconButton(onClick={query=""}){Icon(Icons.Default.Close,"Limpar busca")}},keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={submit(query)}))

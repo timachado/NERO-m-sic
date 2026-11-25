@@ -206,3 +206,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.33-dev
 - Paradas permanecem no NERO: reproduz faixa pelo ID original e fila das posições disponíveis; botão externo substituído por explicação interna da fonte. Perfil do artista com avatar e descrição fornecidos pelo perfil correspondente no catálogo, busca por nome exato único e cache de 15 minutos; sem biografia inventada, sem capa de álbum apresentada como retrato, sem ouvintes mensais inventados. Página completa acessível a partir do player e pesquisa, com álbuns atribuídos ao artista e faixas. Builds e teste real pendentes.
+
+## 0.9.34-dev
+- Download pelo player para áudios com licença aberta e origem validada, progresso, lista Offline com tamanho, fila local e atalho de descoberta. Download protegido por mutex e cancelamento cooperativo; mantém armazenamento existente. Faixa local indicada como já disponível, sem duplicar arquivos. Catálogo experimental YouTube não possui autorização de download no NERO; não armazena suas mídias. Busca por voz via reconhecedor do Android, consulta a partir da transcrição; serviço de reconhecimento pode processar voz conforme configuração do aparelho. Não é reconhecimento de música ambiente. Build e teste físico pendentes.

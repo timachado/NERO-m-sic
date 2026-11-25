@@ -26,6 +26,10 @@ import androidx.media3.common.MediaMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -106,11 +110,12 @@ internal suspend fun downloaded(context: Context): List<OpenTrack> = withContext
         runCatching { decodeOpenTrack(JSONObject(it.readText())) }.getOrNull()?.takeIf { t -> allowed(t) && audioFile(context,t).length() == t.size }
     }?.sortedBy { it.title.lowercase() } ?: emptyList()
 }
-internal suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Dispatchers.IO) {
+private val downloadLock=Mutex()
+internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)->Unit={}):Unit = downloadLock.withLock { withContext(Dispatchers.IO) {
     check(allowed(t))
     val final = audioFile(context,t)
     val side = File(storage(context),t.id.toString()+".json")
-    if (final.length() == t.size && side.isFile) return@withContext
+    if (final.length() == t.size && side.isFile) {progress(1f);return@withContext}
     val partial = File(storage(context),t.id.toString()+".part")
     val meta = File(storage(context),t.id.toString()+".tmp")
     val c = request(t.url)
@@ -121,16 +126,19 @@ internal suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Dis
         c.inputStream.use { input -> partial.outputStream().use { output ->
             val buffer = ByteArray(32768); var total = 0L
             while (true) {
+                currentCoroutineContext().ensureActive()
                 val n = input.read(buffer); if (n < 0) break
                 total += n; check(total <= t.size && total <= maxBytes); output.write(buffer,0,n)
+                progress((total.toDouble()/t.size).toFloat().coerceIn(0f,0.99f))
             }
             check(total == t.size)
         } }
         meta.writeText(t.json().toString())
         check(partial.renameTo(final))
         check(meta.renameTo(side))
+        progress(1f)
     } finally { c.disconnect(); partial.delete(); meta.delete() }
-}
+} }
 internal fun openBrowser(context:Context, uri:Uri): Boolean =
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,uri)); true }.getOrDefault(false)
 
