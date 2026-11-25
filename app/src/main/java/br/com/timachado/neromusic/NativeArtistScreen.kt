@@ -31,6 +31,9 @@ internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMu
 }
 @Composable
 internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit,onExplore:(String)->Unit,onAlbum:((NativeCollection)->Unit)?=null){
+    val context=androidx.compose.ui.platform.LocalContext.current
+    val followed=rememberFollowedArtists()
+    val following=followed.any{nativeArtistKey(it)==nativeArtistKey(artist)}
     val profile=rememberArtistProfile(artist)
     var albums by remember(artist){mutableStateOf(emptyList<NativeCollection>())}
     LaunchedEffect(artist){if(NativeMusicCatalog.enabled&&artist.trim().length>=3){try{albums=NativeMusicCatalog.collections(artist,NativeCollectionKind.ALBUM).filter{nativeArtistKey(it.credit)==nativeArtistKey(artist)}.take(10)}catch(e:CancellationException){throw e}catch(_:Exception){}}}
@@ -56,6 +59,9 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                 Text("Artista",fontSize=19.sp,fontWeight=FontWeight.Bold)
             }
             ArtistProfileCard(artist,profile=profile,expanded=true)
+            OutlinedButton(onClick={if(!NeroFollowedArtists.toggle(context,artist))android.widget.Toast.makeText(context,"Limite de artistas seguidos atingido.",android.widget.Toast.LENGTH_SHORT).show()}){
+                Icon(if(following)Icons.Default.Check else Icons.Default.Add,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(6.dp));Text(if(following)"Seguindo" else "Seguir artista")
+            }
             if(albums.isNotEmpty()){
                 Text("Álbuns e singles",fontSize=21.sp,fontWeight=FontWeight.Bold)
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
