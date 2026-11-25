@@ -5,6 +5,7 @@ import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,7 +35,7 @@ import java.net.URL
 
 private val green = Color(0xFF39FF14)
 private val cyan = Color(0xFF00E5FF)
-private enum class CatalogKind(val label:String,val resource:String,val resultKey:String) {
+internal enum class CatalogKind(val label:String,val resource:String,val resultKey:String) {
     SONG("Músicas","recording","recordings"),
     ALBUM("Álbuns","release-group","release-groups"),
     ARTIST("Artistas","artist","artists")
@@ -98,11 +99,11 @@ private object DevCatalog {
 }
 
 @Composable
-internal fun CatalogScreen(onBack:()->Unit) {
+internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKind:CatalogKind = CatalogKind.SONG) {
     val context=LocalContext.current
-    var query by remember { mutableStateOf("") }
-    var kind by remember { mutableStateOf(CatalogKind.SONG) }
-    var submitted by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialQuery) }
+    var kind by remember { mutableStateOf(initialKind) }
+    var submitted by remember { mutableStateOf(initialQuery) }
     var reload by remember { mutableIntStateOf(0) }
     var result by remember { mutableStateOf(emptyList<CatalogEntry>()) }
     var busy by remember { mutableStateOf(false) }
@@ -161,6 +162,52 @@ internal fun CatalogScreen(onBack:()->Unit) {
                         }
                         IconButton(onClick={if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.PlayArrow,"Buscar no YouTube Music",tint=green)}
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit) {
+    val context=LocalContext.current
+    val picks=listOf("Gilberto Gil","Queen","Marisa Monte","Daft Punk")
+    var selected by remember { mutableStateOf(picks.first()) }
+    var entries by remember { mutableStateOf(emptyList<CatalogEntry>()) }
+    var loading by remember { mutableStateOf(true) }
+    var failed by remember { mutableStateOf(false) }
+    var reload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(selected,reload) {
+        entries=emptyList(); loading=true; failed=false
+        try { entries=DevCatalog.search(selected,CatalogKind.ALBUM).take(10) }
+        catch(e:CancellationException) { throw e }
+        catch(e:Exception) { failed=true }
+        finally { loading=false }
+    }
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("Explore álbuns",fontWeight=FontWeight.Bold,fontSize=20.sp,modifier=Modifier.weight(1f))
+            TextButton(onClick={onExplore(selected,CatalogKind.ALBUM)}) { Text("Ver mais",color=green) }
+        }
+        Text("Seleção editorial · prévia MusicBrainz",fontSize=12.sp,color=Color.LightGray)
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            items(picks) { pick -> FilterChip(selected=pick==selected,onClick={selected=pick},label={Text(pick)}) }
+        }
+        if(loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        else if(failed) {
+            Text("Não foi possível carregar os álbuns.",color=Color.LightGray)
+            TextButton(onClick={reload++}) { Text("Tentar novamente") }
+        } else if(entries.isEmpty()) Text("Nenhum álbum encontrado.",color=Color.LightGray)
+        else LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            items(entries,key={it.id}) { entry ->
+                Column(Modifier.width(145.dp).background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(8.dp)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center) {
+                        Icon(Icons.Default.Album,null,tint=cyan,modifier=Modifier.size(40.dp))
+                        AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
+                    }
+                    Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
+                    TextButton(onClick={openYouTubeMusic(context,entry.searchText)}) { Text("Ouvir",color=green) }
                 }
             }
         }

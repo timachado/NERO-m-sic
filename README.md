@@ -25,3 +25,9 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Reprodução de resultados comerciais direcionada ao YouTube Music oficial. Não há streaming nem download de faixas comerciais pelo NERO.
 - Catálogo aberto, downloads autorizados e player local mantidos.
 - Uso comercial da API e dos conteúdos depende das permissões e condições aplicáveis.
+
+## 0.3.1-dev
+- Home com carrossel de álbuns e seleção editorial por artista, somente no build debug; não representa ranking nem recomendação personalizada.
+- Busca online na aba Buscar, com filtro para manter a pesquisa local.
+- Atalhos de catálogo com termo pré-preenchido e cartões de gêneros Aurora Neon.
+- Preserva o catálogo aberto e downloads autorizados; YouTube Music permanece externo. Lançamentos reais, personalização e catálogo comercial integrado ainda pendentes.

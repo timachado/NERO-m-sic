@@ -119,6 +119,7 @@ private fun NeroApp() {
         }
     }
     var tab by remember { mutableIntStateOf(3) }
+    var localSearch by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
     BackHandler(fullPlayer) { fullPlayer = false }
@@ -190,10 +191,16 @@ private fun NeroApp() {
             }
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)
             Spacer(Modifier.height(22.dp))
-            if (tab == 3 || tab == 4) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, onPlay = { item ->
+            if(tab == 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !localSearch, onClick = { localSearch = false }, label = { Text("Online") })
+                FilterChip(selected = localSearch, onClick = { localSearch = true }, label = { Text("No aparelho") })
+            }
+            if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
+                key(tab) {
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
                 })
+                }
             } else {
             Text(when(tab) { 1 -> "Buscar músicas"; 2 -> "Favoritos"; else -> "Suas músicas" }, fontSize = 25.sp, fontWeight = FontWeight.Bold)
             if (tab == 1) OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), placeholder = { Text("Música ou artista") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) })

@@ -138,12 +138,14 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showCatalog by remember { mutableStateOf(false) }
+    var catalogQuery by remember { mutableStateOf("") }
+    var catalogKind by remember { mutableStateOf(CatalogKind.SONG) }
     androidx.activity.compose.BackHandler(enabled = showCatalog && !offline) { showCatalog = false }
     if (showCatalog && !offline) {
-        CatalogScreen(onBack = { showCatalog = false })
+        CatalogScreen(onBack = { showCatalog = false }, initialQuery = catalogQuery, initialKind = catalogKind)
         return
     }
     val scope = rememberCoroutineScope()
@@ -168,7 +170,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaIt
         "Gospel" to "gospel","Samba" to "samba","Sertanejo" to "sertanejo","Eletrônica" to "electronic")
     LazyColumn(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Text(if(offline) "Downloads" else "Descubra novos sons",fontSize=25.sp,fontWeight=FontWeight.Bold)
+            Text(if(offline) "Downloads" else if(searchOnly) "Buscar músicas" else "Descubra novos sons",fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text(if(offline) "Áudios autorizados salvos no NERO Music." else "YouTube Music e catálogo aberto", color=Color.LightGray,fontSize=13.sp)
         }
         if(!offline) {
@@ -187,17 +189,24 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaIt
                 Text("A busca no YouTube Music abre o aplicativo oficial ou o navegador. Downloads do YouTube Music ficam no serviço oficial; o NERO salva os áudios autorizados do catálogo aberto.",fontSize=12.sp,color=Color.LightGray)
             }
             if (BuildConfig.DEBUG) item {
-                OutlinedButton(onClick = { showCatalog = true }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { catalogQuery = query.trim(); catalogKind = CatalogKind.SONG; showCatalog = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.LibraryMusic, null)
                     Spacer(Modifier.width(8.dp))
                     Text("Explorar músicas, álbuns e artistas")
                 }
             }
+            if (BuildConfig.DEBUG && !searchOnly) item {
+                CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })
+            }
             item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }
             items(genres.chunked(2)) { pair ->
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     pair.forEach { (name,term) ->
-                        OutlinedButton(onClick={query=name;submitted=term;generation++},modifier=Modifier.weight(1f).height(56.dp)){Text(name,color=aqua)}
+                        Button(onClick={query=name;submitted=term;generation++},modifier=Modifier.weight(1f).height(56.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF102B23),contentColor=aqua)){
+                            Icon(Icons.Default.MusicNote,null,modifier=Modifier.size(18.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(name)
+                        }
                     }
                 }
             }
