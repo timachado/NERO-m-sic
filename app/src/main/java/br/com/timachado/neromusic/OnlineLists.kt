@@ -134,6 +134,19 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     val queue=remember(available,active){available.map{it.second}.withOrigin(active?.let{PlaybackOrigin("playlist",it.name,it.id)})}
     val byId=remember(available){available.toMap()}
     BackHandler(active!=null){selected=null}
+    fun moveSong(id:String,delta:Int){
+        val list=active?:return
+        try{
+            val current=onlineLists(context)
+            val live=current.firstOrNull{it.id==list.id}?:return
+            if(live.songs!=list.songs){lists=Result.success(current);notice="A playlist mudou. Tente novamente.";return}
+            val from=live.songs.indexOfFirst{it.id==id};val to=from+delta
+            if(from<0||to !in live.songs.indices)return
+            val songs=live.songs.toMutableList();songs.add(to,songs.removeAt(from))
+            val updated=current.map{if(it.id==live.id)it.copy(songs=songs)else it}
+            saveOnlineLists(context,updated);lists=Result.success(updated);notice=null
+        }catch(_:Exception){notice="Não foi possível reorganizar a playlist."}
+    }
     val pending=remove
     if(pending!=null&&active!=null)AlertDialog(onDismissRequest={remove=null},title={Text("Retirar referência?")},text={Text(pending.title+" será retirada desta playlist.")},
         confirmButton={TextButton(onClick={
@@ -198,7 +211,16 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 val position=available.indexOfFirst{it.first==s.id}
                 if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
                 else IconButton(onClick={onSearch(s.title+" "+s.artist)}){Icon(Icons.Default.Search,"Encontrar faixa no NERO")}
-                IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
+                var options by remember(s.id){mutableStateOf(false)}
+                Box{
+                    IconButton(onClick={options=true}){Icon(Icons.Default.MoreVert,"Opções da música")}
+                    DropdownMenu(expanded=options,onDismissRequest={options=false}){
+                        val index=active.songs.indexOfFirst{it.id==s.id}
+                        DropdownMenuItem(text={Text("Mover para cima")},enabled=index>0,onClick={options=false;moveSong(s.id,-1)})
+                        DropdownMenuItem(text={Text("Mover para baixo")},enabled=index>=0&&index<active.songs.lastIndex,onClick={options=false;moveSong(s.id,1)})
+                        DropdownMenuItem(text={Text("Remover da playlist")},onClick={options=false;remove=s})
+                    }
+                }
             }
         }
     }
