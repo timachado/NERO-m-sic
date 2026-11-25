@@ -197,7 +197,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))searchAccent else Color.Unspecified);Text("Música · "+hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)}
                         if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))IconButton(enabled=canPlay,onClick=onCurrentToggle){Icon(if(currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentPlaying)"Pausar" else "Continuar",tint=searchAccent)}
-                        SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(hit.queueItem(video=tab==SearchTab.CLIPS),next)})
+                        SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(nativeQueue(listOf(hit),hit,video=tab==SearchTab.CLIPS).first.first(),next)})
                     }
                 }
                 item{TextButton(onClick={submit(query)}){Text("Ver todos os resultados para "+term)}}
@@ -250,7 +250,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                             }
                             IconButton(onClick={onFavorite(hit.reference())}){Icon(if(hit.reference().id in onlineFavoriteIds)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(hit.reference().id in onlineFavoriteIds)searchAccent else Color.LightGray)}
                             NativeDownloadIcon(hit,offlineState,onNativeSave,onOfflineOpen)
-                            SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(hit.queueItem(video=tab==SearchTab.CLIPS),next)})
+                            SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(nativeQueue(listOf(hit),hit,video=tab==SearchTab.CLIPS).first.first(),next)})
                             IconButton(enabled=canPlay&&resolving==null,onClick={if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))onCurrentToggle()else playNative(hit)}){Icon(if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)"Pausar" else "Reproduzir no NERO",tint=searchAccent)}
                         }
                     }
@@ -263,7 +263,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                     AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))searchAccent else Color.Unspecified)
                                     if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))Text(if(currentPlaying)"Tocando agora" else "Pausada",fontSize=11.sp,color=searchAccent)
-                                    SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(hit.queueItem(video=tab==SearchTab.CLIPS),next)})
+                                    SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(nativeQueue(listOf(hit),hit,video=tab==SearchTab.CLIPS).first.first(),next)})
                                 }
                             }
                         }}}
