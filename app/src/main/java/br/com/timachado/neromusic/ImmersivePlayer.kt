@@ -2,6 +2,8 @@ package br.com.timachado.neromusic
 
 import android.os.SystemClock
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.clickable
 import androidx.media3.common.MediaItem
 import androidx.compose.foundation.layout.*
@@ -86,12 +88,14 @@ internal fun ImmersivePlayer(
         },confirmButton={TextButton(onClick={showTimer=false}){Text("Fechar")}},
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
     val tones=rememberPlayerTones(track,remoteCover)
-    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(tones,Color(0xFF0D181D),Color.Black)))){
-        val coverSize=minOf(maxWidth-40.dp,maxHeight*.46f,410.dp).coerceAtLeast(1.dp)
+    BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)){
+        NeroAuroraBackdrop(tones,playing&&!videoMode,Modifier.matchParentSize())
+        val coverSize=minOf(maxWidth-40.dp,maxHeight*.43f,410.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Minimizar player")}
                 Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
+                    Text("NERO Music",fontSize=17.sp,fontWeight=FontWeight.Bold,color=Color.White)
                     Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
                     Text(origin?.name?:"Reproduzindo",fontSize=15.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
                 }
@@ -128,12 +132,18 @@ internal fun ImmersivePlayer(
                     }
                 }
             }
-            else if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
-            else LocalArtwork(track,Modifier.size(coverSize),large=true)
+            else {
+                val shape=RoundedCornerShape(24.dp)
+                Box(Modifier.size(coverSize).shadow(12.dp,shape).background(Color(0xFF0C171A),shape)
+                    .border(1.5.dp,Brush.linearGradient(listOf(neon,aqua,tones.copy(alpha=.85f),neon)),shape).padding(2.dp).clip(shape),contentAlignment=Alignment.Center){
+                    if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize(),large=true)
+                    else LocalArtwork(track,Modifier.fillMaxSize(),large=true)
+                }
+            }
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
                     Text(title.ifBlank{"Nenhuma faixa"},fontSize=26.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-                    Text(artist,color=Color.LightGray,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(displayArtistName(artist),color=Color.LightGray,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                     track?.album?.takeUnless{it=="Álbum desconhecido"}?.let{Text(it,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 }
                 FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=neon)}
@@ -141,10 +151,11 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){
+                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(20.dp))
                 Slider(value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
-                    },enabled=ready&&duration>0)
+                    },enabled=ready&&duration>0,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=Color(0xFF16434A)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                     Text(clock(seekPreview?.let{(it*duration).toLong()}?:position),fontSize=12.sp,color=Color.LightGray)
                     Text(clock(duration),fontSize=12.sp,color=Color.LightGray)
@@ -152,10 +163,10 @@ internal fun ImmersivePlayer(
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically){
                 FilledTonalIconButton(onClick=onPrevious,enabled=ready,modifier=Modifier.size(62.dp),shape=RoundedCornerShape(20.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
-                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(78.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(40.dp))}
+                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(82.dp).border(2.dp,aqua.copy(alpha=.5f),androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(40.dp))}
                 FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(62.dp),shape=RoundedCornerShape(20.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().background(Color(0xFF102B23).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
                 IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Bedtime,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
