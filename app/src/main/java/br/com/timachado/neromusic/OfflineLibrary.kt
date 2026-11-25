@@ -22,13 +22,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null,val wifiOnly:Boolean=true,val removing:Boolean=false)
+internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null,val wifiOnly:Boolean=true,val removing:Boolean=false,val economical:Boolean=false)
 internal class OfflineManager(private val context:Context){
-    private val _state=MutableStateFlow(OfflineState(wifiOnly=wifiOnlyDownloads(context)))
+    private val _state=MutableStateFlow(OfflineState(wifiOnly=wifiOnlyDownloads(context),economical=economicalDownloads(context)))
     val state=_state.asStateFlow()
     fun setWifiOnly(value:Boolean){
         setWifiOnlyDownloads(context,value)
         _state.update{it.copy(wifiOnly=value,notice=null)}
+    }
+    fun setEconomical(value:Boolean){
+        setEconomicalDownloads(context,value)
+        _state.update{it.copy(economical=value)}
     }
     fun notify(message:String){_state.update{it.copy(notice=message)}}
     suspend fun remove(id:String){
@@ -122,7 +126,7 @@ internal fun NativeDownloadIcon(hit:NativeMusicHit,state:OfflineState,onSave:(Na
     }
 }
 @Composable
-internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={}){
+internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={},onQualityChange:(Boolean)->Unit={}){
     val context=androidx.compose.ui.platform.LocalContext.current
     val rows=state.saved
     var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
@@ -153,6 +157,14 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                     Text("Economize seus dados móveis",fontSize=12.sp,color=Color.LightGray)
                 }
                 Switch(checked=state.wifiOnly,onCheckedChange=onWifiChange)
+            }
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    Text("Qualidade econômica",fontWeight=FontWeight.Medium)
+                    Text(if(state.economical)"Menor bitrate disponível" else "Maior bitrate disponível",fontSize=12.sp,color=Color.LightGray)
+                    Text("Aplica-se a novos downloads do catálogo online.",fontSize=11.sp,color=Color.LightGray)
+                }
+                Switch(checked=state.economical,onCheckedChange=onQualityChange)
             }
             Text(total.toString()+" músicas disponíveis offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",(rows.sumOf{it.size}+state.nativeSaved.sumOf{it.size})/1048576.0),color=Color.LightGray,fontSize=13.sp)
             if(total>0){
