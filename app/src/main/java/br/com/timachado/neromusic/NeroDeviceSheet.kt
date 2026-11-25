@@ -65,7 +65,7 @@ private fun openOutputSettings(context:Context):Boolean{
 @Composable
 internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit){
     val context=LocalContext.current
-    val green=Color(0xFF39FF14)
+    val green=MaterialTheme.colorScheme.primary
     var outputs by remember{mutableStateOf(readOutputs(context))}
     val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope=rememberCoroutineScope()
@@ -80,10 +80,10 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
         }
     }
     LaunchedEffect(Unit){while(true){outputs=readOutputs(context);delay(2000L)}}
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFF10191F),sheetState=sheetState){
+    ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onBackground,sheetState=sheetState,dragHandle={Box(Modifier.fillMaxWidth().height(32.dp).neroSwipeDown(onClose),contentAlignment=Alignment.Center){BottomSheetDefaults.DragHandle(color=MaterialTheme.colorScheme.primary)}}){
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            Text("Dispositivos",fontSize=26.sp,fontWeight=FontWeight.Bold)
-            Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF203139)),modifier=Modifier.fillMaxWidth()){
+            Row(Modifier.fillMaxWidth().neroSwipeDown(onClose),verticalAlignment=Alignment.CenterVertically){Text("Dispositivos",fontSize=26.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Fechar dispositivos",tint=green)}}
+            Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
                 Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f)){
                         Text(outputs.expected.joinToString(" + "){it.name}.ifBlank{"Saída do Android"},fontSize=21.sp,fontWeight=FontWeight.Bold,color=green)
@@ -98,7 +98,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
             if(other.isEmpty())Text("Nenhum acessório de áudio detectado.",color=Color.LightGray,fontSize=13.sp)
             other.forEach{device->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                    Icon(Icons.Default.Headphones,null,tint=Color(0xFF00E5FF))
+                    Icon(Icons.Default.Headphones,null,tint=MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.width(12.dp))
                     Text(device.name,modifier=Modifier.weight(1f),maxLines=2,overflow=TextOverflow.Ellipsis)
                     if(outputs.expected.any{it.id==device.id})Icon(Icons.Default.Check,null,tint=green)
