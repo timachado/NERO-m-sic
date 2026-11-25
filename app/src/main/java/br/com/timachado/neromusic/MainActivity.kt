@@ -427,11 +427,12 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 Text("${filtered.size} músicas", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
                 LazyColumn(Modifier.weight(1f)) {
                     items(filtered, key = { it.id }) { t ->
-                        Row(Modifier.fillMaxWidth().clickable(enabled = controller != null) { play(t) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().clickable(enabled = controller != null) { if(nowId==t.id.toString())fullPlayer=true else play(t) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             LocalArtwork(t, Modifier.size(48.dp))
                             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(t.title, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (nowId == t.id.toString()) Green else Color.White)
                                 Text(t.artist + " · " + timestamp(t.duration), fontSize = 12.sp, color = Color.LightGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                NowTrackStatus(t.id.toString())
                             }
                             IconButton(onClick = { toggle(t.id.toString()) }) { Icon(if (t.id.toString() in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favoritar ${t.title}", tint = if (t.id.toString() in favorites) Green else Color.LightGray) }
                             QueueAddMenu(controller,t)
