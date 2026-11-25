@@ -222,3 +222,7 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.37-dev — Mix & Replay
 - Replay registra tempo estimado de reprodução da sessão principal em intervalos de 5 segundos, localmente, sem contar pausas ou seek; intervalos curtos e a faixa auxiliar de crossfade podem não ser contabilizados. Não recupera minutos antigos. Rankings de faixas e artistas, filtros 7/30/90 dias, opção de desligar e limpar, retenção de até 90 dias na consulta, poda e limite de 3.000 registros. Limpar histórico também limpa Replay. Mix prioriza artistas mais ouvidos em 30 dias, complementa por favoritos/recentes e exclui referências ouvidas; consulta apenas nomes de artistas quando solicitado. Não utiliza IA generativa nem promete recomendações de humor ou retrospectiva anual. Testes unitários dos rankings, agrupamento e ordenação; compilação e uso físico pendentes.
+
+
+## 0.9.38-dev — NERO Widget
+- Widget Android de tela inicial redimensionável com identidade Aurora Neon, título/artista da faixa atual, reprodução/pausa, anterior/próxima e atalho para o app. Usa exclusivamente a sessão Media3 ativa, sem segundo player e sem iniciar reprodução em sessão vazia. Sem sessão, abra o aplicativo e escolha uma faixa. Atualização orientada por eventos de reprodução, sem polling. Testar adição pelo launcher, atualização de faixa, pausa, fila, redimensionamento e encerramento do serviço em aparelho real. Chromecast, Android Auto e controle remoto entre dispositivos ainda não implementados.
