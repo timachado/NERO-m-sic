@@ -22,3 +22,7 @@ Status: protocol and local validation only; no remote control enabled.
 5. Review privacy and battery use. No commercial publication or paid service activation in this branch.
 
 The protocol validates fields, lifetime, expected device, active session and sequence. It is not a substitute for authenticated transport, secure credential storage, or atomic sequence persistence.
+
+## Local pairing preview
+
+Debug Discovery now exposes manual exchange of P-256 public keys. The private key is generated and retained by Android Keystore; each device independently compares a 48-bit fingerprint of both public keys and explicitly confirms the peer. The app remembers one peer public key locally and can revoke it. This is a local trust record, not proof of remote possession or account ownership. No network, signed challenge, session token, remote command delivery, or control is enabled. Confirmed peers must still prove possession via signed challenges on an authenticated transport before remote commands are accepted. Test key generation, comparison, rejection and revocation with two Android devices. Never treat the offer as a secret or auto-approve a peer.
