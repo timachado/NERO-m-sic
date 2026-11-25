@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
-import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
 internal fun nativeArtistKey(value:String):String=displayArtistName(value).lowercase(java.util.Locale.ROOT)
@@ -69,7 +68,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                     items(albums,key={it.url}){album->
                         Card(onClick={if(onAlbum!=null)onAlbum(album)else onExplore(album.title+" "+artist)},modifier=Modifier.width(130.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                             Column(Modifier.padding(8.dp)){
-                                if(album.artwork!=null)AsyncImage(model=album.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
+                                if(album.artwork!=null)NeroArtwork(model=album.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                                 else Box(Modifier.fillMaxWidth().aspectRatio(1f),contentAlignment=Alignment.Center){Icon(Icons.Default.Album,null)}
                                 Text(album.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                             }
@@ -89,7 +88,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
         }
         items(songs,key={it.id}){hit->
             Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
-                AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
+                NeroArtwork(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id))
                     Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)
