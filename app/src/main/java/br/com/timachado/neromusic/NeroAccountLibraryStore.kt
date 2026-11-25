@@ -47,8 +47,31 @@ internal object NeroAccountLibraryStore{
 
 internal data class NeroAccountSyncOutcome(val state:NeroAccountLibraryState?,val conflicts:List<NeroSyncConflict>,val retry:Boolean=false)
 
+internal data class NeroAccountPullStatus(val uid:String,val state:String,val favorites:Int=0,val playlists:Int=0)
+
 internal object NeroAccountSync{
     private val mutex=Mutex()
+    private val pullState=kotlinx.coroutines.flow.MutableStateFlow<NeroAccountPullStatus?>(null)
+    val status:kotlinx.coroutines.flow.StateFlow<NeroAccountPullStatus?> = pullState
+
+    // Initial integration is read-only. Pending edits, if any, are never overwritten.
+    suspend fun pull(context:Context,uid:String)=mutex.withLock{
+        pullState.value=NeroAccountPullStatus(uid,"loading")
+        try{
+            val app=context.applicationContext
+            val remote=readCloudLibrary(app,uid)
+            val stored=withContext(Dispatchers.IO){NeroAccountLibraryStore.read(app,uid)}
+            require(NeroSupabase.activeUid.value==uid)
+            if(stored!=null&&(stored.pending!=stored.baseline||remote.revision<stored.revision)){
+                pullState.value=NeroAccountPullStatus(uid,"pending")
+                return@withLock
+            }
+            withContext(Dispatchers.IO){NeroAccountLibraryStore.write(app,uid,NeroAccountLibraryState(remote.revision,remote.snapshot,remote.snapshot))}
+            pullState.value=NeroAccountPullStatus(uid,"ready",remote.snapshot.favorites.size,remote.snapshot.playlists.size)
+        }catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(_:Exception){pullState.value=NeroAccountPullStatus(uid,"unavailable")}
+    }
+
     // Only operates on isolated account cache; never imports the guest library.
     // No upload if reconciliation has conflicts, or if the server revision changed.
     suspend fun reconcile(context:Context,uid:String):NeroAccountSyncOutcome=mutex.withLock{
