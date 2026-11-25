@@ -27,6 +27,14 @@ private data class HubPlaylist(val id:String,val title:String,val count:Int,val 
 @Composable
 internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onArtist:(String)->Unit={},onAlbum:(NativeCollection)->Unit={},onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
     val context=LocalContext.current
+    val pinPrefs=remember(context){context.getSharedPreferences("nero_playlist_pins",0)}
+    var pins by remember(pinPrefs){mutableStateOf(pinPrefs.getStringSet("keys",emptySet()).orEmpty().toSet())}
+    fun togglePin(row:HubPlaylist){
+        val key="${row.page}:${row.id}"
+        val current=pinPrefs.getStringSet("keys",emptySet()).orEmpty().toSet()
+        val next=if(key in current)current-key else {if(current.size>=1000){android.widget.Toast.makeText(context,"Limite de playlists fixadas atingido.",android.widget.Toast.LENGTH_SHORT).show();return};current+key}
+        pinPrefs.edit().putStringSet("keys",next).apply();pins=next
+    }
     val followed=rememberFollowedArtists()
     val albums=rememberSavedAlbums()
     var artistFilter by remember{mutableStateOf(false)}
@@ -82,7 +90,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         TextButton(onClick={alphabetic=!alphabetic}){Icon(Icons.Default.Sort,null);Spacer(Modifier.width(8.dp));Text(if(alphabetic)"Nome" else "Ordem de criação")}
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(failed)Text("Não foi possível carregar todas as playlists.",color=MaterialTheme.colorScheme.error)
-        val visible=lists.filter{it.title.contains(term,true)}.let{if(alphabetic)it.sortedBy{row->row.title.lowercase(java.util.Locale.ROOT)} else it}
+        val visible=lists.filter{it.title.contains(term,true)}.let{if(alphabetic)it.sortedBy{row->row.title.lowercase(java.util.Locale.ROOT)} else it}.sortedByDescending{"${it.page}:${it.id}" in pins}
         LazyColumn(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
             if(!artistFilter&&!albumFilter&&"Músicas curtidas".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onFavorites),verticalAlignment=Alignment.CenterVertically){
@@ -116,12 +124,20 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                 }
             }
             if(!artistFilter&&!albumFilter)items(visible,key={"${it.page}:${it.id}"}){row->
+                val pinned="${row.page}:${row.id}" in pins
+                var options by remember(row.page,row.id){mutableStateOf(false)}
                 Row(Modifier.fillMaxWidth().clickable{onOpen(row.page,row.id)},verticalAlignment=Alignment.CenterVertically){
                     if(row.local.isNotEmpty())PlaylistArtwork(row.local,Modifier.size(66.dp))
                     else HubCover(row.covers)
                     Column(Modifier.weight(1f).padding(start=12.dp)){
                         Text(row.title,fontSize=17.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                        Text("Playlist · "+row.count+" músicas"+if(row.page==6)" · Importada" else "",fontSize=12.sp,color=Color.LightGray)
+                        Text((if(pinned)"Fixada · " else "")+"Playlist · "+row.count+" músicas"+(if(row.page==6)" · Importada" else ""),fontSize=12.sp,color=if(pinned)Color(0xFF39FF14)else Color.LightGray)
+                    }
+                    Box{
+                        IconButton(onClick={options=true}){Icon(Icons.Default.MoreVert,"Opções da playlist")}
+                        DropdownMenu(expanded=options,onDismissRequest={options=false}){
+                            DropdownMenuItem(text={Text(if(pinned)"Desafixar playlist" else "Fixar playlist")},onClick={options=false;togglePin(row)})
+                        }
                     }
                 }
             }
