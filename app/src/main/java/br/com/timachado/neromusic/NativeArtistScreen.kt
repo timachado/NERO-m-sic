@@ -24,7 +24,7 @@ import androidx.media3.common.MediaItem
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
-internal fun nativeArtistKey(value:String):String=value.trim().removeSuffix(" - Topic").trim().lowercase(java.util.Locale.ROOT)
+internal fun nativeArtistKey(value:String):String=displayArtistName(value).lowercase(java.util.Locale.ROOT)
 internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMusicHit>{
     val key=nativeArtistKey(artist)
     return if(key.isBlank())emptyList()else hits.filter{nativeArtistKey(it.artist)==key}.distinctBy{it.id}.take(30)
@@ -52,11 +52,12 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
     val now=LocalNeroNowPlaying.current
     fun play(hit:NativeMusicHit){if(now.matches(hit.reference().id)){now.open();return};val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("artist",artist,artist)),index)}
-    LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
+    LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
         item{
-            Row(verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().neroSwipeDown(onBack),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-                Text("Artista",fontSize=19.sp,fontWeight=FontWeight.Bold)
+                Text("Artista",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                Icon(Icons.Default.KeyboardArrowDown,"Deslize para fechar",tint=MaterialTheme.colorScheme.primary)
             }
             ArtistProfileCard(artist,profile=profile,expanded=true)
             OutlinedButton(onClick={if(!NeroFollowedArtists.toggle(context,artist))android.widget.Toast.makeText(context,"Limite de artistas seguidos atingido.",android.widget.Toast.LENGTH_SHORT).show()}){
@@ -66,7 +67,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                 Text("Álbuns e singles",fontSize=21.sp,fontWeight=FontWeight.Bold)
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
                     items(albums,key={it.url}){album->
-                        Card(onClick={if(onAlbum!=null)onAlbum(album)else onExplore(album.title+" "+artist)},modifier=Modifier.width(130.dp)){
+                        Card(onClick={if(onAlbum!=null)onAlbum(album)else onExplore(album.title+" "+artist)},modifier=Modifier.width(130.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                             Column(Modifier.padding(8.dp)){
                                 if(album.artwork!=null)AsyncImage(model=album.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                                 else Box(Modifier.fillMaxWidth().aspectRatio(1f),contentAlignment=Alignment.Center){Icon(Icons.Default.Album,null)}
@@ -91,7 +92,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                 AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id))
-                    Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)
+                    Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)
                 }
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
                 NowTrackAction(hit.reference().id,canPlay){play(hit)}
