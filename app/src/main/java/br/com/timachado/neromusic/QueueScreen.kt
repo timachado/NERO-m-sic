@@ -36,6 +36,8 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
     var queue by remember(controller){mutableStateOf(snapshot(controller))}
     var message by remember{mutableStateOf<String?>(null)}
     var confirmClear by remember{mutableStateOf<QueueSnapshot?>(null)}
+    var saveItems by remember{mutableStateOf<List<MediaItem>?>(null)}
+    val context=androidx.compose.ui.platform.LocalContext.current
     val listState=rememberLazyListState()
     LaunchedEffect(queue.current,queue.items.size){if(queue.current in queue.items.indices)listState.scrollToItem(queue.current)}
     val byId=remember(tracks){tracks.associateBy{it.id.toString()}}
@@ -56,6 +58,32 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         }
         try{action(p);queue=snapshot(p);message=null}
         catch(_:Exception){queue=snapshot(p);message="Não foi possível alterar a fila."}
+    }
+    saveItems?.let{items->
+        var name by remember(items){mutableStateOf("")}
+        val localTracks=items.map{byId[it.mediaId]}
+        val localOnly=localTracks.all{it!=null}
+        val refs=items.mapNotNull{item->
+            openRefFromItem(item)?:youtubeRefFromItem(item)?:byId[item.mediaId]?.let{track->
+                OnlineRef("local:"+track.id,track.title,track.artist)
+            }
+        }.distinctBy{it.id}
+        val canSave=localOnly||items.all{item->openRefFromItem(item)!=null||youtubeRefFromItem(item)!=null||byId[item.mediaId]!=null}
+        AlertDialog(onDismissRequest={saveItems=null},title={Text("Salvar fila como playlist")},text={
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                Text("Cria uma nova playlist com as músicas da fila, na ordem da lista, sem alterar a reprodução.")
+                Text("Faixas repetidas serão salvas uma vez.",fontSize=12.sp,color=Color.LightGray)
+                if(!canSave)Text("Há faixas sem referência compatível nesta fila.",color=MaterialTheme.colorScheme.error)
+                OutlinedTextField(name,{name=it.take(80)},singleLine=true,label={Text("Nome da playlist")})
+            }
+        },confirmButton={TextButton(enabled=canSave&&name.isNotBlank(),onClick={
+            try{
+                val id=java.util.UUID.randomUUID().toString()
+                if(localOnly)saveMixes(context,mixes(context)+Mix(id,name.trim(),localTracks.mapNotNull{it?.id}.distinct()))
+                else saveOnlineLists(context,onlineLists(context)+OnlineList(id,name.trim(),refs))
+                saveItems=null;message="Playlist criada. Encontre em Sua biblioteca."
+            }catch(_:Exception){message="Não foi possível salvar a playlist.";saveItems=null}
+        }){Text("Criar playlist")}},dismissButton={TextButton(onClick={saveItems=null}){Text("Cancelar")}})
     }
     val expectedClear=confirmClear
     if(expectedClear!=null){
@@ -90,7 +118,10 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
             }
         }
         if(queue.shuffle)Text("Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas.",color=Color(0xFF00E5FF),fontSize=12.sp)
-        OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.fillMaxWidth()){Text("Limpar próximas faixas")}
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            OutlinedButton(enabled=queue.items.isNotEmpty()&&queue.items.size<=1000,onClick={saveItems=queue.items.toList()},modifier=Modifier.weight(1f)){Text("Salvar fila")}
+            OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.weight(1f)){Text("Limpar próximas")}
+        }
         message?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
         if(queue.items.isEmpty())Text("A fila está vazia. Adicione músicas pela biblioteca.",color=Color.LightGray)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),state=listState,verticalArrangement=Arrangement.spacedBy(6.dp)){
@@ -110,7 +141,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                         Text(artist,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                         Text(if(current)"Tocando agora" else if(upcoming)"Na sequência" else "Antes da faixa atual",fontSize=11.sp,color=if(current)Color(0xFF39FF14)else Color.LightGray)
                     }
-                    IconButton(enabled=queue.canSeek,onClick={act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(Icons.Default.PlayArrow,"Reproduzir "+title)}
+                    IconButton(enabled=queue.canSeek,onClick={if(current)onBack()else act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(if(current)Icons.Default.Equalizer else Icons.Default.PlayArrow,if(current)"Abrir player" else "Reproduzir "+title,tint=if(current)Color(0xFF39FF14)else Color.LightGray)}
                     if(upcoming)Box{
                         IconButton(enabled=editable,onClick={menu=true}){Icon(Icons.Default.MoreVert,"Opções da faixa")}
                         DropdownMenu(expanded=menu,onDismissRequest={menu=false}){
