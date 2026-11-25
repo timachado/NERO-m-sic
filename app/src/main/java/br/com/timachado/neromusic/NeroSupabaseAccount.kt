@@ -74,7 +74,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
-        Text("Sua biblioteca local permanece neste aparelho. As cópias na conta são opcionais e manuais.",color=Color.LightGray,fontSize=12.sp)
+        Text("Favoritos online ficam vinculados à conta conectada. Arquivos locais, downloads e demais coleções continuam no aparelho. A nuvem depende da disponibilidade do serviço.",color=Color.LightGray,fontSize=12.sp)
         }
         }
         user?.let{NeroAccountCloud(it,enabled=!busy)}
