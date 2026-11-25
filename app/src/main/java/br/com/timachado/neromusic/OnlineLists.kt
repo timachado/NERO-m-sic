@@ -6,6 +6,8 @@ import androidx.media3.common.MediaItem
 import android.util.AtomicFile
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -30,7 +32,7 @@ import java.io.File
 import java.util.UUID
 
 internal data class OnlineRef(val id:String,val title:String,val artist:String,val artworkReleaseId:String?=null,val openAudio:OpenTrack?=null){
-    val coverUrl:String? get()=artworkReleaseId?.takeIf{Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").matches(it)}?.let{"https://coverartarchive.org/release/$it/front-250"}
+    val coverUrl:String? get()=musicHitFromRef(this)?.thumbnail ?: artworkReleaseId?.takeIf{Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}").matches(it)}?.let{"https://coverartarchive.org/release/$it/front-250"}
 }
 internal data class OnlineList(val id:String,val name:String,val songs:List<OnlineRef>)
 private fun listFile(context:Context)=AtomicFile(File(context.filesDir,"nero-online-lists.json"))
@@ -90,6 +92,8 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     var selected by remember{mutableStateOf<String?>(null)}
     var remove by remember{mutableStateOf<OnlineRef?>(null)}
     var notice by remember{mutableStateOf<String?>(null)}
+    val scope=rememberCoroutineScope()
+    var resolving by remember{mutableStateOf<String?>(null)}
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
     var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
     LaunchedEffect(Unit){saved=downloaded(context)}
@@ -149,7 +153,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                     Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)
-                    Text(if(s.id in byId)"Disponível no NERO" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
+                    Text(if(s.id in byId)"Disponível no NERO" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"YouTube Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
                     s.openAudio?.takeIf{allowed(it)}?.let{audio->
                         Text(audio.license,fontSize=11.sp,color=Color.LightGray)
                         TextButton(onClick={if(!openBrowser(context,Uri.parse(audio.source)))notice="Não foi possível abrir a fonte."},contentPadding=PaddingValues(0.dp)){Text("Fonte e licença",fontSize=12.sp)}
@@ -157,6 +161,10 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 }
                 val position=available.indexOfFirst{it.first==s.id}
                 if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
+                else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)IconButton(enabled=canPlay&&resolving==null,onClick={
+                    val hit=musicHitFromRef(s)?:return@IconButton
+                    resolving=s.id;scope.launch{try{onPlay(listOf(NativeMusicCatalog.resolve(hit)),0,false)}catch(e:CancellationException){throw e}catch(_:Exception){notice="Faixa indisponível."}finally{resolving=null}}
+                }){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
                 else IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar externamente no YouTube Music")}
                 IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
             }

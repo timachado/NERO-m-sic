@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
-        versionName = "0.9.7-dev"
+        versionCode = 30
+        versionName = "0.9.8-dev"
         val catalogEndpoint = System.getenv("NERO_YOUTUBE_ENDPOINT").orEmpty()
         require(catalogEndpoint.isEmpty() || Regex("https://[A-Za-z0-9.-]+(?::443)?/[A-Za-z0-9/_-]+").matches(catalogEndpoint)) { "Invalid YouTube endpoint" }
         buildConfigField("String","YOUTUBE_ENDPOINT","\""+catalogEndpoint+"\"")
@@ -25,6 +25,8 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    debugImplementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
+    debugImplementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")

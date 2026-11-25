@@ -112,7 +112,7 @@ private fun NeroApp() {
         while (true) {
             val currentItem=p.currentMediaItem
             nowId = currentItem?.mediaId.orEmpty()
-            nowOpenRef = currentItem?.let(::openRefFromItem)
+            nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
             title = p.mediaMetadata.title?.toString().orEmpty()
             artist = p.mediaMetadata.artist?.toString().orEmpty()
             playing = p.isPlaying
@@ -197,7 +197,7 @@ private fun NeroApp() {
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
-                track=currentTrack,title=title,artist=artist,position=pos,duration=duration,playing=playing,
+                track=currentTrack,remoteCover=nowOpenRef?.coverUrl,title=title,artist=artist,position=pos,duration=duration,playing=playing,
                 favorite=nowId in favorites,shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId)},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},

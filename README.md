@@ -128,3 +128,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.7-dev
 - Busca alternativa pela página oficial YouTube dentro do NERO, sem exigir configuração de servidor. Não é integração nativa de áudio; funcionamento da página e reprodução depende de validação física. Adaptador oficial existente preservado. Revisão do BEAT flow em docs/beatflow-youtube-reference.md.
+
+## 0.9.8-dev
+- Uso pessoal: busca nativa experimental no YouTube Music usando NewPipeExtractor 0.26.5 (mesma biblioteca do BEAT flow), filtro MUSIC_SONGS, resultados no NERO, reprodução de áudio disponível no Media3 e referências de faixa salvas em playlists. Resolve o endereço a cada toque; não guarda URLs temporárias, não usa credenciais, não oferece download nem contorna restrições de conta. Reproduz faixa online individual; fila automática online ainda pendente. Fonte não oficial pode falhar. Só debug; sem ativação de servidor/API oficial. NewPipeExtractor é GPL-3.0, consultar condições antes de distribuir aplicativo combinado; uso pessoal de teste solicitado. Fonte: https://github.com/TeamNewPipe/NewPipeExtractor/tree/v0.26.5. Nenhum lançamento comercial autorizado.

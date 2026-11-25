@@ -3,7 +3,7 @@ pluginManagement {
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories { google(); mavenCentral() }
+    repositories { google(); mavenCentral(); maven { url = uri("https://jitpack.io"); content { includeGroup("com.github.teamnewpipe"); includeGroup("com.github.TeamNewPipe"); includeGroup("com.github.TeamNewPipe.NewPipeExtractor") } } }
 }
 rootProject.name = "NeroMusic"
 include(":app")

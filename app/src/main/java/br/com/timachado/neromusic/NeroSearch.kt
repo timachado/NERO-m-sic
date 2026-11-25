@@ -61,6 +61,10 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var youtubeResults by remember{mutableStateOf(emptyList<YouTubeHit>())}
     var youtubeBusy by remember{mutableStateOf(false)}
     var youtubeError by remember{mutableStateOf<String?>(null)}
+    var nativeResults by remember{mutableStateOf(emptyList<NativeMusicHit>())}
+    var nativeBusy by remember{mutableStateOf(false)}
+    var nativeError by remember{mutableStateOf(false)}
+    var resolving by remember{mutableStateOf<String?>(null)}
     val term=query.trim()
     val local=remember(tracks,term){if(term.isBlank())emptyList()else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
     LaunchedEffect(Unit){saved=downloaded(context)}
@@ -92,6 +96,23 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         catch(e:CancellationException){throw e}catch(e:Exception){youtubeError=e.message?.takeIf{it in setOf("Entre na conta NERO para consultar o YouTube.","Limite de consultas atingido. Tente mais tarde.")}?:"Não foi possível consultar o YouTube."}
         finally{youtubeBusy=false}
     }
+    LaunchedEffect(term,tab,revision){
+        nativeResults=emptyList();nativeBusy=false;nativeError=false
+        if(!NativeMusicCatalog.enabled||term.length<3||tab !in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.YOUTUBE))return@LaunchedEffect
+        delay(850);nativeBusy=true
+        try{nativeResults=NativeMusicCatalog.search(term)}
+        catch(e:CancellationException){throw e}catch(_:Exception){nativeError=true}
+        finally{nativeBusy=false}
+    }
+    fun playNative(hit:NativeMusicHit){
+        if(resolving!=null||!canPlay)return
+        resolving=hit.id;message=null
+        scope.launch{
+            try{onOpenPlay(NativeMusicCatalog.resolve(hit))}
+            catch(e:CancellationException){throw e}catch(_:Exception){message="Não foi possível reproduzir esta faixa. Tente outra."}
+            finally{resolving=null}
+        }
+    }
     val browserQuery=youtubeBrowser
     BackHandler(browserQuery!=null){youtubeBrowser=null}
     if(browserQuery!=null){
@@ -119,7 +140,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(SearchTab.entries.filter{BuildConfig.DEBUG||it in setOf(SearchTab.ALL,SearchTab.LOCAL,SearchTab.OPEN,SearchTab.YOUTUBE)}){f->FilterChip(selected=tab==f,onClick={tab=f},label={Text(f.label)})}
         }
-        if(busy||openBusy||youtubeBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(busy||openBusy||youtubeBusy||nativeBusy||resolving!=null)LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=searchAqua,fontSize=12.sp)}
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(9.dp),contentPadding=PaddingValues(bottom=14.dp)){
             if(term.isBlank()){
@@ -131,6 +152,23 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     }
                 }
             }else{
+                if(NativeMusicCatalog.enabled&&tab in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.YOUTUBE)){
+                    item{Text("YouTube Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text("Catálogo experimental · uso pessoal",fontSize=11.sp,color=Color.LightGray)}
+                    if(nativeError)item{TextButton(onClick={revision++}){Text("Falha na busca. Tentar novamente")}}
+                    if(!nativeBusy&&!nativeError&&nativeResults.isEmpty()&&term.length>=3)item{Text("Nenhuma faixa encontrada.",color=Color.LightGray)}
+                    items(if(tab==SearchTab.ALL)nativeResults.take(8)else nativeResults,key={"native:"+it.id}){hit->
+                        Row(Modifier.fillMaxWidth().clickable(enabled=canPlay&&resolving==null){playNative(hit)}.padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
+                            AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)))
+                            Column(Modifier.weight(1f).padding(horizontal=8.dp)){
+                                Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
+                                Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick={adding=hit.reference()}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=searchAccent)}
+                            IconButton(enabled=canPlay&&resolving==null,onClick={playNative(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=searchAccent)}
+                        }
+                    }
+                    if(tab==SearchTab.ALL&&nativeResults.size>8)item{TextButton(onClick={tab=SearchTab.YOUTUBE}){Text("Ver mais músicas do YouTube Music")}}
+                }
                 if(tab==SearchTab.ALL||tab==SearchTab.LOCAL){
                     item{Text("No aparelho",fontWeight=FontWeight.Bold,fontSize=19.sp)}
                     val rows=if(tab==SearchTab.ALL)local.take(5)else local

@@ -3,6 +3,9 @@ package br.com.timachado.neromusic
 import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +38,7 @@ private val panel=Color(0xFF17262D)
 private fun clock(ms:Long):String{val sec=(ms.coerceAtLeast(0)/1000);return "%d:%02d".format(sec/60,sec%60)}
 @Composable
 internal fun ImmersivePlayer(
-    track:Track?,title:String,artist:String,position:Long,duration:Long,playing:Boolean,favorite:Boolean,
+    track:Track?,remoteCover:String?=null,title:String,artist:String,position:Long,duration:Long,playing:Boolean,favorite:Boolean,
     shuffle:Boolean,repeat:Int,ready:Boolean,error:String?,canSave:Boolean,onSave:()->Unit,
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
@@ -81,7 +84,8 @@ internal fun ImmersivePlayer(
                     }
                 }
             }
-            LocalArtwork(track,Modifier.size(coverSize),large=true)
+            if(remoteCover!=null&&track==null)AsyncImage(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
+            else LocalArtwork(track,Modifier.size(coverSize),large=true)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
                     Text(title.ifBlank{"Nenhuma faixa"},fontSize=26.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
