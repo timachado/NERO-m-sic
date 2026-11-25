@@ -33,6 +33,8 @@ jobs:
           umask 077
           printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
       - name: Build unsigned release and lint
+        env:
+          NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
         run: gradle :app:assembleRelease :app:lintRelease --no-daemon
       - name: Sign and verify candidate
         env:

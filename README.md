@@ -170,3 +170,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## Compartilhamento autenticado (0.9.21-dev)
 Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para criar/ler, Firestore Source.SERVER, expiração de sete dias validada pelo servidor; sem listagem pública. Qualquer usuário Google com o código pode abrir; não é restrição por e-mail. Compartilhamento por código colado em Biblioteca > Online; não é link HTTPS clicável. A arte de status continua pública, sem áudio; o código vai na legenda, que pode não ser preservada pelo app de destino. A cópia importada é local e permanece acessível após expiração. Sem envio de áudio, senhas ou tokens. Regras adicionadas ao repositório, não implantadas. Requer projeto Firebase exclusivo, Google provider, OAuth SHA e config do Android, Firestore ativo e publicação das regras. Testar com emulador: visitante e email/password negados, Google com código válido permitido, list/update negados, código expirado negado, delete apenas dono. Não ativar billing nem alterar projeto alheio. Build e validação física pendentes.
+
+## 0.9.22-dev
+- HTTPS App Links, abertura direta com autenticação Google, página de apoio preparada e correção da sintaxe Firestore. Ativação de domínio, Firebase, certificado e regras pendente. Ver docs/https-sharing.md.

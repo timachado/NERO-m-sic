@@ -35,6 +35,7 @@ jobs:
           fi
       - run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
         env:
+          NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
           NERO_YOUTUBE_ENDPOINT: ${{ vars.NERO_YOUTUBE_ENDPOINT }}
       - name: Prepare APK and checksum
         run: |

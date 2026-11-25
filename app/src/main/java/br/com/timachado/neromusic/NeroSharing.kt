@@ -164,8 +164,8 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
     val context=LocalContext.current
     val song=ref?.let(::sharedSong)?:SharedSong(title,artist)
     ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,
-        send={code,card->
-            val message="🎧 NERO Music · música compartilhada\nCódigo: "+code+"\nAbra Biblioteca > Online > Abrir compartilhamento no NERO e entre com Google."
+        send={link,card->
+            val message="🎧 NERO Music · música compartilhada\n"+link+"\nAbra o link e entre com sua conta Google."
             if(card){val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",message)}
             else sendText(context,"NERO Music",message)
         })
@@ -173,7 +173,7 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
 @Composable
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
-    ProtectedShareDialog(playlist,single=false,onClose=onClose,send={code,_->
-        sendText(context,"Playlist NERO Music","🎧 Playlist compartilhada no NERO Music\nCódigo: "+code+"\nAbra Biblioteca > Online > Abrir compartilhamento e entre com Google.")
+    ProtectedShareDialog(playlist,single=false,onClose=onClose,send={link,_->
+        sendText(context,"Playlist NERO Music","🎧 Playlist compartilhada no NERO Music\n"+link+"\nAbra o link e entre com sua conta Google.")
     })
 }

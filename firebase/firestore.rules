@@ -15,13 +15,9 @@ service cloud.firestore {
     }
     match /nero_shared/{code} {
       function googleSession() {
-        return request.auth != null
-          && request.auth.token.firebase.sign_in_provider == 'google.com';
+        return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
       }
-      function validCode() { return code.matches('^[0-9a-f]{32} { allow read, write: if false; }
-  }
-}
-); }
+      function validCode() { return code.matches('^[0-9a-f]{32}$'); }
       allow get: if googleSession() && validCode()
         && resource.data.createdAt is timestamp
         && request.time < resource.data.createdAt + duration.value(7, 'd');

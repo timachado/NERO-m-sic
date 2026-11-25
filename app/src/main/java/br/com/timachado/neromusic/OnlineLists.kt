@@ -51,7 +51,7 @@ internal fun onlineLists(context:Context):List<OnlineList>{
         })
     }
 }
-private fun saveOnlineLists(context:Context,lists:List<OnlineList>){
+internal fun saveOnlineLists(context:Context,lists:List<OnlineList>){
     val data=JSONArray(lists.map{l->JSONObject().put("id",l.id).put("name",l.name).put("songs",JSONArray(l.songs.map{s->JSONObject().put("id",s.id).put("title",s.title).put("artist",s.artist).put("artworkReleaseId",s.artworkReleaseId).put("openAudio",s.openAudio?.json())}))})
     val bytes=data.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=4*1024*1024)
     val file=listFile(context);val out=file.startWrite()

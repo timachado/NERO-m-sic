@@ -2,6 +2,7 @@ package br.com.timachado.neromusic
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -49,22 +50,31 @@ private val Green = Color(0xFF39FF14)
 private val SurfaceDark = Color(0xFF10171C)
 
 class MainActivity : ComponentActivity() {
+    private var incomingShare by mutableStateOf<String?>(null)
+    private var shareRevision by mutableIntStateOf(0)
+    private fun acceptShare(intent:Intent?){
+        val link=intent?.dataString ?: return
+        if(intent.action==Intent.ACTION_VIEW&&ShareLinks.parse(link)!=null){incomingShare=link;shareRevision++}
+    }
+    override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);acceptShare(intent)}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if(savedInstanceState==null)acceptShare(intent) else savedInstanceState.getString("nero_pending_share")?.let{incomingShare=it}
         setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Green, secondary = Cyan,
             background = Color.Black, surface = SurfaceDark, onPrimary = Color.Black,
             primaryContainer = Color(0xFF102B23), onPrimaryContainer = Green,
             secondaryContainer = Color(0xFF12313A), onSecondaryContainer = Cyan,
             tertiary = Blue, tertiaryContainer = Color(0xFF10243E), onTertiaryContainer = Cyan,
-            onBackground = Color.White, onSurface = Color.White)) { NeroApp() } }
+            onBackground = Color.White, onSurface = Color.White)) { NeroApp(incomingShare,shareRevision,onShareClosed={incomingShare=null}) } }
     }
+    override fun onSaveInstanceState(outState:Bundle){super.onSaveInstanceState(outState);outState.putString("nero_pending_share",incomingShare)}
 }
 private fun timestamp(ms: Long): String {
     val s = ms.coerceAtLeast(0) / 1000
     return "%d:%02d".format(s / 60, s % 60)
 }
 @Composable
-private fun NeroApp() {
+private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit) {
     val context = LocalContext.current
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) }
@@ -170,6 +180,22 @@ private fun NeroApp() {
     }
     addLocal?.let { SaveLocalTrackDialog(it,onClose={addLocal=null}) }
     addOnline?.let { SaveOnlineDialog(listOf(it),onClose={addOnline=null}) }
+    incomingShare?.let{link->
+        key(shareRevision,link){
+            ReceiveShareDialog(initialLink=link,onClose=onShareClosed,onImport={incoming->
+                val next=onlineLists(context)+OnlineList(java.util.UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+                saveOnlineLists(context,next)
+                fullPlayer=false;showAccount=false;showPlans=false;showEq=false;showCloud=false;showLyrics=false;showQueue=false
+                tab=0;libraryPage=7;onShareClosed()
+            },onPlay=if(controller!=null){incoming:SharedPlaylist->
+                val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem()else null}
+                if(queue.isNotEmpty()){controller?.let{player->player.shuffleModeEnabled=false;player.repeatMode=Player.REPEAT_MODE_OFF;player.setMediaItems(queue,0,0L);player.prepare();player.play()};fullPlayer=true}
+                else{val first=incoming.songs.first();searchSeed=first.title+" "+first.artist;searchAutoFocus=false;tab=1;fullPlayer=false}
+                showAccount=false;showPlans=false;showEq=false;showCloud=false;showLyrics=false;showQueue=false
+                onShareClosed()
+            }else null)
+        }
+    }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
