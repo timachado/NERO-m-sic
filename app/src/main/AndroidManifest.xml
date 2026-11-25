@@ -27,7 +27,7 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/nero_widget_info" />
         </receiver>
         <service android:name=".PlaybackService" android:foregroundServiceType="mediaPlayback" android:exported="false">
-            <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>
+            <intent-filter><action android:name="androidx.media3.session.MediaLibraryService" /></intent-filter>
         </service>
     </application>
 </manifest>
