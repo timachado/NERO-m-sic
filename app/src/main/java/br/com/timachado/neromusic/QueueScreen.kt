@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +38,9 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
     var confirmClear by remember{mutableStateOf<QueueSnapshot?>(null)}
     var saveItems by remember{mutableStateOf<List<MediaItem>?>(null)}
     val context=androidx.compose.ui.platform.LocalContext.current
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val scope=rememberCoroutineScope()
     val listState=rememberLazyListState()
     LaunchedEffect(queue.current,queue.items.size){if(queue.current in queue.items.indices)listState.scrollToItem(queue.current)}
     val byId=remember(tracks){tracks.associateBy{it.id.toString()}}
@@ -59,7 +63,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         catch(_:Exception){queue=snapshot(p);message="Não foi possível alterar a fila."}
     }
     saveItems?.let{items->
-        var name by remember(items){mutableStateOf("")}
+        var name by remember(items,uid){mutableStateOf("")}
         val localTracks=items.map{byId[it.mediaId]}
         val localOnly=localTracks.all{it!=null}
         val refs=items.mapNotNull{item->
@@ -67,21 +71,25 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                 OnlineRef("local:"+track.id,track.title,track.artist)
             }
         }.distinctBy{it.id}
-        val canSave=localOnly||items.all{item->openRefFromItem(item)!=null||youtubeRefFromItem(item)!=null||byId[item.mediaId]!=null}
+        val mixedAccount=uid!=null&&!localOnly&&refs.any{it.id.startsWith("local:")}
+        val canSave=ready&&!mixedAccount&&(localOnly||items.all{item->openRefFromItem(item)!=null||youtubeRefFromItem(item)!=null||byId[item.mediaId]!=null})
         AlertDialog(onDismissRequest={saveItems=null},title={Text("Salvar fila como playlist")},text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Text("Cria uma nova playlist com as músicas da fila, na ordem da lista, sem alterar a reprodução.")
                 Text("Faixas repetidas serão salvas uma vez.",fontSize=12.sp,color=Color.LightGray)
-                if(!canSave)Text("Há faixas sem referência compatível nesta fila.",color=MaterialTheme.colorScheme.error)
+                if(!canSave)Text(if(mixedAccount)"A fila combina arquivos locais e músicas online. Saia da conta para salvá-la na biblioteca do aparelho, ou separe as faixas." else "Há faixas sem referência compatível nesta fila.",color=MaterialTheme.colorScheme.error)
                 OutlinedTextField(name,{name=it.take(80)},singleLine=true,label={Text("Nome da playlist")})
             }
         },confirmButton={TextButton(enabled=canSave&&name.isNotBlank(),onClick={
-            try{
+            val owner=uid;scope.launch{try{
                 val id=java.util.UUID.randomUUID().toString()
                 if(localOnly)saveMixes(context,mixes(context)+Mix(id,name.trim(),localTracks.mapNotNull{it?.id}.distinct()))
-                else saveOnlineLists(context,onlineLists(context)+OnlineList(id,name.trim(),refs))
+                else{
+                    val current=scopedOnlineLists(context,owner)
+                    saveScopedOnlineLists(context,owner,current,current+OnlineList(id,name.trim(),refs))
+                }
                 saveItems=null;message="Playlist criada. Encontre em Sua biblioteca."
-            }catch(_:Exception){message="Não foi possível salvar a playlist.";saveItems=null}
+            }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){message="Não foi possível salvar a playlist.";saveItems=null}}
         }){Text("Criar playlist")}},dismissButton={TextButton(onClick={saveItems=null}){Text("Cancelar")}})
     }
     val expectedClear=confirmClear
