@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList())
 @Composable
-internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
+internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
     val context=LocalContext.current
     var lists by remember{mutableStateOf(emptyList<HubPlaylist>())}
     var failed by remember{mutableStateOf(false)}
@@ -54,7 +54,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
             IconButton(onClick=onCreate){Icon(Icons.Default.Add,"Criar playlist")}
         }
         Row(verticalAlignment=Alignment.CenterVertically){
-            FilterChip(selected=true,onClick={},label={Text("Playlists")})
+            FilterChip(selected=false,onClick=onDownloads,label={Text("Downloads")},leadingIcon={Icon(Icons.Default.Download,null)})
             Spacer(Modifier.weight(1f))
             Box{
                 IconButton(onClick={more=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
@@ -80,6 +80,12 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                 Row(Modifier.fillMaxWidth().clickable(onClick=onFavorites),verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Brush.linearGradient(listOf(Color(0xFF0066FF),Color(0xFF00E5FF),Color(0xFF39FF14)))),contentAlignment=Alignment.Center){Icon(Icons.Default.Favorite,null,tint=Color.White,modifier=Modifier.size(30.dp))}
                     Column(Modifier.weight(1f).padding(start=12.dp)){Text("Músicas curtidas",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Playlist · "+(onlineFavoriteCount+localFavoriteCount)+" músicas",fontSize=12.sp,color=Color.LightGray)}
+                }
+            }
+            if("Downloads".contains(term,true))item{
+                Row(Modifier.fillMaxWidth().clickable(onClick=onDownloads),verticalAlignment=Alignment.CenterVertically){
+                    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){Icon(Icons.Default.Download,null,tint=Color(0xFF39FF14),modifier=Modifier.size(30.dp))}
+                    Column(Modifier.weight(1f).padding(start=12.dp)){Text("Downloads",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Ouvir offline",fontSize=12.sp,color=Color.LightGray)}
                 }
             }
             items(visible,key={"${it.page}:${it.id}"}){row->
