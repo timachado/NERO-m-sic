@@ -29,7 +29,7 @@ import javax.crypto.spec.GCMParameterSpec
 internal class GoogleRequired:Exception()
 internal class ShareNotConfigured:Exception()
 private class NeroHttpException(val status:Int):Exception("Request failed")
-internal data class NeroSession(val uid:String,val email:String,val access:String,val refresh:String,val expiresAt:Long)
+internal data class NeroSession(val uid:String,val email:String,val access:String,val refresh:String,val expiresAt:Long,val displayName:String="",val avatar:String?=null)
 internal object NeroSupabase{
     val configured get()=BuildConfig.SUPABASE_URL.isNotBlank()&&BuildConfig.SUPABASE_KEY.isNotBlank()&&BuildConfig.GOOGLE_CLIENT.isNotBlank()
     private val mutex=Mutex()
@@ -43,11 +43,18 @@ internal object NeroSupabase{
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
         }.generateKey()
     }
+    // Provider metadata is display-only, never used to authorize operations.
+    private fun avatarUrl(value:String?):String?=value?.take(2048)?.takeIf{url->runCatching{
+        val u=java.net.URI(url)
+        u.scheme=="https"&&u.userInfo==null&&u.port in setOf(-1,443)&&
+            u.host?.endsWith(".googleusercontent.com")==true
+    }.getOrDefault(false)}
+    private fun displayName(value:String)=value.trim().filterNot{it.isISOControl()}.take(100)
     private fun save(context:Context,s:NeroSession){
         val cipher=Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE,key())
         cipher.updateAAD(BuildConfig.SUPABASE_URL.toByteArray(Charsets.UTF_8))
-        val json=JSONObject().put("uid",s.uid).put("email",s.email).put("access",s.access).put("refresh",s.refresh).put("expiry",s.expiresAt)
+        val json=JSONObject().put("uid",s.uid).put("email",s.email).put("access",s.access).put("refresh",s.refresh).put("expiry",s.expiresAt).put("name",s.displayName).put("avatar",s.avatar.orEmpty())
         val encrypted=cipher.doFinal(json.toString().toByteArray(Charsets.UTF_8))
         check(prefs(context).edit().putString("session",Base64.encodeToString(cipher.iv+encrypted,Base64.NO_WRAP)).commit())
     }
@@ -59,7 +66,7 @@ internal object NeroSupabase{
             cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,bytes.copyOfRange(0,12)))
             cipher.updateAAD(BuildConfig.SUPABASE_URL.toByteArray(Charsets.UTF_8))
             val row=JSONObject(String(cipher.doFinal(bytes.copyOfRange(12,bytes.size)),Charsets.UTF_8))
-            NeroSession(row.getString("uid"),row.getString("email"),row.getString("access"),row.getString("refresh"),row.getLong("expiry"))
+            NeroSession(row.getString("uid"),row.getString("email"),row.getString("access"),row.getString("refresh"),row.getLong("expiry"),displayName(row.optString("name")),avatarUrl(row.optString("avatar")))
         }.getOrNull()
     }
     private fun clear(context:Context){prefs(context).edit().remove("session").commit()}
@@ -85,7 +92,10 @@ internal object NeroSupabase{
     private fun parseSession(body:String):NeroSession{
         val row=JSONObject(body);val user=row.getJSONObject("user")
         require(user.getJSONObject("app_metadata").optString("provider")=="google")
-        return NeroSession(user.getString("id"),user.optString("email"),row.getString("access_token"),row.getString("refresh_token"),System.currentTimeMillis()+row.getLong("expires_in")*1000L)
+        val meta=user.optJSONObject("user_metadata")?:JSONObject()
+        val name=displayName(meta.optString("full_name").ifBlank{meta.optString("name")})
+        val photo=avatarUrl(meta.optString("avatar_url").ifBlank{meta.optString("picture")})
+        return NeroSession(user.getString("id"),user.optString("email"),row.getString("access_token"),row.getString("refresh_token"),System.currentTimeMillis()+row.getLong("expires_in")*1000L,name,photo)
     }
     suspend fun session(context:Context,interactive:Boolean):NeroSession=mutex.withLock{
         if(!configured)throw ShareNotConfigured()
