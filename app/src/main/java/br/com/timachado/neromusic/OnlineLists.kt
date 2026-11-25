@@ -90,7 +90,7 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
-internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={}){
+internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={},offlineState:OfflineState=OfflineState(),onDownloadPlaylist:(List<OpenTrack>)->Unit={}){
     val context=LocalContext.current
     var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
     var selected by remember(initialSelection){mutableStateOf(initialSelection)}
@@ -118,8 +118,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             else {val first=incoming.songs.first();openShared=false;onSearch(first.title+" "+first.artist)}
         } else null)
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
-    var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
-    LaunchedEffect(Unit){saved=downloaded(context)}
+    val saved=offlineState.saved
     val localIndex=remember(tracks){tracks.groupBy{it.title.trim().lowercase(java.util.Locale.ROOT) to it.artist.trim().lowercase(java.util.Locale.ROOT)}}
     val available=remember(active,localIndex,saved){
         active?.songs?.mapNotNull{s->
@@ -152,6 +151,18 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null){
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
+                val eligible=active.songs.mapNotNull{ref->ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}}.distinctBy{it.id}
+                val ready=eligible.count{audio->saved.any{it==audio}}
+                val busy=offlineState.active!=null||offlineState.batchTotal>0
+                if(eligible.isNotEmpty()){
+                    OutlinedButton(enabled=!busy&&ready<eligible.size,onClick={onDownloadPlaylist(eligible)},modifier=Modifier.fillMaxWidth()){
+                        Icon(if(ready==eligible.size)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=Color(0xFF39FF14))
+                        Spacer(Modifier.width(8.dp));Text(if(ready==eligible.size)"Faixas autorizadas baixadas" else "Baixar playlist ($ready/${eligible.size})")
+                    }
+                    if(offlineState.batchTotal>0)Text("Preparando downloads: "+offlineState.batchDone+"/"+offlineState.batchTotal,fontSize=12.sp,color=Color.LightGray)
+                    offlineState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+                }
+                if(eligible.size<active.songs.size)Text("Download disponível apenas para as faixas com autorização offline.",fontSize=11.sp,color=Color.LightGray)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Text("Reproduzir")}
                     OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true)},modifier=Modifier.weight(1f)){Text("Aleatório")}
