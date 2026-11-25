@@ -284,7 +284,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
                 track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,mediaId=nowId,origin=nowOrigin,
-                offlineTrack=nowOpenRef?.openAudio,offlineState=offlineState,onOfflineSave={t->radioScope.launch{offlineManager.save(t)}},onOfflineOpen={fullPlayer=false;tab=4},
+                offlineTrack=nowOpenRef?.openAudio,offlineState=offlineState,onNativeSave={hit->radioScope.launch{offlineManager.saveNative(hit)}},onOfflineSave={t->radioScope.launch{offlineManager.save(t)}},onOfflineOpen={fullPlayer=false;tab=4},
                 videoPlayer=controller,videoMode=videoMode,pipSupported=pipSupported,onPip={if(!onPip())android.widget.Toast.makeText(context,"Janela flutuante indisponível. Confira a permissão no Android.",android.widget.Toast.LENGTH_SHORT).show()},canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
                 videoQuality=videoQuality,onVideoQuality={quality->controller?.let{p->
                     val item=p.currentMediaItem
@@ -397,13 +397,13 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()}.withOrigin(origin),queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if(tab == 1) {
-                NeroSearch(tracks=tracks,canPlay=controller!=null,offlineState=offlineState,onOfflineSave={t->radioScope.launch{offlineManager.save(t)}},initialQuery=searchSeed,initialOpenAudio=searchOpenAudio,autoFocus=searchAutoFocus,onExit={searchOpenAudio=false;tab=3},onlineFavoriteIds=onlineFavorites.getOrDefault(emptyList()).map{it.id}.toSet(),onFavorite={toggleOnline(it)},currentId=nowId,currentTitle=title,currentArtist=artist,currentCover=nowOpenRef?.coverUrl,currentPlaying=playing,currentVideo=videoMode,onCurrentToggle={controller?.let{p->if(p.playWhenReady)p.pause()else p.play()}},onOpenPlayer={fullPlayer=true},onNativeQueue={queue,index->controller?.let{p->
+                NeroSearch(tracks=tracks,canPlay=controller!=null,offlineState=offlineState,onNativeSave={hit->radioScope.launch{offlineManager.saveNative(hit)}},onOfflineOpen={tab=4},onOfflineSave={t->radioScope.launch{offlineManager.save(t)}},initialQuery=searchSeed,initialOpenAudio=searchOpenAudio,autoFocus=searchAutoFocus,onExit={searchOpenAudio=false;tab=3},onlineFavoriteIds=onlineFavorites.getOrDefault(emptyList()).map{it.id}.toSet(),onFavorite={toggleOnline(it)},currentId=nowId,currentTitle=title,currentArtist=artist,currentCover=nowOpenRef?.coverUrl,currentPlaying=playing,currentVideo=videoMode,onCurrentToggle={controller?.let{p->if(p.playWhenReady)p.pause()else p.play()}},onOpenPlayer={fullPlayer=true},onNativeQueue={queue,index->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
                 }},
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
             } else if(tab==2){
-                FavoritesScreen(localTracks=filtered,online=onlineFavorites.getOrDefault(emptyList()),readError=onlineFavorites.isFailure,canPlay=controller!=null,
+                FavoritesScreen(offlineState=offlineState,onNativeSave={hit->radioScope.launch{offlineManager.saveNative(hit)}},onOpenSave={track->radioScope.launch{offlineManager.save(track)}},onOfflineOpen={tab=4},localTracks=filtered,online=onlineFavorites.getOrDefault(emptyList()),readError=onlineFavorites.isFailure,canPlay=controller!=null,
                     onLocalRemove={toggle(it.id.toString())},onOnlineRemove={toggleOnline(it)},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onQueue={queue,index->controller?.let{p->
                         if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue.withOrigin(PlaybackOrigin("favorites","Músicas curtidas","")),index,0L);p.prepare();p.play()}
                     }})
