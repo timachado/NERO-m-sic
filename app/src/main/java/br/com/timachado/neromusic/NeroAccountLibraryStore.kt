@@ -51,23 +51,39 @@ internal data class NeroAccountPullStatus(val uid:String,val state:String,val fa
 
 internal object NeroAccountSync{
     private val mutex=Mutex()
+    private val changesState=kotlinx.coroutines.flow.MutableStateFlow(0L)
+    val changes:kotlinx.coroutines.flow.StateFlow<Long> = changesState
+    private val editsState=kotlinx.coroutines.flow.MutableStateFlow(0L)
+    val edits:kotlinx.coroutines.flow.StateFlow<Long> = editsState
+
+    suspend fun toggleFavorite(context:Context,uid:String,ref:OnlineRef)=mutex.withLock{
+        require(NeroSupabase.activeUid.value==uid)
+        val app=context.applicationContext
+        withContext(Dispatchers.IO){
+            require(NeroSupabase.activeUid.value==uid)
+            val empty=CloudLibrarySnapshot(emptyList(),emptyList())
+            val current=NeroAccountLibraryStore.read(app,uid)?:NeroAccountLibraryState(0,empty,empty)
+            val favorites=current.pending.favorites
+            val next=if(favorites.any{it.id==ref.id})favorites.filterNot{it.id==ref.id}else listOf(ref)+favorites
+            NeroAccountLibraryStore.write(app,uid,current.copy(pending=current.pending.copy(favorites=next)))
+        }
+        changesState.value++
+        editsState.value++
+    }
     private val pullState=kotlinx.coroutines.flow.MutableStateFlow<NeroAccountPullStatus?>(null)
     val status:kotlinx.coroutines.flow.StateFlow<NeroAccountPullStatus?> = pullState
 
-    // Initial integration is read-only. Pending edits, if any, are never overwritten.
-    suspend fun pull(context:Context,uid:String)=mutex.withLock{
+    // Foreground synchronization: serialized with local edits. Never mix guest data.
+    suspend fun pull(context:Context,uid:String){
         pullState.value=NeroAccountPullStatus(uid,"loading")
         try{
-            val app=context.applicationContext
-            val remote=readCloudLibrary(app,uid)
-            val stored=withContext(Dispatchers.IO){NeroAccountLibraryStore.read(app,uid)}
-            require(NeroSupabase.activeUid.value==uid)
-            if(stored!=null&&(stored.pending!=stored.baseline||remote.revision<stored.revision)){
-                pullState.value=NeroAccountPullStatus(uid,"pending")
-                return@withLock
-            }
-            withContext(Dispatchers.IO){NeroAccountLibraryStore.write(app,uid,NeroAccountLibraryState(remote.revision,remote.snapshot,remote.snapshot))}
-            pullState.value=NeroAccountPullStatus(uid,"ready",remote.snapshot.favorites.size,remote.snapshot.playlists.size)
+            val outcome=reconcile(context,uid)
+            val snapshot=outcome.state?.pending
+            pullState.value=NeroAccountPullStatus(uid,when{
+                outcome.conflicts.isNotEmpty()->"conflict"
+                outcome.retry->"pending"
+                else->"ready"
+            },snapshot?.favorites?.size?:0,snapshot?.playlists?.size?:0)
         }catch(e:kotlinx.coroutines.CancellationException){throw e}
         catch(_:Exception){pullState.value=NeroAccountPullStatus(uid,"unavailable")}
     }
@@ -75,6 +91,7 @@ internal object NeroAccountSync{
     // Only operates on isolated account cache; never imports the guest library.
     // No upload if reconciliation has conflicts, or if the server revision changed.
     suspend fun reconcile(context:Context,uid:String):NeroAccountSyncOutcome=mutex.withLock{
+        require(NeroSupabase.activeUid.value==uid)
         val app=context.applicationContext
         val remote=readCloudLibrary(app,uid)
         val stored=withContext(Dispatchers.IO){NeroAccountLibraryStore.read(app,uid)}
@@ -92,6 +109,7 @@ internal object NeroAccountSync{
         require(session.uid==uid)
         val next=NeroAccountLibraryState(revision,result.snapshot,result.snapshot)
         withContext(Dispatchers.IO){NeroAccountLibraryStore.write(app,uid,next)}
+        changesState.value++
         NeroAccountSyncOutcome(next,emptyList())
     }
 }
