@@ -148,9 +148,10 @@ class PlaybackService : MediaLibraryService() {
             player.stop()
             player.clearMediaItems()
         }
-        // Release bound external controllers as well (Android Auto, widgets).
-        closePlayback()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        // The service may still be bound to a controller during a rapid reopen.
+        // Keep its session valid until Android actually destroys this service.
+        // Let Media3 handle the notification and foreground-service lifecycle.
+        super.onTaskRemoved(rootIntent)
         stopSelf()
     }
     private fun closePlayback() {
@@ -160,7 +161,7 @@ class PlaybackService : MediaLibraryService() {
         NeroWidgetState.detach(applicationContext)
         val active=session
         session=null
-        active?.let { it.release(); it.player.release() }
+        active?.let { val player=it.player; it.release(); player.release() }
     }
     override fun onDestroy() {
         closePlayback()
