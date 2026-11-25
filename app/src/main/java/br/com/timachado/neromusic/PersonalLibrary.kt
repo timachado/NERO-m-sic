@@ -28,7 +28,7 @@ import java.util.Date
 private val accent = Color(0xFF39FF14)
 private val cardColor = Color(0xFF10171C)
 private data class Mix(val id:String,val name:String,val ids:List<Long>)
-private data class Heard(val id:String,val title:String,val artist:String,val at:Long)
+internal data class Heard(val id:String,val title:String,val artist:String,val at:Long)
 private fun prefs(context:Context)=context.getSharedPreferences("nero_personal",Context.MODE_PRIVATE)
 private fun mixes(context:Context):List<Mix> = runCatching {
     val array=JSONArray(prefs(context).getString("mixes","[]") ?: "[]")
@@ -42,7 +42,7 @@ private fun saveMixes(context:Context, list:List<Mix>) {
     list.forEach { m -> data.put(JSONObject().put("id",m.id).put("name",m.name).put("tracks",JSONArray(m.ids))) }
     prefs(context).edit().putString("mixes",data.toString()).apply()
 }
-private fun history(context:Context):List<Heard> = runCatching {
+internal fun history(context:Context):List<Heard> = runCatching {
     val array=JSONArray(prefs(context).getString("history","[]") ?: "[]")
     (0 until array.length()).map { i ->
         val o=array.getJSONObject(i)

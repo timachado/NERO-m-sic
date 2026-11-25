@@ -138,7 +138,7 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showCatalog by remember { mutableStateOf(false) }
     var catalogQuery by remember { mutableStateOf("") }
@@ -194,6 +194,9 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                     Spacer(Modifier.width(8.dp))
                     Text("Explorar músicas, álbuns e artistas")
                 }
+            }
+            if (!searchOnly) item {
+                PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
             }
             if (BuildConfig.DEBUG && !searchOnly) item {
                 CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })

@@ -220,7 +220,7 @@ private fun NeroApp() {
                     } })
             } else if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
                 key(tab) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, onPlay = { item ->
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
                 })
                 }
