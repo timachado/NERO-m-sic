@@ -1,6 +1,7 @@
 package br.com.timachado.neromusic
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -53,7 +54,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
             else if(!busy&&songs.isEmpty())Text("Nenhuma faixa disponível.")
         }
         items(songs,key={it.id}){hit->
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
                 AsyncImage(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
