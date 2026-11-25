@@ -34,6 +34,9 @@ jobs:
           printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
       - name: Build unsigned release and lint
         env:
+          NERO_SUPABASE_URL: ${{ vars.NERO_SUPABASE_URL }}
+          NERO_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NERO_SUPABASE_PUBLISHABLE_KEY }}
+          NERO_GOOGLE_CLIENT_ID: ${{ vars.NERO_GOOGLE_CLIENT_ID }}
           NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
         run: gradle :app:assembleRelease :app:lintRelease --no-daemon
       - name: Sign and verify candidate

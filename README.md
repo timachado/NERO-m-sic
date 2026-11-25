@@ -182,3 +182,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.25-dev
 - Biblioteca abre na lista unificada de playlists online, locais e importadas, com músicas curtidas em destaque, capas compostas, busca, ordem por nome, criação de playlist online e atalhos para importação e arquivos locais. Preserva dados anteriores. Navegação de vídeos com identidade NERO e identificação do player oficial nos detalhes. Compilação e teste de Android pendentes.
+
+## 0.9.26-dev
+- Android account/share now uses Supabase Auth Google and protected Supabase RPC. Native credential nonce, encrypted session, public preview only, exact link access. SQL deployment draft and setup notes added. No project selected or changed yet. Build and backend validation pending.

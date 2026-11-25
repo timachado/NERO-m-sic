@@ -20,80 +20,37 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.Source
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-private const val COLLECTION="nero_shared"
-private const val PREVIEWS="nero_shared_previews"
 private data class SharedPreview(val title:String,val subtitle:String,val count:Long,val single:Boolean)
 private suspend fun fetchPreview(input:String):SharedPreview?{
     val id=ShareLinks.parse(input)?:return null
-    val doc=FirebaseFirestore.getInstance().collection(PREVIEWS).document(id).get(Source.SERVER).await()
-    if(!doc.exists())return null
-    return SharedPreview(doc.getString("title").orEmpty(),doc.getString("subtitle").orEmpty(),doc.getLong("count")?:0L,doc.getBoolean("single")?:false)
-}
-
-
-private class GoogleRequired:Exception()
-private class ShareNotConfigured:Exception()
-private suspend fun googleSession(context:Context,interactive:Boolean):String{
-    val auth=authOrNull(context)?:throw ShareNotConfigured()
-    val current=auth.currentUser
-    if(current!=null&&current.getIdToken(false).await().signInProvider=="google.com")return current.uid
-    if(!interactive)throw GoogleRequired()
-    val client=webClientId(context).takeIf{it.isNotBlank()}?:throw ShareNotConfigured()
-    val manager=CredentialManager.create(context)
-    val option=GetSignInWithGoogleOption.Builder(client).build()
-    val credential=manager.getCredential(context,GetCredentialRequest.Builder().addCredentialOption(option).build()).credential
-    require(credential is CustomCredential&&credential.type==GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)
-    val token=GoogleIdTokenCredential.createFrom(credential.data).idToken
-    val user=auth.signInWithCredential(GoogleAuthProvider.getCredential(token,null)).await().user?:throw GoogleRequired()
-    if(user.getIdToken(true).await().signInProvider!="google.com")throw GoogleRequired()
-    return user.uid
+    val doc=NeroSupabase.rpc("nero_share_preview",org.json.JSONObject().put("p_id",id))
+    if(doc=="null")return null
+    val row=org.json.JSONObject(doc)
+    return SharedPreview(row.getString("title"),row.getString("subtitle"),row.getLong("count"),row.getBoolean("single"))
 }
 private suspend fun publishShare(context:Context,playlist:SharedPlaylist,single:Boolean):String{
     if(!ShareLinks.configured)throw ShareNotConfigured()
-    val uid=googleSession(context,true)
+    val session=NeroSupabase.session(context,true)
     val payload=encodePlaylist(playlist).toString(Charsets.UTF_8)
     require(payload.toByteArray(Charsets.UTF_8).size<=180000)
-    val code=UUID.randomUUID().toString().replace("-","")
-    val db=FirebaseFirestore.getInstance()
-    val content=db.collection(COLLECTION).document(code)
-    val preview=db.collection(PREVIEWS).document(code)
-    // Public presentation contains only explicitly disclosed display metadata.
-    // Never store media IDs, playable URLs, owner UID or the track list here.
-    val batch=db.batch()
-    batch.set(content,mapOf("owner" to uid,"createdAt" to FieldValue.serverTimestamp(),"payload" to payload))
-    batch.set(preview,mapOf("createdAt" to FieldValue.serverTimestamp(),"title" to playlist.name.take(100),
-        "subtitle" to if(single)playlist.songs.first().artist.take(300) else "Playlist NERO Music",
-        "count" to playlist.songs.size,"single" to single))
-    batch.commit().await()
-    val doc=content.get(Source.SERVER).await()
-    val publicDoc=preview.get(Source.SERVER).await()
-    check(doc.exists()&&!doc.metadata.hasPendingWrites()&&publicDoc.exists()&&!publicDoc.metadata.hasPendingWrites())
-    return ShareLinks.url(code)
+    val id=UUID.randomUUID().toString().replace("-","")
+    val input=org.json.JSONObject().put("p_id",id).put("p_payload",payload).put("p_single",single)
+    NeroSupabase.rpc("nero_share_create",input,session.access)
+    return ShareLinks.url(id)
 }
 private suspend fun fetchShare(context:Context,input:String,interactive:Boolean=true):Pair<String,SharedPlaylist>{
-    val code=ShareLinks.parse(input)?:error("Link inválido")
-    val uid=googleSession(context,interactive)
-    val snap=FirebaseFirestore.getInstance().collection(COLLECTION).document(code).get(Source.SERVER).await()
-    check(snap.exists())
-    check(googleSession(context,false)==uid)
-    return uid to decodeSharedPlaylist(snap.getString("payload")?:error("Conteúdo indisponível"))
+    val id=ShareLinks.parse(input)?:error("Link inválido")
+    val session=NeroSupabase.session(context,interactive)
+    val response=NeroSupabase.rpc("nero_share_read",org.json.JSONObject().put("p_id",id),session.access)
+    val payload=org.json.JSONObject(response).getString("payload")
+    return session.uid to decodeSharedPlaylist(payload)
 }
 private fun shareError(e:Exception):String=when(e){
-    is ShareNotConfigured->"Compartilhamento protegido aguarda configuração do Firebase, domínio de compartilhamento e login Google."
+    is ShareNotConfigured->"Compartilhamento protegido aguarda configuração do Supabase, domínio de compartilhamento e login Google."
     is GoogleRequired->"Entre com sua conta Google para continuar."
     else->"Não foi possível concluir. Confira a conexão, o link e a validade do compartilhamento."
 }

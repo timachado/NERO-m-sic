@@ -11,8 +11,17 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
-        versionName = "0.9.25-dev"
+        versionCode = 48
+        versionName = "0.9.26-dev"
+        val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
+        val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
+        val googleClient = System.getenv("NERO_GOOGLE_CLIENT_ID").orEmpty().trim()
+        require(supabaseUrl.isEmpty() || Regex("https://[a-z0-9]+\\.supabase\\.co").matches(supabaseUrl)) { "Invalid Supabase URL" }
+        require(supabaseKey.isEmpty() || Regex("sb_publishable_[A-Za-z0-9_-]+").matches(supabaseKey)) { "Use a Supabase publishable key, never a secret/service role key" }
+        require(googleClient.isEmpty() || Regex("[A-Za-z0-9_-]+\\.apps\\.googleusercontent\\.com").matches(googleClient)) { "Invalid Google OAuth client ID" }
+        buildConfigField("String","SUPABASE_URL","\""+supabaseUrl+"\"")
+        buildConfigField("String","SUPABASE_KEY","\""+supabaseKey+"\"")
+        buildConfigField("String","GOOGLE_CLIENT","\""+googleClient+"\"")
         val shareHost = System.getenv("NERO_SHARE_HOST").orEmpty().trim().lowercase()
         require(shareHost.isEmpty() || Regex("[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+").matches(shareHost)) { "Invalid share host" }
         manifestPlaceholders["neroShareHost"] = shareHost.ifEmpty { "nero-share-unconfigured.invalid" }

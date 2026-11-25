@@ -35,6 +35,9 @@ jobs:
           fi
       - run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
         env:
+          NERO_SUPABASE_URL: ${{ vars.NERO_SUPABASE_URL }}
+          NERO_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NERO_SUPABASE_PUBLISHABLE_KEY }}
+          NERO_GOOGLE_CLIENT_ID: ${{ vars.NERO_GOOGLE_CLIENT_ID }}
           NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
           NERO_YOUTUBE_ENDPOINT: ${{ vars.NERO_YOUTUBE_ENDPOINT }}
       - name: Prepare APK and checksum
