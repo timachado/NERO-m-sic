@@ -14,7 +14,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,8 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-class PlaybackService : MediaSessionService() {
-    private var session: MediaSession? = null
+class PlaybackService : MediaLibraryService() {
+    private var session: MediaLibrarySession? = null
     private var eq: SessionEqualizer? = null
     private var replaySampler:NeroReplaySampler?=null
     private val timerScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
@@ -131,13 +132,13 @@ class PlaybackService : MediaSessionService() {
         }
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        session = MediaSession.Builder(this, player).setSessionActivity(activity).build()
+        session = MediaLibrarySession.Builder(this, player, NeroCarLibrary(applicationContext,timerScope)).setSessionActivity(activity).build()
         NeroWidgetState.attach(applicationContext,player)
         player.addListener(object:Player.Listener{
             override fun onEvents(player:Player,events:Player.Events){NeroWidgetState.refresh(applicationContext)}
         })
     }
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         session.takeIf{controllerInfo.uid==android.os.Process.myUid()||controllerInfo.isTrusted}
     override fun onDestroy() {
         replaySampler?.close();replaySampler=null
