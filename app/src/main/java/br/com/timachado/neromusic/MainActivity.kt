@@ -141,6 +141,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var title by remember { mutableStateOf("") }
     var artist by remember { mutableStateOf("") }
     var playing by remember { mutableStateOf(false) }
+    var buffering by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var shuffle by remember { mutableStateOf(false) }
@@ -158,6 +159,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
             artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
             playing = p.isPlaying
+            buffering = p.playbackState==Player.STATE_BUFFERING
             pos = p.currentPosition.coerceAtLeast(0)
             duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
             shuffle = p.shuffleModeEnabled
@@ -231,6 +233,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }else null)
         }
     }
+    CompositionLocalProvider(LocalNeroNowPlaying provides NeroNowPlaying(nowId,playing,buffering,playbackError!=null,open={playerAlbum=null;playerArtist=null;fullPlayer=true})) {
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showEq && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -440,5 +443,6 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             if (connectionError) Text("Falha na conexão com o player.", color = MaterialTheme.colorScheme.error)
             playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
+    }
     }
 }
