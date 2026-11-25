@@ -14,7 +14,16 @@ import kotlin.math.roundToInt
 
 internal object NeroAudioSettings {
     @Volatile var leveling=false
-    fun load(context:Context){leveling=context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).getBoolean("leveling",false)}
+    @Volatile var crossfadeSeconds=0
+    fun load(context:Context){
+        val prefs=context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE)
+        leveling=prefs.getBoolean("leveling",false)
+        crossfadeSeconds=prefs.getInt("crossfade_seconds",0).coerceIn(0,8)
+    }
+    fun setCrossfade(context:Context,seconds:Int){
+        crossfadeSeconds=seconds.coerceIn(0,8)
+        context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).edit().putInt("crossfade_seconds",crossfadeSeconds).apply()
+    }
     fun setLeveling(context:Context,value:Boolean){
         leveling=value
         context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).edit().putBoolean("leveling",value).apply()
