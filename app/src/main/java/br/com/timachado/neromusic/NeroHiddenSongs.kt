@@ -34,4 +34,4 @@ internal fun rememberHiddenSongs():Set<String>{
     return rows
 }
 internal fun filterRecommendedSongs(rows:List<NativeMusicHit>,hidden:Set<String>):List<NativeMusicHit> =
-    rows.filterNot{recommendationId(it.id) in hidden}
+    rows.filterNot{row->recommendationId(row.id)?.let{it in hidden}==true}
