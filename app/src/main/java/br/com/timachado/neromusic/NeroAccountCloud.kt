@@ -51,7 +51,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
                 else->"Nuvem indisponível ou ainda não configurada"
             },color=if(state=="ready"&&!pending)MaterialTheme.colorScheme.primary else Color.LightGray,fontSize=13.sp)
             cached?.let{Text("${it.pending.favorites.size} favoritos da conta",fontSize=13.sp)}
-            Text("Playlists, álbuns, artistas, histórico e arquivos offline ainda não integram a biblioteca automática desta versão.",fontSize=12.sp,color=Color.LightGray)
+            Text("Playlists online também pertencem à conta. Álbuns, artistas, histórico e arquivos offline ainda não integram a sincronização.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(enabled=enabled&&!busy&&state!="loading",onClick={scope.launch{NeroAccountSync.pull(context,user.uid)}},modifier=Modifier.fillMaxWidth()){Text("Sincronizar agora")}
             TextButton(enabled=enabled&&!busy,onClick={confirm=true}){Text("Importar favoritos anteriores do aparelho")}
             if(state=="loading"||busy)LinearProgressIndicator(Modifier.fillMaxWidth())
