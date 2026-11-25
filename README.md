@@ -203,3 +203,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.32-dev
 - PiP explícito via botão em vídeo normal e tela cheia, usando a mesma sessão Media3 e renderização isolada no modo flutuante; preserva player aberto ao voltar. Depende de suporte/permissão do Android. Cores dinâmicas extraídas de miniatura local/remota, com fundo escuro, acentos Aurora Neon fixos e transição de 500ms. Sem mudanças de catálogo, autenticação ou dados. Build e testes físicos pendentes.
+
+## 0.9.33-dev
+- Paradas permanecem no NERO: reproduz faixa pelo ID original e fila das posições disponíveis; botão externo substituído por explicação interna da fonte. Perfil do artista com avatar e descrição fornecidos pelo perfil correspondente no catálogo, busca por nome exato único e cache de 15 minutos; sem biografia inventada, sem capa de álbum apresentada como retrato, sem ouvintes mensais inventados. Página completa acessível a partir do player e pesquisa, com álbuns atribuídos ao artista e faixas. Builds e teste real pendentes.

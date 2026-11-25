@@ -37,7 +37,6 @@ import java.net.URL
 
 internal data class ChartSong(val rank:Int,val id:String,val title:String,val artist:String,val artwork:String?,val officialUrl:String?)
 internal data class ChartSnapshot(val songs:List<ChartSong>,val fetchedAt:Long,val sourceUpdated:String)
-private const val chartPage="https://music.youtube.com/playlist?list=PL4fGSI1pDJn7rGBE8kEC0CqTa1nMh9AKB"
 internal object DigitalCharts{
     private val mutex=Mutex()
     private var last:ChartSnapshot?=null
@@ -52,7 +51,7 @@ internal object DigitalCharts{
     }
 }
 @Composable
-internal fun DigitalChartsShelf(onSearch:(String)->Unit){
+internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:(List<androidx.media3.common.MediaItem>,Int)->Unit){
     val context=LocalContext.current
     val lifecycle=(context as? LifecycleOwner)?.lifecycle
     var snapshot by remember{mutableStateOf<ChartSnapshot?>(null)}
@@ -60,6 +59,8 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
     var busy by remember{mutableStateOf(true)}
     var revision by remember{mutableIntStateOf(0)}
     var expanded by remember{mutableStateOf(false)}
+    var showSource by remember{mutableStateOf(false)}
+    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre as paradas")},text={Text("Ranking semanal do Brasil obtido do YouTube Music Global Charts. A ordem é a da fonte, não uma medição de reproduções do NERO. A lista permanece dentro do aplicativo.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
     LaunchedEffect(lifecycle,revision){
         var force=revision>0
         suspend fun update(){
@@ -83,10 +84,16 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Text(if(snapshot==null)"Parada temporariamente indisponível." else "Falha na atualização. Exibindo a última consulta.",fontSize=12.sp,color=Color.LightGray)
         val songs=snapshot?.songs.orEmpty()
+        fun playSong(song:ChartSong){
+            if(!canPlay||!NativeMusicCatalog.enabled){onSearch(song.title+" "+song.artist);return}
+            val rows=songs.filter{Regex("[A-Za-z0-9_-]{11}").matches(it.id)}
+            val index=rows.indexOfFirst{it.id==song.id}
+            if(index>=0)onQueue(rows.map{NativeMusicHit(it.id,it.title,it.artist,0L).queueItem()}.withOrigin(PlaybackOrigin("chart","Top Brasil","")),index)
+        }
         if(songs.isNotEmpty()){
             LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 items(songs.take(10),key={it.id}){song->
-                    Card(onClick={onSearch(song.title+" "+song.artist)},modifier=Modifier.width(144.dp)){
+                    Card(onClick={playSong(song)},modifier=Modifier.width(144.dp)){
                         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center){
                                 Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
@@ -101,7 +108,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
             }
             TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Recolher parada" else "Ver "+songs.size+" posições disponíveis")}
             if(expanded)for(song in songs){
-                Card(onClick={onSearch(song.title+" "+song.artist)},modifier=Modifier.fillMaxWidth()){
+                Card(onClick={playSong(song)},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
                         Text(song.rank.toString(),modifier=Modifier.width(36.dp),color=Color(0xFF39FF14),fontWeight=FontWeight.Bold)
                         Column(Modifier.weight(1f)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(song.artist,fontSize=12.sp,color=Color.LightGray)}
@@ -109,7 +116,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
                 }
             }
         }
-        TextButton(onClick={openBrowser(context,Uri.parse(chartPage))}){Text("Consultar ranking original")}
-        Text("Ranking semanal do YouTube Music Global Charts. Toque em uma faixa para buscar no NERO.",fontSize=11.sp,color=Color.LightGray)
+        TextButton(onClick={showSource=true}){Text("Sobre o ranking")}
+        Text("Top Brasil · Toque em uma faixa para ouvir no NERO.",fontSize=11.sp,color=Color.LightGray)
     }
 }

@@ -22,7 +22,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
 internal data class PlaybackOrigin(val kind:String,val name:String,val id:String,val artist:String="",val cover:String?=null){
-    val caption:String get()=when(kind){"album"->"Tocando do álbum";"playlist","local_playlist","imported","favorites"->"Tocando da playlist";"search"->"Tocando da pesquisa";"related"->"Músicas relacionadas";else->"Reproduzindo"}
+    val caption:String get()=when(kind){"album"->"Tocando do álbum";"playlist","local_playlist","imported","favorites"->"Tocando da playlist";"search"->"Tocando da pesquisa";"chart"->"Tocando das paradas";"artist"->"Tocando do artista";"related"->"Músicas relacionadas";else->"Reproduzindo"}
     fun album():NativeCollection?{
         if(kind!="album")return null
         val u=Uri.parse(id)
@@ -117,13 +117,7 @@ internal fun PlayerContextShelf(ref:OnlineRef?,artist:String,origin:PlaybackOrig
             }
         }
     }
-    if(artist.isNotBlank())Card(onClick={onArtist(artist)},modifier=Modifier.fillMaxWidth()){
-        Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
-            Icon(Icons.Default.Person,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(40.dp))
-            Column(Modifier.weight(1f).padding(start=12.dp)){Text("Conheça o artista",fontSize=13.sp,color=Color.LightGray);Text(artist,fontWeight=FontWeight.Bold,fontSize=18.sp,maxLines=2,overflow=TextOverflow.Ellipsis)}
-            Icon(Icons.Default.ChevronRight,"Explorar artista")
-        }
-    }
+    if(artist.isNotBlank())ArtistProfileCard(artist,onOpen={onArtist(artist)})
 }
 @Composable
 private fun PlayerRelatedRows(rows:List<NativeMusicHit>,canPlay:Boolean,onPlay:(NativeMusicHit)->Unit){

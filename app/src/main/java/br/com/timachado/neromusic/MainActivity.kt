@@ -181,6 +181,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var showEq by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var playerArtist by remember{mutableStateOf<String?>(null)}
     var playerAlbum by remember{mutableStateOf<NativeCollection?>(null)}
     BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud || showLyrics || showQueue) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
@@ -229,7 +230,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         }
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (playerAlbum==null && !fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
+        if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val cover=nowOpenRef?.coverUrl
                 if(cover!=null)AsyncImage(model=cover,contentDescription="Capa atual",modifier=Modifier.size(48.dp),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
@@ -254,6 +255,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             val album=playerAlbum!!
             BackHandler{playerAlbum=null;fullPlayer=true}
             key(album.url){NativeAlbumScreen(album,controller!=null,onBack={playerAlbum=null;fullPlayer=true},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerAlbum=null;fullPlayer=true})}
+        } else if(playerArtist!=null){
+            val name=playerArtist!!
+            BackHandler{playerArtist=null;fullPlayer=true}
+            key(name){NativeArtistScreen(name,emptyList(),controller!=null,onBack={playerArtist=null;fullPlayer=true},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerArtist=null;fullPlayer=true},onExplore={term->playerArtist=null;fullPlayer=false;searchSeed=term;searchAutoFocus=false;tab=1},onAlbum={playerAlbum=it})}
         } else if (showQueue) {
             QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false }, modifier = Modifier.padding(padding))
         } else if (showLyrics) {
@@ -296,11 +301,13 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 }},
                 onOriginClick={origin->when(origin.kind){
                     "album"->origin.album()?.let{playerAlbum=it}
+                    "artist"->playerArtist=origin.name
+                    "chart"->{fullPlayer=false;tab=3}
                     "playlist","local_playlist","imported"->{fullPlayer=false;tab=0;libraryPage=when(origin.kind){"playlist"->7;"local_playlist"->1;else->6};librarySelection=origin.id;libraryCreate=false}
                     "favorites"->{fullPlayer=false;tab=2}
                     "search"->{fullPlayer=false;searchSeed=origin.name;searchAutoFocus=false;tab=1}
                     else->showQueue=true
-                }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->fullPlayer=false;searchSeed=term;searchAutoFocus=false;tab=1},
+                }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->playerArtist=term},
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowId},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},

@@ -194,7 +194,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             }
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
-                DigitalChartsShelf(onSearch=onSearch)
+                DigitalChartsShelf(onSearch=onSearch,canPlay=canPlay,onQueue=onNativeQueue)
                 OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue)
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)

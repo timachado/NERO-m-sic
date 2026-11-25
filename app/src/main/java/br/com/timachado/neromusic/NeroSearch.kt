@@ -159,7 +159,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     if(selectedArtist!=null){
         key(selectedArtist){
             NativeArtistScreen(artist=selectedArtist,seed=nativeResults+moreArtist,canPlay=canPlay,onBack={artistPage=null},
-                onQueue=onNativeQueue,onExplore={term->artistPage=null;query=term;tab=SearchTab.ALL})
+                onQueue=onNativeQueue,onExplore={term->artistPage=null;query=term;tab=SearchTab.ALL},onAlbum={albumPage=it})
         }
         return
     }

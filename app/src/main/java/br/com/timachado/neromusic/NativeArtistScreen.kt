@@ -29,7 +29,10 @@ internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMu
     return if(key.isBlank())emptyList()else hits.filter{nativeArtistKey(it.artist)==key}.distinctBy{it.id}.take(30)
 }
 @Composable
-internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit,onExplore:(String)->Unit){
+internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit,onExplore:(String)->Unit,onAlbum:((NativeCollection)->Unit)?=null){
+    val profile=rememberArtistProfile(artist)
+    var albums by remember(artist){mutableStateOf(emptyList<NativeCollection>())}
+    LaunchedEffect(artist){if(NativeMusicCatalog.enabled&&artist.trim().length>=3){try{albums=NativeMusicCatalog.collections(artist,NativeCollectionKind.ALBUM).filter{nativeArtistKey(it.credit)==nativeArtistKey(artist)}.take(10)}catch(e:CancellationException){throw e}catch(_:Exception){}}}
     var songs by remember(artist){mutableStateOf(artistTracks(artist,seed))}
     var loading by remember(artist){mutableStateOf(true)}
     var failed by remember(artist){mutableStateOf(false)}
@@ -43,19 +46,26 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
         finally{loading=false}
     }
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
-    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue,index)}
+    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("artist",artist,artist)),index)}
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
         item{
             Row(verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
                 Text("Artista",fontSize=19.sp,fontWeight=FontWeight.Bold)
             }
-            Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF12313A))){
-                songs.firstOrNull()?.let{AsyncImage(model=it.thumbnail,contentDescription="Arte de uma faixa do artista",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent,Color.Black.copy(alpha=.9f)))))
-                Column(Modifier.align(Alignment.BottomStart).padding(16.dp)){
-                    Text(artist,fontSize=28.sp,fontWeight=FontWeight.Bold,color=Color.White)
-                    Text("NERO Music · faixas encontradas",fontSize=12.sp,color=Color.LightGray)
+            ArtistProfileCard(artist,profile=profile,expanded=true)
+            if(albums.isNotEmpty()){
+                Text("Álbuns e singles",fontSize=21.sp,fontWeight=FontWeight.Bold)
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                    items(albums,key={it.url}){album->
+                        Card(onClick={if(onAlbum!=null)onAlbum(album)else onExplore(album.title+" "+artist)},modifier=Modifier.width(130.dp)){
+                            Column(Modifier.padding(8.dp)){
+                                if(album.artwork!=null)AsyncImage(model=album.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
+                                else Box(Modifier.fillMaxWidth().aspectRatio(1f),contentAlignment=Alignment.Center){Icon(Icons.Default.Album,null)}
+                                Text(album.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
+                            }
+                        }
+                    }
                 }
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){

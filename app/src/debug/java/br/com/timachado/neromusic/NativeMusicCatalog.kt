@@ -18,6 +18,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
 import org.schabi.newpipe.extractor.playlist.PlaylistInfo
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.channel.ChannelInfo
 
 // Personal debug build. Publicly accessible catalog only; no account credentials.
 internal object NativeMusicCatalog{
@@ -120,6 +121,23 @@ internal object NativeMusicCatalog{
                 }
                 NativeCollection(row.url,row.name,credit,cover,kind)
             }.distinctBy{it.url}.take(20)
+        }
+    }
+    suspend fun artistProfile(artist:String):ArtistProfile? = withContext(Dispatchers.IO){
+        val name=nativeArtistKey(artist)
+        if(name.length<3)return@withContext null
+        val matches=collections(artist,NativeCollectionKind.ARTIST).filter{nativeArtistKey(it.title)==name}
+        // Do not silently choose between homonymous channels.
+        val match=matches.singleOrNull()?:return@withContext null
+        lock.withLock{
+            initialize()
+            val info=ChannelInfo.getInfo(ServiceList.YouTube,match.url)
+            if(nativeArtistKey(info.name)!=name)return@withLock null
+            val avatar=info.avatars.map{it.url}.firstOrNull{value->
+                val uri=Uri.parse(value)
+                uri.scheme=="https"&&(uri.host=="i.ytimg.com"||uri.host?.endsWith(".googleusercontent.com")==true||uri.host?.endsWith(".ggpht.com")==true)
+            }?:match.artwork
+            ArtistProfile(info.name,avatar,info.description.orEmpty().trim().take(2400))
         }
     }
     suspend fun albumTracks(album:NativeCollection):List<NativeMusicHit> = withContext(Dispatchers.IO){
