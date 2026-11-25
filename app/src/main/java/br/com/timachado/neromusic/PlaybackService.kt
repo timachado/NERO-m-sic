@@ -39,13 +39,15 @@ class PlaybackService : MediaSessionService() {
             val uri=spec.uri
             if(uri.scheme!="nero-music")spec else{
                 val id=uri.lastPathSegment.orEmpty()
-                if(!NativeMusicCatalog.enabled||uri.host!="track"||!Regex("[A-Za-z0-9_-]{11}").matches(id))throw IOException("Fonte musical indisponível")
-                val cached=synchronized(resolved){resolved[id]}
+                if(!NativeMusicCatalog.enabled||uri.host !in setOf("track","video")||!Regex("[A-Za-z0-9_-]{11}").matches(id))throw IOException("Fonte musical indisponível")
+                val video=uri.host=="video"
+                val cacheKey=(if(video)"video:"else "audio:")+id
+                val cached=synchronized(resolved){resolved[cacheKey]}
                 val now=android.os.SystemClock.elapsedRealtime()
                 val address=if(cached!=null&&now-cached.second in 0L..300000L)cached.first else try{
-                    val item=runBlocking{NativeMusicCatalog.resolve(NativeMusicHit(id,"","",0L))}
+                    val item=runBlocking{val hit=NativeMusicHit(id,"","",0L);if(video)NativeMusicCatalog.resolveVideo(hit)else NativeMusicCatalog.resolve(hit)}
                     val direct=item.localConfiguration?.uri?:throw IOException("Áudio indisponível")
-                    synchronized(resolved){resolved[id]=direct to android.os.SystemClock.elapsedRealtime()}
+                    synchronized(resolved){resolved[cacheKey]=direct to android.os.SystemClock.elapsedRealtime()}
                     direct
                 }catch(e:Exception){throw IOException("Não foi possível carregar a faixa",e)}
                 spec.withUri(address)
@@ -82,7 +84,7 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object:Player.Listener{
             override fun onPlaybackStateChanged(state:Int){
                 if(state!=Player.STATE_ENDED){autoplayJob?.cancel();return}
-                if(!NativeMusicCatalog.enabled||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
+                if(player.currentMediaItem?.isNeroVideo()==true||!NativeMusicCatalog.enabled||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
                     player.repeatMode!=Player.REPEAT_MODE_OFF||NeroSleepTimer.deadline.value!=null)return
                 val seed=player.currentMediaItem?.let(::youtubeRefFromItem)?.let(::musicHitFromRef)?:return
                 val ids=(0 until player.mediaItemCount).map{player.getMediaItemAt(it).mediaId}

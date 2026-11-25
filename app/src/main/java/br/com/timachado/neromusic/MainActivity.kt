@@ -118,6 +118,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         onDispose { active = false; MediaController.releaseFuture(future) }
     }
     var nowId by remember { mutableStateOf("") }
+    var videoMode by remember{mutableStateOf(false)}
     var nowOrigin by remember{mutableStateOf<PlaybackOrigin?>(null)}
     var nowOpenRef by remember { mutableStateOf<OnlineRef?>(null) }
     var addLocal by remember { mutableStateOf<Track?>(null) }
@@ -136,6 +137,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             val currentItem=p.currentMediaItem
             nowId = currentItem?.mediaId.orEmpty()
             nowOrigin=currentItem?.playbackOrigin()
+            videoMode=currentItem?.isNeroVideo()==true
             nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
             title = p.mediaMetadata.title?.toString().orEmpty()
             artist = p.mediaMetadata.artist?.toString().orEmpty()
@@ -248,6 +250,16 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
                 track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,mediaId=nowId,origin=nowOrigin,
+                videoPlayer=controller,videoMode=videoMode,canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
+                onVideoToggle={controller?.let{p->
+                    val item=p.currentMediaItem
+                    val index=p.currentMediaItemIndex
+                    val replacement=item?.withVideoMode(item.isNeroVideo().not())
+                    if(replacement!=null&&index>=0&&p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)){
+                        val at=p.currentPosition.coerceAtLeast(0L);val resume=p.playWhenReady
+                        p.replaceMediaItem(index,replacement);p.seekTo(index,at);p.prepare();p.playWhenReady=resume
+                    }
+                }},
                 onOriginClick={origin->when(origin.kind){
                     "album"->origin.album()?.let{playerAlbum=it}
                     "playlist","local_playlist","imported"->{fullPlayer=false;tab=0;libraryPage=when(origin.kind){"playlist"->7;"local_playlist"->1;else->6};librarySelection=origin.id;libraryCreate=false}
@@ -339,7 +351,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=true; p.setMediaItems(queue.map{it.mediaItem()}.withOrigin(origin),queue.indices.random(),0L);p.prepare();p.play() }
                     } })
             } else if(tab == 1) {
-                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,autoFocus=searchAutoFocus,onExit={tab=3},onlineFavoriteIds=onlineFavorites.getOrDefault(emptyList()).map{it.id}.toSet(),onFavorite={toggleOnline(it)},currentId=nowId,currentTitle=title,currentArtist=artist,currentCover=nowOpenRef?.coverUrl,currentPlaying=playing,onCurrentToggle={controller?.let{p->if(p.playWhenReady)p.pause()else p.play()}},onOpenPlayer={fullPlayer=true},onNativeQueue={queue,index->controller?.let{p->
+                NeroSearch(tracks=tracks,canPlay=controller!=null,initialQuery=searchSeed,autoFocus=searchAutoFocus,onExit={tab=3},onlineFavoriteIds=onlineFavorites.getOrDefault(emptyList()).map{it.id}.toSet(),onFavorite={toggleOnline(it)},currentId=nowId,currentTitle=title,currentArtist=artist,currentCover=nowOpenRef?.coverUrl,currentPlaying=playing,currentVideo=videoMode,onCurrentToggle={controller?.let{p->if(p.playWhenReady)p.pause()else p.play()}},onOpenPlayer={fullPlayer=true},onNativeQueue={queue,index->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
                 }},
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},

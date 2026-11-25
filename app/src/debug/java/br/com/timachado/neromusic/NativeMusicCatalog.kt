@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
@@ -56,6 +57,41 @@ internal object NativeMusicCatalog{
         }
     }
 
+    suspend fun searchVideos(query:String):List<NativeMusicHit> = withContext(Dispatchers.IO){
+        lock.withLock{
+            initialize()
+            val term=query.trim().take(100);require(term.length>=3)
+            val key="videos:"+term.lowercase(java.util.Locale.ROOT)
+            val now=android.os.SystemClock.elapsedRealtime()
+            searchCache[key]?.let{if(now-it.at in 0L..900000L)return@withLock it.hits}
+            val service=ServiceList.YouTube
+            val handler=service.searchQHFactory.fromQuery(term,listOf(YoutubeSearchQueryHandlerFactory.MUSIC_VIDEOS),"")
+            val rows=SearchInfo.getInfo(service,handler).relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
+                val id=idFromUrl(item.url)?:return@mapNotNull null
+                if(item.name.isBlank()||item.duration<=0)return@mapNotNull null
+                NativeMusicHit(id,item.name,item.uploaderName.orEmpty(),item.duration)
+            }.distinctBy{it.id}.take(30)
+            searchCache[key]=CachedSearch(android.os.SystemClock.elapsedRealtime(),rows)
+            if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
+            rows
+        }
+    }
+    suspend fun resolveVideo(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){
+        lock.withLock{
+            initialize()
+            require(Regex("[A-Za-z0-9_-]{11}").matches(hit.id))
+            val info=StreamInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/watch?v="+hit.id)
+            require(info.duration>0)
+            // Muxed MP4 only, for a single native media source with synchronized sound.
+            val stream=info.videoStreams.filter{stream->
+                val uri=Uri.parse(stream.content)
+                stream.isUrl&&!stream.isVideoOnly&&stream.format==MediaFormat.MPEG_4&&stream.deliveryMethod==DeliveryMethod.PROGRESSIVE_HTTP&&
+                    uri.scheme=="https"&&(uri.host=="googlevideo.com"||uri.host?.endsWith(".googlevideo.com")==true)
+            }.let{rows->rows.filter{it.height in 1..720}.maxByOrNull{it.height}?:rows.filter{it.height>0}.minByOrNull{it.height}}
+                ?:error("Vídeo compatível indisponível")
+            MediaItem.Builder().setMediaId("youtube:"+hit.id).setUri(stream.content).build()
+        }
+    }
     suspend fun suggestions(query:String):List<String> = withContext(Dispatchers.IO){
         initialize()
         val term=query.trim().take(100);require(term.length>=2)

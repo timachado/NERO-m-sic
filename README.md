@@ -194,3 +194,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.29-dev
 - Busca destaca a faixa atual por ID exato, com indicação verde e controle pausa/continuar sem recriar a fila. Toque na faixa ativa abre o player. Card Tocando agora usa estado real da sessão. Remove aba Vídeos, bloco de busca de vídeos e navegação web/embedded do fluxo de pesquisa. Mantém a reprodução musical nativa experimental, as informações da fonte/licença e os recursos existentes; não implementa vídeo nativo. Build e teste Android pendentes.
+
+## 0.9.30-dev
+- Native music video mode in debug: Clips search uses music-video catalog filter; selected clip opens Media3 PlayerView in NERO, no browser or external app. Music/video toggle for same recording preserves timeline index, position and play intent using replaceMediaItem. Audio and video use separate resolver cache keys. Video limited to compatible publicly accessible muxed MP4 (prefer <=720p); no video-only merging, no restricted stream or download, no automatic match of official video when recording differs. A source may provide static artwork or no compatible video; return to Music on failure. Video autoplay extension disabled at queue end; audio autoplay preserved. Build/device/network validation pending.

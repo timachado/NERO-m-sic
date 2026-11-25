@@ -45,7 +45,7 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},modifier:Modifier=Modifier
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},modifier:Modifier=Modifier
 ){
     val deadline by NeroSleepTimer.deadline.collectAsState()
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
@@ -91,7 +91,9 @@ internal fun ImmersivePlayer(
                     }
                 }
             }
-            if(remoteCover!=null&&track==null)AsyncImage(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
+            if(canVideo)SingleChoiceMode(videoMode=videoMode,onToggle=onVideoToggle,enabled=ready)
+            if(videoMode&&videoPlayer!=null)NativeVideoSurface(videoPlayer,Modifier.fillMaxWidth().aspectRatio(16f/9f).clip(RoundedCornerShape(14.dp)))
+            else if(remoteCover!=null&&track==null)AsyncImage(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
             else LocalArtwork(track,Modifier.size(coverSize),large=true)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
@@ -128,7 +130,7 @@ internal fun ImmersivePlayer(
             OutlinedButton(enabled=title.isNotBlank(),onClick={sharing=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar música")}
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
             if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
-            error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+            error?.let{Text(if(videoMode)"Não foi possível reproduzir o vídeo. Tente outro clipe ou volte à música." else it,color=MaterialTheme.colorScheme.error);if(videoMode)OutlinedButton(onClick=onVideoToggle){Text("Voltar para música")}}
             if(mediaId.isNotBlank()){
                 PlayerLyricsPreview(mediaId,title,artist,position,duration,track?.uri,onLyrics)
                 PlayerContextShelf(shareRef,artist,origin,ready,onOpenAlbum,onExploreArtist,onRelatedQueue)
