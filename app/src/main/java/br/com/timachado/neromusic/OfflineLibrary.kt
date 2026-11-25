@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null)
+internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0)
 internal class OfflineManager(private val context:Context){
     private val _state=MutableStateFlow(OfflineState())
     val state=_state.asStateFlow()
@@ -31,6 +31,24 @@ internal class OfflineManager(private val context:Context){
         catch(e:CancellationException){throw e}catch(_:Exception){_state.update{it.copy(notice="Não foi possível consultar os downloads.")}}
     }
     suspend fun save(track:OpenTrack){
+        if(_state.value.batchTotal>0)return
+        saveOne(track)
+    }
+    suspend fun savePlaylist(tracks:List<OpenTrack>){
+        if(_state.value.active!=null||_state.value.batchTotal>0)return
+        val rows=tracks.filter(::allowed).distinctBy{it.id}
+        if(rows.isEmpty())return
+        _state.update{it.copy(batchTotal=rows.size,batchDone=0,notice=null)}
+        try{
+            for(track in rows){
+                if(_state.value.saved.none{it==track})saveOne(track)
+                _state.update{it.copy(batchDone=it.batchDone+1)}
+            }
+            val count=rows.count{track->_state.value.saved.any{it==track}}
+            _state.update{it.copy(notice="$count de "+rows.size+" faixas disponíveis offline.")}
+        }finally{_state.update{it.copy(batchTotal=0,batchDone=0)}}
+    }
+    private suspend fun saveOne(track:OpenTrack){
         if(!allowed(track)||_state.value.active!=null)return
         _state.update{it.copy(active=track,progress=0f,notice=null)}
         try{
@@ -49,7 +67,7 @@ internal fun OfflinePlayerButton(track:OpenTrack?,local:Boolean,state:OfflineSta
     val active=track!=null&&state.active?.id==track.id
     val label=when{saved->"Baixada · ouvir offline";local->"Arquivo no aparelho";active->"Baixando "+(state.progress*100).toInt()+"%";else->"Baixar para ouvir offline"}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-        OutlinedButton(enabled=enabled&&!active&&(state.active==null||saved||track==null),onClick={
+        OutlinedButton(enabled=enabled&&!active&&((state.active==null&&state.batchTotal==0)||saved||track==null),onClick={
             if(saved)onOpen()else if(track!=null&&allowed(track))onSave(track)else onInfo()
         },modifier=Modifier.fillMaxWidth()){
             Icon(if(saved||local)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved||local)Color(0xFF39FF14)else Color(0xFF00E5FF))
@@ -91,6 +109,7 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                     }
                 }else Text("Nenhum download corresponde à busca.",color=Color.LightGray,fontSize=13.sp)
             }
+            if(state.batchTotal>0)Text("Playlist: "+state.batchDone+" de "+state.batchTotal+" verificadas",color=Color.LightGray)
             state.active?.let{track->
                 Text("Baixando "+track.title,maxLines=2)
                 LinearProgressIndicator(progress={state.progress},modifier=Modifier.fillMaxWidth())
