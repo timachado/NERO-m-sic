@@ -10,5 +10,5 @@ internal object NativeMusicCatalog{
     suspend fun artistProfile(artist:String):ArtistProfile? = null
     suspend fun albumTracks(album:NativeCollection):List<NativeMusicHit> = emptyList()
     suspend fun brazilChart():List<ChartSong> = emptyList()
-    suspend fun resolve(hit:NativeMusicHit):MediaItem = error("Fonte não disponível neste build")
+    suspend fun resolve(hit:NativeMusicHit,economical:Boolean=false):MediaItem = error("Fonte não disponível neste build")
 }
