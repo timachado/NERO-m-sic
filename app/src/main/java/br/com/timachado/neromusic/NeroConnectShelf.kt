@@ -33,6 +33,7 @@ internal fun NeroConnectShelf(){
     var checked by remember{mutableStateOf(false)}
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf("")}
+    var proofOpen by remember{mutableStateOf(false)}
     LaunchedEffect(open){
         if(open){
             busy=true
@@ -53,6 +54,7 @@ internal fun NeroConnectShelf(){
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             if(saved!=null){
                 Text("Chave pública do outro dispositivo confirmada.")
+                OutlinedButton(enabled=!busy,onClick={proofOpen=true}){Text("Verificar identidade do aparelho")}
                 OutlinedButton(enabled=!busy,onClick={
                     busy=true;scope.launch{
                         try{withContext(Dispatchers.IO){NeroConnectIdentity(context.applicationContext).revoke()};saved=null;peer="";code="";checked=false;notice="Pareamento local removido."}
@@ -99,4 +101,5 @@ internal fun NeroConnectShelf(){
             if(notice.isNotBlank())Text(notice,fontSize=12.sp)
         }
     },confirmButton={TextButton(enabled=!busy,onClick={open=false}){Text("Fechar")}})
+    if(open&&proofOpen&&saved!=null)NeroConnectProofDialog(onClose={proofOpen=false})
 }
