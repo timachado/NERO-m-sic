@@ -2,4 +2,12 @@
 
 O som da sua liberdade.
 
-Aplicativo Android da T.I. Machado. Versão 0.1.0-dev para testes de reprodução local, biblioteca, busca, favoritos e reprodução em segundo plano. Streaming, playlists personalizadas e equalizador ainda não implementados. APK de teste via GitHub Actions. Não é release comercial validada.
+Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
+
+## 0.2.0-dev
+- Biblioteca local, busca local, favoritos, Media3 e player em segundo plano.
+- Home de descoberta, gêneros, pesquisa de áudios musicais no Wikimedia Commons com filtro conservador de licença, créditos e reprodução online.
+- Busca no YouTube aberta por link no cliente oficial/navegador; não extrai áudio nem baixa vídeos.
+- Downloads do catálogo aberto no armazenamento privado do app, com metadados de licença e reprodução offline.
+- Catálogo comercial, grade de álbuns, busca YouTube interna e playlists próprias ainda pendentes.
+- APK de teste via Actions; a nova versão precisa compilar e ser validada em aparelho real.

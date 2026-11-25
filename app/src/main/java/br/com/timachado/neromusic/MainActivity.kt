@@ -115,7 +115,7 @@ private fun NeroApp() {
             delay(350)
         }
     }
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(3) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
     BackHandler(fullPlayer) { fullPlayer = false }
@@ -141,9 +141,11 @@ private fun NeroApp() {
                 IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
             NavigationBar(containerColor = Color.Black) {
+                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favoritos") })
+                NavigationBarItem(selected = tab == 4, onClick = { tab = 4 }, icon = { Icon(Icons.Default.Download, null) }, label = { Text("Offline") })
             }
         }
     }) { padding ->
@@ -160,7 +162,7 @@ private fun NeroApp() {
                 Spacer(Modifier.height(24.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis); Text(artist, color = Color.LightGray, maxLines = 1) }
-                    IconButton(onClick = { if (nowId.isNotEmpty()) toggle(nowId) }) { Icon(if (nowId in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favoritar", tint = Green) }
+                    IconButton(enabled = nowId.toLongOrNull() != null, onClick = { if (nowId.toLongOrNull() != null) toggle(nowId) }) { Icon(if (nowId in favorites) Icons.Default.Favorite else Icons.Default.FavoriteBorder, "Favoritar", tint = Green) }
                 }
                 Slider(value = if (duration > 0) (pos.toFloat()/duration).coerceIn(0f,1f) else 0f, onValueChange = { if (duration > 0) controller?.seekTo((it*duration).toLong()) }, enabled = duration > 0)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(timestamp(pos)); Text(timestamp(duration)) }
@@ -185,6 +187,11 @@ private fun NeroApp() {
             }
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)
             Spacer(Modifier.height(22.dp))
+            if (tab == 3 || tab == 4) {
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, onPlay = { item ->
+                    controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
+                })
+            } else {
             Text(when(tab) { 1 -> "Buscar músicas"; 2 -> "Favoritos"; else -> "Suas músicas" }, fontSize = 25.sp, fontWeight = FontWeight.Bold)
             if (tab == 1) OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), placeholder = { Text("Música ou artista") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) })
             if (!granted) {
@@ -208,6 +215,7 @@ private fun NeroApp() {
                         }
                     }
                 }
+            }
             }
             if (connectionError) Text("Falha na conexão com o player.", color = MaterialTheme.colorScheme.error)
             playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
