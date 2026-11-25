@@ -1,5 +1,9 @@
 package br.com.timachado.neromusic
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -36,7 +40,10 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Conta e configurações",fontSize=23.sp,fontWeight=FontWeight.Bold)}
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        Icon(Icons.Default.AccountCircle,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
+        Box(Modifier.align(Alignment.CenterHorizontally).size(88.dp),contentAlignment=Alignment.Center){
+            Icon(Icons.Default.AccountCircle,"Foto do perfil",tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.fillMaxSize())
+            user?.avatar?.let{photo->NeroArtwork(model=photo,contentDescription="Foto da conta Google",modifier=Modifier.fillMaxSize().clip(CircleShape),contentScale=ContentScale.Crop)}
+        }
         if(!NeroSupabase.configured)Text("O login Google aguarda configuração do Supabase. Sua biblioteca local permanece disponível.",color=Color.LightGray)
         else if(user==null){
             Text("Bem-vindo ao NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
@@ -47,8 +54,11 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Continuar com Google")}
         }else{
-            Text(user?.email.orEmpty(),fontSize=20.sp)
+            Text(user?.displayName?.takeIf{it.isNotBlank()}?:"Minha conta",fontSize=23.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
+            Text(user?.email.orEmpty(),fontSize=14.sp,color=Color.LightGray,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text("Conta Google conectada",color=MaterialTheme.colorScheme.primary)
+            Text("Nome e foto fornecidos pelo Google, quando disponíveis.",fontSize=12.sp,color=Color.LightGray)
+            TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://myaccount.google.com/personal-info")))notice="Não foi possível abrir a conta Google."}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Gerenciar perfil Google")}
             OutlinedButton(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
                 try{NeroSupabase.signOut(context);user=null}
                 catch(e:CancellationException){throw e}catch(_:Exception){user=null;notice="Sessão local encerrada; revogação remota não confirmada."}
