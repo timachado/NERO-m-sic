@@ -215,6 +215,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 PremiumDiscovery(onSearch=onSearch)
                 DigitalChartsShelf(onSearch=onSearch,canPlay=canPlay,onQueue=onNativeQueue)
                 NeroReplayShelf(onSearch)
+                if(BuildConfig.DEBUG)NeroConnectShelf()
                 OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue)
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
