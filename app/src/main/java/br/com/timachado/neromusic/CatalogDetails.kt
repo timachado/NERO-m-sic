@@ -27,8 +27,7 @@ internal data class AlbumEdition(val id:String,val title:String,val date:String,
 internal data class AlbumSong(val disc:Int,val number:String,val title:String,val duration:Long,val recordingId:String?=null,val artist:String="")
 
 @Composable
-internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(CatalogEntry)->Unit){
-    val context=LocalContext.current
+internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(CatalogEntry)->Unit,onSearch:(String)->Unit){
     val isAlbum=entry.kind==CatalogKind.ALBUM
     var albums by remember{mutableStateOf(emptyList<CatalogEntry>())}
     var editions by remember{mutableStateOf(emptyList<AlbumEdition>())}
@@ -73,7 +72,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             Text(entry.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             if(entry.credit.isNotBlank())Text(entry.credit,color=Color.LightGray)
             Text("MusicBrainz · metadados de avaliação",fontSize=12.sp,color=Color.LightGray)
-            OutlinedButton(onClick={if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."},modifier=Modifier.fillMaxWidth()){Text("Buscar no YouTube Music")}
+            OutlinedButton(onClick={onSearch(entry.searchText)},modifier=Modifier.fillMaxWidth()){Text("Encontrar músicas no NERO")}
         }
         if(busy||trackBusy)item{LinearProgressIndicator(Modifier.fillMaxWidth())}
         message?.let{msg->item{Text(msg,color=Color(0xFF00E5FF));TextButton(onClick={reload++}){Text("Tentar novamente")}}}
@@ -103,7 +102,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
                         if(song.duration>0)Text(String.format("%d:%02d",song.duration/60000,(song.duration/1000)%60),fontSize=12.sp,color=Color.LightGray)
                     }
                     IconButton(enabled=song.recordingId!=null,onClick={reference(song)?.let{adding=listOf(it)}}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
-                    IconButton(onClick={if(!openYouTubeMusic(context,song.title+" "+song.artist.ifBlank{entry.credit}))message="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar faixa no YouTube Music",tint=Color(0xFF00E5FF))}
+                    IconButton(onClick={onSearch(song.title+" "+song.artist.ifBlank{entry.credit})}){Icon(Icons.Default.Search,"Pesquisar faixa no NERO",tint=Color(0xFF00E5FF))}
                 }
             }
         }else{

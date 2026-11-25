@@ -204,7 +204,7 @@ internal object DevCatalog {
 }
 
 @Composable
-internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKind:CatalogKind = CatalogKind.SONG) {
+internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKind:CatalogKind = CatalogKind.SONG,onSearch:(String)->Unit) {
     val context=LocalContext.current
     var query by remember { mutableStateOf(initialQuery) }
     var kind by remember { mutableStateOf(initialKind) }
@@ -216,7 +216,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
     val currentDetail=details.lastOrNull()
     androidx.activity.compose.BackHandler(currentDetail!=null){details=details.dropLast(1)}
     if(currentDetail!=null){
-        key(currentDetail.id){CatalogDetailsScreen(currentDetail,onBack={details=details.dropLast(1)},onAlbum={details=details+it})}
+        key(currentDetail.id){CatalogDetailsScreen(currentDetail,onBack={details=details.dropLast(1)},onAlbum={details=details+it},onSearch=onSearch)}
         return
     }
     var message by remember { mutableStateOf<String?>(null) }
@@ -272,7 +272,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
                             Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                             if(entry.credit.isNotBlank())Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                         }
-                        IconButton(onClick={if(entry.kind==CatalogKind.ARTIST) details=listOf(entry) else if(!openYouTubeMusic(context,entry.searchText))message="Não foi possível abrir o YouTube Music."}){Icon(if(entry.kind==CatalogKind.ARTIST)Icons.Default.KeyboardArrowRight else Icons.Default.PlayArrow,if(entry.kind==CatalogKind.ARTIST)"Ver artista" else "Buscar no YouTube Music",tint=green)}
+                        IconButton(onClick={if(entry.kind==CatalogKind.ARTIST) details=listOf(entry) else onSearch(entry.searchText)}){Icon(if(entry.kind==CatalogKind.ARTIST)Icons.Default.KeyboardArrowRight else Icons.Default.PlayArrow,if(entry.kind==CatalogKind.ARTIST)"Ver artista" else "Buscar no NERO",tint=green)}
                     }
                 }
             }
@@ -281,7 +281,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
 }
 
 @Composable
-internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit) {
+internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit,onSearch:(String)->Unit) {
     val context=LocalContext.current
     val picks=listOf("Gilberto Gil","Queen","Marisa Monte","Daft Punk")
     var selected by remember { mutableStateOf(picks.first()) }
@@ -319,7 +319,7 @@ internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit) {
                     }
                     Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                     Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
-                    TextButton(onClick={openYouTubeMusic(context,entry.searchText)}) { Text("Ouvir",color=green) }
+                    TextButton(onClick={onSearch(entry.searchText)}) { Text("Encontrar faixas",color=green) }
                 }
             }
         }

@@ -154,11 +154,11 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
     androidx.activity.compose.BackHandler(enabled = showCatalog && !offline) { showCatalog = false }
     androidx.activity.compose.BackHandler(enabled=showReleases&&!offline){showReleases=false}
     if(showReleases&&!offline){
-        RecentReleasesScreen(onBack={showReleases=false})
+        RecentReleasesScreen(onBack={showReleases=false},onSearch=onSearch)
         return
     }
     if (showCatalog && !offline) {
-        CatalogScreen(onBack = { showCatalog = false }, initialQuery = catalogQuery, initialKind = catalogKind)
+        CatalogScreen(onBack = { showCatalog = false }, initialQuery = catalogQuery, initialKind = catalogKind,onSearch=onSearch)
         return
     }
     val scope = rememberCoroutineScope()
@@ -213,7 +213,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                     }
                 }
                 DynamicReleaseShelf(onOpen={showReleases=true},onSearch={onSearch(it)})
-                CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })
+                CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true },onSearch=onSearch)
             }
             item { PremiumGenres(onSearch=onSearch) }
 

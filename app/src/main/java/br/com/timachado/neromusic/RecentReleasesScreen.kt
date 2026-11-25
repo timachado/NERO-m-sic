@@ -29,7 +29,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 
 @Composable
-internal fun RecentReleasesScreen(onBack:()->Unit){
+internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
     val genres=listOf("Todos" to null,"Pop" to "pop","Rock" to "rock","MPB" to "mpb","Gospel" to "gospel","Sertanejo" to "sertanejo","Pagode" to "pagode","Samba" to "samba","Jazz" to "jazz","Eletrônica" to "electronic","Hip-hop" to "hip hop")
     var days by remember{mutableIntStateOf(30)}
     var genre by remember{mutableStateOf<String?>(null)}
@@ -55,7 +55,7 @@ internal fun RecentReleasesScreen(onBack:()->Unit){
         }
     }
     selected?.let{entry->
-        key(entry.id){CatalogDetailsScreen(entry,onBack={selected=null},onAlbum={selected=it})}
+        key(entry.id){CatalogDetailsScreen(entry,onBack={selected=null},onAlbum={selected=it},onSearch=onSearch)}
         return
     }
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
