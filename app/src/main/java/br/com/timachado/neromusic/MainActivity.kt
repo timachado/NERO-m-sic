@@ -125,11 +125,45 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     }
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var connectionError by remember { mutableStateOf(false) }
-    DisposableEffect(Unit) {
-        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+    var connectionEpoch by remember { mutableIntStateOf(0) }
+    var retries by remember { mutableIntStateOf(0) }
+    val lifecycle=(context as? androidx.lifecycle.LifecycleOwner)?.lifecycle
+    var foreground by remember(lifecycle){mutableStateOf(lifecycle?.currentState?.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)?:true)}
+    DisposableEffect(lifecycle){
+        val observer=androidx.lifecycle.LifecycleEventObserver{source,_->
+            foreground=source.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        }
+        lifecycle?.addObserver(observer)
+        onDispose{lifecycle?.removeObserver(observer)}
+    }
+    DisposableEffect(context,connectionEpoch) {
         var active = true
-        future.addListener({ if (active) try { controller = future.get() } catch (_: Exception) { connectionError = true } }, ContextCompat.getMainExecutor(context))
+        connectionError=false
+        val listener=object:MediaController.Listener{
+            override fun onDisconnected(disconnected:MediaController){
+                if(active){
+                    controller=null
+                    connectionError=true
+                }
+            }
+        }
+        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
+            .setListener(listener).buildAsync()
+        future.addListener({
+            if(active)try{
+                val connected=future.get()
+                if(connected.isConnected){controller=connected;connectionError=false;retries=0}
+                else{controller=null;connectionError=true}
+            }catch(_:Exception){controller=null;connectionError=true}
+        }, ContextCompat.getMainExecutor(context))
         onDispose { active = false; MediaController.releaseFuture(future) }
+    }
+    LaunchedEffect(connectionError,foreground,connectionEpoch){
+        if(connectionError&&foreground&&retries<3){
+            delay(400L*(retries+1))
+            retries++
+            connectionEpoch++
+        }
     }
     var nowId by remember { mutableStateOf("") }
     var videoMode by remember{mutableStateOf(false)}
@@ -148,8 +182,9 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var playbackError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(controller) {
-        val p = controller ?: return@LaunchedEffect
-        while (true) {
+        val p = controller
+        if(p==null){nowId="";nowOpenRef=null;nowOrigin=null;title="";artist="";playing=false;buffering=false;pos=0L;duration=0L;videoMode=false;playbackError=null;return@LaunchedEffect}
+        while (p.isConnected) {
             val currentItem=p.currentMediaItem
             nowId = currentItem?.mediaId.orEmpty()
             nowOrigin=currentItem?.playbackOrigin()
@@ -441,7 +476,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 }
             }
             }
-            if (connectionError) Text("Falha na conexão com o player.", color = MaterialTheme.colorScheme.error)
+            if (connectionError) {
+                Text("Falha na conexão com o player.", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick={retries=0;connectionEpoch++}){Text("Reconectar player")}
+            }
             playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
