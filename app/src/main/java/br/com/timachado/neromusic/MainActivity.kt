@@ -180,14 +180,12 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     LaunchedEffect(Unit){offlineManager.reload()}
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
-    var showPlans by remember { mutableStateOf(false) }
-    var showCloud by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
     var playerArtist by remember{mutableStateOf<String?>(null)}
     var playerAlbum by remember{mutableStateOf<NativeCollection?>(null)}
-    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud || showLyrics || showQueue) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
+    BackHandler(fullPlayer || showAccount || showEq || showLyrics || showQueue) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showEq) showEq = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true) || t.album.contains(query,true) || t.genre.contains(query,true)) }
@@ -222,19 +220,19 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             ReceiveShareDialog(initialLink=link,onClose=onShareClosed,onImport={incoming->
                 val next=onlineLists(context)+OnlineList(java.util.UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
                 saveOnlineLists(context,next)
-                fullPlayer=false;showAccount=false;showPlans=false;showEq=false;showCloud=false;showLyrics=false;showQueue=false
+                fullPlayer=false;showAccount=false;showEq=false;showLyrics=false;showQueue=false
                 tab=0;libraryPage=7;librarySelection=next.last().id;onShareClosed()
             },onPlay=if(controller!=null){incoming:SharedPlaylist->
                 val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem()else null}
                 if(queue.isNotEmpty()){controller?.let{player->player.shuffleModeEnabled=false;player.repeatMode=Player.REPEAT_MODE_OFF;player.setMediaItems(queue,0,0L);player.prepare();player.play()};fullPlayer=true}
                 else{val first=incoming.songs.first();searchSeed=first.title+" "+first.artist;searchAutoFocus=false;tab=1;fullPlayer=false}
-                showAccount=false;showPlans=false;showEq=false;showCloud=false;showLyrics=false;showQueue=false
+                showAccount=false;showEq=false;showLyrics=false;showQueue=false
                 onShareClosed()
             }else null)
         }
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
+        if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showEq && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val cover=nowOpenRef?.coverUrl
                 if(cover!=null)AsyncImage(model=cover,contentDescription="Capa atual",modifier=Modifier.size(48.dp),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
@@ -248,10 +246,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 0, onClick = { tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 1, onClick = { if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favoritos") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 4, onClick = { tab = 4 }, icon = { Icon(Icons.Default.Download, null) }, label = { Text("Offline") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab in setOf(0,2,4), onClick = { tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
             }
         }
     }) { padding ->
@@ -270,14 +266,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
                 onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else { if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play() } } },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
-        } else if (showCloud && BuildConfig.DEBUG) {
-            CloudLibraryScreen(tracks = tracks, favoriteIds = favorites, granted = granted,
-                onMergeFavorites = { ids -> favorites = favorites + ids; prefs.edit().putStringSet("favorites", favorites).apply() },
-                onBack = { showCloud = false }, modifier = Modifier.padding(padding))
         } else if (showEq && BuildConfig.DEBUG) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
-        } else if (showPlans) {
-            PlansScreen(onBack = { showPlans = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
             NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding),onRestored={onlineFavorites=runCatching{readOnlineFavorites(context)}})
         } else if (fullPlayer) {
@@ -371,7 +361,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }
             if(tab==0&&libraryPage==8){
                 PlaylistHub(tracks=tracks,onlineFavoriteCount=onlineFavorites.getOrDefault(emptyList()).size,localFavoriteCount=favorites.size,
-                    onAccount={showAccount=true},onFavorites={tab=2},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
+                    onAccount={showAccount=true},onFavorites={tab=2},onDownloads={tab=4},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
                     onSearch={searchSeed="";searchAutoFocus=true;tab=1},onCreate={libraryPage=7;librarySelection=null;libraryCreate=true})
             }else if(tab == 0 && libraryPage == 7) {
                 OnlineListsScreen(tracks=tracks,canPlay=controller!=null,offlineState=offlineState,onDownloadPlaylist={rows->radioScope.launch{offlineManager.savePlaylist(rows)}},initialSelection=librarySelection,createOnOpen=libraryCreate,onCreated={libraryCreate=false},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
@@ -403,11 +393,13 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     onPlay={track->controller?.let{p->p.setMediaItem(track.mediaItem());p.prepare();p.play()}},
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
             } else if(tab==2){
+                BackHandler{tab=0;libraryPage=8;librarySelection=null}
                 FavoritesScreen(offlineState=offlineState,onNativeSave={hit->radioScope.launch{offlineManager.saveNative(hit)}},onOpenSave={track->radioScope.launch{offlineManager.save(track)}},onOfflineOpen={tab=4},localTracks=filtered,online=onlineFavorites.getOrDefault(emptyList()),readError=onlineFavorites.isFailure,canPlay=controller!=null,
                     onLocalRemove={toggle(it.id.toString())},onOnlineRemove={toggleOnline(it)},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onQueue={queue,index->controller?.let{p->
                         if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue.withOrigin(PlaybackOrigin("favorites","Músicas curtidas","")),index,0L);p.prepare();p.play()}
                     }})
             } else if(tab==4){
+                BackHandler{tab=0;libraryPage=8;librarySelection=null}
                 LaunchedEffect(Unit){offlineManager.reload()}
                 OfflineLibrary(offlineState,canPlay=controller!=null,onWifiChange=offlineManager::setWifiOnly,onQualityChange=offlineManager::setEconomical,onRemove={id->if(controller?.let{p->(0 until p.mediaItemCount).any{p.getMediaItemAt(it).mediaId==id}}==true)offlineManager.notify("Retire a música da fila antes de remover o download.")else radioScope.launch{offlineManager.remove(id)}},onBrowse={searchOpenAudio=false;searchSeed="";searchAutoFocus=true;tab=1},onPlay={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}})
             } else if (tab == 3) {
