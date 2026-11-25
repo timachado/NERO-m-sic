@@ -17,9 +17,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
+internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favoriteCount:Int=0,autoplay:Boolean=false,onAutoplay:()->Unit={},onLibrary:()->Unit={},onDownloads:()->Unit={},onHistory:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
+    val followed=rememberFollowedArtists()
+    val albums=rememberSavedAlbums()
+    val hidden=rememberHiddenSongs()
     var user by remember{mutableStateOf<NeroSession?>(null)}
     var busy by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
@@ -28,9 +31,11 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
         catch(e:CancellationException){throw e}catch(_:Exception){}
         finally{busy=false}
     }
-    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Minha conta",fontSize=24.sp,fontWeight=FontWeight.Bold)}
-        Icon(Icons.Default.AccountCircle,null,tint=Color(0xFF00E5FF),modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Conta e configurações",fontSize=23.sp,fontWeight=FontWeight.Bold)}
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+        Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Icon(Icons.Default.AccountCircle,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
         if(!NeroSupabase.configured)Text("O login Google aguarda configuração do Supabase. Sua biblioteca local permanece disponível.",color=Color.LightGray)
         else if(user==null){
             Text("Bem-vindo ao NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
@@ -42,14 +47,33 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier){
             }},modifier=Modifier.fillMaxWidth()){Text("Continuar com Google")}
         }else{
             Text(user?.email.orEmpty(),fontSize=20.sp)
-            Text("Sessão Google · Supabase",color=Color(0xFF39FF14))
+            Text("Conta Google conectada",color=MaterialTheme.colorScheme.primary)
             OutlinedButton(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
                 try{NeroSupabase.signOut(context);user=null}
                 catch(e:CancellationException){throw e}catch(_:Exception){user=null;notice="Sessão local encerrada; revogação remota não confirmada."}
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
-        Text("Suas playlists e favoritos existentes continuam no aparelho.",color=Color.LightGray)
+        Text("Suas playlists e favoritos continuam neste aparelho. A conta não sincroniza a biblioteca entre dispositivos.",color=Color.LightGray,fontSize=12.sp)
+        }
+        }
+        Text("Sua biblioteca",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+            Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+                Text("$favoriteCount músicas curtidas · ${followed.size} artistas · ${albums.size} álbuns",color=Color.LightGray,fontSize=13.sp)
+                TextButton(onClick=onLibrary){Icon(Icons.Default.LibraryMusic,null);Spacer(Modifier.width(8.dp));Text("Abrir biblioteca")}
+                TextButton(onClick=onDownloads){Icon(Icons.Default.Download,null);Spacer(Modifier.width(8.dp));Text("Downloads")}
+                TextButton(onClick=onHistory){Icon(Icons.Default.History,null);Spacer(Modifier.width(8.dp));Text("Histórico de reprodução")}
+            }
+        }
+        Text("Reprodução",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+            Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Reprodução automática");Text("Continuar com músicas semelhantes ao terminar a fila.",fontSize=12.sp,color=Color.LightGray)};Switch(checked=autoplay,onCheckedChange={onAutoplay()})}
+        }
+        Text("Privacidade e suporte",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Text("Preferências musicais armazenadas localmente. ${hidden.size} músicas ocultadas das recomendações.",fontSize=13.sp,color=Color.LightGray)
+        TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://timachado.ifree.page")))notice="Não foi possível abrir o site."}){Icon(Icons.Default.Language,null);Spacer(Modifier.width(8.dp));Text("Site e suporte T.I. Machado")}
+        Text("NERO Music · "+BuildConfig.VERSION_NAME,fontSize=12.sp,color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         notice?.let{Text(it,color=Color.LightGray)}
     }
