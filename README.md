@@ -161,3 +161,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.18-dev
 - Histórico online em Ouça novamente; mix sob demanda com até três artistas do histórico e favoritos, sem transmitir arquivo de histórico. Rádio online por consulta ao artista atual e exclusão de IDs repetidos. Autoplay online opcional (desligado por padrão) no menu do player: ao terminar a fila e sem repeat ou temporizador ativo, busca até dez faixas adicionais, evita IDs do histórico e respeita mudanças de fila e pausa. Não é recomendação oficial Spotify nem ranking; baseada em buscas. Testes de compilação e reprodução física pendentes.
+
+## 0.9.19-dev
+- Consulta de letras LRCLIB ao abrir a tela, apenas debug de uso pessoal, com prioridade para arquivo importado e letra incorporada. Correspondência estrita de título, artista e duração (±2 s), prefere LRC sincronizado, sem persistir conteúdo remoto. Envia título/artista da faixa consultada, sem áudio ou histórico. Erros de acesso e ausência tratados, importação mantida. Disponibilidade e direitos de conteúdo não garantidos pela API; sem chave incorporada, sem ativação comercial. API pode exigir credencial conforme configuração vigente. Testes unitários de correspondência adicionados. Build e teste de rede/dispositivo pendentes. Docs https://lrclib.net/docs.

@@ -76,6 +76,8 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
     var source by remember(key){mutableStateOf<String?>(null)}
     var loading by remember(key,localUri){mutableStateOf(true)}
     var importRevision by remember(key){mutableIntStateOf(0)}
+    var onlineRevision by remember(key){mutableIntStateOf(0)}
+    var onlineNotice by remember(key){mutableStateOf<String?>(null)}
     var notice by remember(key){mutableStateOf<String?>(null)}
     var pendingKey by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
@@ -110,6 +112,22 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             lines=result.first;source=result.second
         } finally {loading=false}
     }
+    val durationSeconds=(duration+500L)/1000L
+    LaunchedEffect(key,durationSeconds,loading,importRevision,onlineRevision){
+        if(loading||lines.isNotEmpty()||durationSeconds<=0||title.isBlank()||artist.isBlank()||!BuildConfig.DEBUG)return@LaunchedEffect
+        onlineNotice="Buscando letra online…"
+        try{
+            val result=OnlineLyrics.lookup(title,artist,durationSeconds)
+            if(result!=null&&currentKey==key&&lines.isEmpty()){
+                val parsed=parseLyrics(result.text)
+                if(parsed.any{it.text.isNotBlank()}){
+                    lines=parsed;source="LRCLIB · consulta online";onlineNotice=null
+                }else onlineNotice="Nenhuma letra compatível encontrada."
+            }else onlineNotice="Nenhuma letra compatível encontrada."
+        }catch(e:CancellationException){throw e}
+        catch(e:LyricsAuthException){onlineNotice="O serviço de letras exige ativação de acesso."}
+        catch(_:Exception){onlineNotice="Serviço de letras temporariamente indisponível."}
+    }
     val synced=lines.firstOrNull()?.at!=null
     val active=if(synced)lines.indexOfLast{(it.at?:Long.MAX_VALUE)<=position}else -1
     val state=rememberLazyListState()
@@ -124,6 +142,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         Text(artist,color=Color.LightGray)
         Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=Color(0xFF00E5FF),fontSize=12.sp)
         source?.let{Text(it,color=Color.LightGray,fontSize=11.sp)}
+        onlineNotice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
         notice?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         if(loading){
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -132,7 +151,8 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             Spacer(Modifier.weight(1f))
         }else if(lines.isEmpty()){
             Spacer(Modifier.weight(1f))
-            Text("Nenhuma letra incorporada compatível foi encontrada. Importe um LRC com tempos ou TXT autorizado. A busca online ainda não está integrada.",color=Color.LightGray)
+            Text("Nenhuma letra disponível no momento. Você também pode importar um LRC com tempos ou TXT autorizado.",color=Color.LightGray)
+            if(BuildConfig.DEBUG)TextButton(enabled=durationSeconds>0&&onlineNotice!="Buscando letra online…",onClick={onlineRevision++}){Text("Buscar letra novamente")}
             Button(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
             Spacer(Modifier.weight(1f))
         }else LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){
