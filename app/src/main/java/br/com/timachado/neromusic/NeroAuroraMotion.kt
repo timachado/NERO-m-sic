@@ -11,6 +11,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -39,7 +41,15 @@ internal fun NeroAuroraBackdrop(tone:Color,playing:Boolean,modifier:Modifier=Mod
         val radius=size.width*.82f
         drawRect(Brush.verticalGradient(listOf(tone,Color(0xFF071619),Color.Black)))
         drawCircle(Brush.radialGradient(listOf(Color(0xFF00E5FF).copy(alpha=.15f),Color.Transparent),center=Offset(size.width*(.13f+.17f*p),size.height*.32f),radius=radius),radius=radius,center=Offset(size.width*(.13f+.17f*p),size.height*.32f))
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF39FF14).copy(alpha=.13f),Color.Transparent),center=Offset(size.width*(.9f-.14f*p),size.height*.53f),radius=radius),radius=radius,center=Offset(size.width*(.9f-.14f*p),size.height*.53f))
+        drawCircle(Brush.radialGradient(listOf(Color(0xFF39FF14).copy(alpha=.21f),Color.Transparent),center=Offset(size.width*(.9f-.14f*p),size.height*.53f),radius=radius),radius=radius,center=Offset(size.width*(.9f-.14f*p),size.height*.53f))
+        val w=size.width;val h=size.height
+        for(i in 0..1){
+            val y=h*(if(i==0).27f else .88f);val drift=(p-.5f)*h*.035f
+            val path=Path().apply{moveTo(-w*.12f,y+h*.13f);cubicTo(w*.22f,y-h*.14f+drift,w*.59f,y+h*.16f-drift,w*1.12f,y-h*.09f)}
+            val brush=Brush.horizontalGradient(listOf(Color.Transparent,if(i==0)Color(0xFF00E5FF) else Color(0xFF39FF14),Color.Transparent))
+            for(j in 5 downTo 1){drawPath(path,brush,alpha=.025f,style=Stroke(width=j*10.dp.toPx()))}
+            drawPath(path,brush,alpha=.24f,style=Stroke(width=2.dp.toPx()))
+        }
     }
 }
 
