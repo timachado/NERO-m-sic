@@ -143,3 +143,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.12-dev
 - Pesquisa com resultado principal, artistas encontrados nas faixas, carrossel de músicas adicionais do primeiro artista quando disponível e navegação por toque. Gêneros da home e busca ganham miniaturas reais de faixas representativas do catálogo, com gradiente e fallback. Cache de busca de 15 minutos (até 32 consultas) reduz requisições. As sugestões são derivadas de resultados, não rankings oficiais nem artistas similares confirmados. Não substitui o provedor de metadados MusicBrainz por Spotify; ainda requer avaliação de integração. Compilação e testes físicos pendentes.
+
+## 0.9.13-dev
+- Paradas digitais Brasil: integração candidata com feed público de marketing Apple Music (50 músicas mais tocadas), posição original, capas, Top 10 em carrossel, expansão e busca interna por título/artista. Fonte indicada e link oficial. Consulta ao abrir e a cada hora quando tela ativa, cache em memória, atualização manual, erro sem dados fictícios. Endpoint não validado ao vivo durante implementação; teste Android pendente. Não é ranking Spotify/YouTube ou multicanal. Sem serviço novo.

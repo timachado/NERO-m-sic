@@ -1,0 +1,139 @@
+package br.com.timachado.neromusic
+
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+internal data class ChartSong(val rank:Int,val id:String,val title:String,val artist:String,val artwork:String?,val officialUrl:String?)
+internal data class ChartSnapshot(val songs:List<ChartSong>,val fetchedAt:Long,val sourceUpdated:String)
+private const val chartFeed="https://rss.applemarketingtools.com/api/v2/br/music/most-played/50/songs.json"
+private const val chartPage="https://music.apple.com/br/playlist/top-100-brasil/pl.11ac7cc7d09741c5822e8c66e5c7edbb"
+
+internal object DigitalCharts{
+    private val mutex=Mutex()
+    private var last:ChartSnapshot?=null
+    suspend fun brazil(force:Boolean=false):ChartSnapshot=withContext(Dispatchers.IO){
+        mutex.withLock{
+            val now=System.currentTimeMillis()
+            last?.let{if(!force&&now-it.fetchedAt in 0L..3600000L)return@withLock it}
+            val c=URL(chartFeed).openConnection() as HttpURLConnection
+            c.connectTimeout=12000;c.readTimeout=15000;c.instanceFollowRedirects=false
+            c.setRequestProperty("Accept","application/json")
+            try{
+                check(c.responseCode==200)
+                val bytes=c.inputStream.use{input->
+                    val out=java.io.ByteArrayOutputStream();val buffer=ByteArray(8192)
+                    while(true){val count=input.read(buffer);if(count<0)break;require(out.size()+count<=1024*1024);out.write(buffer,0,count)}
+                    out.toByteArray()
+                }
+                val feed=JSONObject(bytes.toString(Charsets.UTF_8)).getJSONObject("feed")
+                val rows=feed.getJSONArray("results")
+                val songs=(0 until minOf(rows.length(),50)).mapNotNull{i->
+                    val row=rows.optJSONObject(i)?:return@mapNotNull null
+                    val id=row.optString("id");val title=row.optString("name");val artist=row.optString("artistName")
+                    if(id.isBlank()||title.isBlank()||artist.isBlank())return@mapNotNull null
+                    val art=row.optString("artworkUrl100").takeIf{value->
+                        val uri=Uri.parse(value);uri.scheme=="https"&&(uri.host=="mzstatic.com"||uri.host?.endsWith(".mzstatic.com")==true)
+                    }
+                    val link=row.optString("url").takeIf{value->val uri=Uri.parse(value);uri.scheme=="https"&&uri.host=="music.apple.com"}
+                    ChartSong(i+1,id,title,artist,art,link)
+                }.distinctBy{it.id}
+                check(songs.isNotEmpty())
+                ChartSnapshot(songs,System.currentTimeMillis(),feed.optString("updated")).also{last=it}
+            }finally{c.disconnect()}
+        }
+    }
+}
+@Composable
+internal fun DigitalChartsShelf(onSearch:(String)->Unit){
+    val context=LocalContext.current
+    val lifecycle=(context as? LifecycleOwner)?.lifecycle
+    var snapshot by remember{mutableStateOf<ChartSnapshot?>(null)}
+    var error by remember{mutableStateOf(false)}
+    var busy by remember{mutableStateOf(true)}
+    var revision by remember{mutableIntStateOf(0)}
+    var expanded by remember{mutableStateOf(false)}
+    LaunchedEffect(lifecycle,revision){
+        var force=revision>0
+        suspend fun update(){
+            busy=true;error=false
+            try{snapshot=DigitalCharts.brazil(force)}
+            catch(e:CancellationException){throw e}
+            catch(_:Exception){error=true}
+            finally{busy=false;force=false}
+        }
+        if(lifecycle==null)update()else lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){
+            while(true){update();delay(3600000L)}
+        }
+    }
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(7.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            Text("Paradas digitais",fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            IconButton(enabled=!busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar parada")}
+        }
+        Text("Brasil · mais tocadas no Apple Music",fontSize=12.sp,color=Color.LightGray)
+        snapshot?.let{data->Text("Consultado: "+java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT,java.text.DateFormat.SHORT).format(java.util.Date(data.fetchedAt)),fontSize=11.sp,color=Color.LightGray)}
+        if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(error)Text(if(snapshot==null)"Parada temporariamente indisponível." else "Falha na atualização. Exibindo a última consulta.",fontSize=12.sp,color=Color.LightGray)
+        val songs=snapshot?.songs.orEmpty()
+        if(songs.isNotEmpty()){
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                items(songs.take(10),key={it.id}){song->
+                    Card(onClick={onSearch(song.title+" "+song.artist)},modifier=Modifier.width(144.dp)){
+                        Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center){
+                                Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
+                                song.artwork?.let{AsyncImage(model=it,contentDescription="Capa de "+song.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
+                                Text("#"+song.rank,modifier=Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha=.8f),RoundedCornerShape(bottomEnd=8.dp)).padding(7.dp),fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+                            }
+                            Text(song.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
+                            Text(song.artist,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
+                        }
+                    }
+                }
+            }
+            TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Recolher parada" else "Ver todas as "+songs.size+" posições")}
+            if(expanded)for(song in songs){
+                Card(onClick={onSearch(song.title+" "+song.artist)},modifier=Modifier.fillMaxWidth()){
+                    Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
+                        Text(song.rank.toString(),modifier=Modifier.width(36.dp),color=Color(0xFF39FF14),fontWeight=FontWeight.Bold)
+                        Column(Modifier.weight(1f)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(song.artist,fontSize=12.sp,color=Color.LightGray)}
+                    }
+                }
+            }
+        }
+        TextButton(onClick={openBrowser(context,Uri.parse(chartPage))}){Text("Fonte oficial: Apple Music")}
+        Text("Toque em uma faixa para buscar no NERO. A posição é da fonte indicada, não do Spotify.",fontSize=11.sp,color=Color.LightGray)
+    }
+}
