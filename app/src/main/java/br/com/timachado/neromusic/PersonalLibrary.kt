@@ -160,6 +160,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                 }
                 Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.Center){PlaylistArtwork(queue,Modifier.widthIn(max=210.dp).fillMaxWidth().aspectRatio(1f))}
                 Text("${selected.ids.size} músicas · ${queue.size} disponíveis · "+playlistDuration(queue),color=Color.LightGray,fontSize=13.sp)
+                OutlinedButton(enabled=queue.isNotEmpty(),onClick={sharing=SharedPlaylist(selected.name,queue.map{SharedSong(it.title,it.artist)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 if(!granted) TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")}
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     Button(enabled=canPlay && queue.isNotEmpty(),onClick={onPlay(queue,0)},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}

@@ -159,6 +159,8 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
     var linkQuery by remember{mutableStateOf("")}
     var choice by remember{mutableStateOf<Track?>(null)}
     var missingOnly by remember{mutableStateOf(false)}
+    var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
+    sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
     val current=lists.firstOrNull{it.id==selected}
     val matchedEntries=remember(current,index,trackByFingerprint,linkRevision){
         current?.items?.mapIndexedNotNull{i,item->
@@ -266,6 +268,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                 }
                 Text("A fila inclui somente os arquivos locais correspondentes; os demais itens permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
                 Text("As faixas sem correspondência permanecem na lista. Importar não transfere o áudio nem a assinatura Spotify.",color=Color.LightGray,fontSize=12.sp)
+                OutlinedButton(enabled=current.items.isNotEmpty(),onClick={sharing=SharedPlaylist(current.name,current.items.map{SharedSong(it.title,it.artist,publicLink=spotifyLink(it.uri))})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 FilterChip(selected=missingOnly,onClick={missingOnly=!missingOnly},label={Text("Mostrar apenas faixas faltantes")})
             }
         }

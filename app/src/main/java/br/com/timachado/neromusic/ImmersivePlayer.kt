@@ -43,12 +43,14 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    modifier:Modifier=Modifier
+    shareRef:OnlineRef?=null,modifier:Modifier=Modifier
 ){
     val deadline by NeroSleepTimer.deadline.collectAsState()
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
     var showTimer by remember{mutableStateOf(false)}
     var showMore by remember{mutableStateOf(false)}
+    var sharing by remember(title,artist){mutableStateOf(false)}
+    if(sharing)TrackShareDialog(title,artist,shareRef,remoteCover,onClose={sharing=false})
     var seekPreview by remember(title,artist,track?.id){mutableStateOf<Float?>(null)}
     LaunchedEffect(deadline){
         val end=deadline?:return@LaunchedEffect
@@ -77,6 +79,7 @@ internal fun ImmersivePlayer(
                 Box{
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                     DropdownMenu(expanded=showMore,onDismissRequest={showMore=false}){
+                        DropdownMenuItem(text={Text("Compartilhar música")},enabled=title.isNotBlank(),onClick={showMore=false;sharing=true},leadingIcon={Icon(Icons.Default.Share,null)})
                         DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
@@ -120,6 +123,7 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onRepeat,enabled=ready){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
                 if(BuildConfig.DEBUG)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
+            OutlinedButton(enabled=title.isNotBlank(),onClick={sharing=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar música")}
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
             if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
             error?.let{Text(it,color=MaterialTheme.colorScheme.error)}

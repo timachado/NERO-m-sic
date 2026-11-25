@@ -5,6 +5,10 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import android.util.AtomicFile
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -94,6 +98,27 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     var notice by remember{mutableStateOf<String?>(null)}
     val scope=rememberCoroutineScope()
     var resolving by remember{mutableStateOf<String?>(null)}
+    var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
+    var pendingImport by remember{mutableStateOf<SharedPlaylist?>(null)}
+    var importBusy by remember{mutableStateOf(false)}
+    val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
+        if(uri!=null)scope.launch{
+            importBusy=true;notice=null
+            try{pendingImport=readSharedPlaylist(context,uri)}
+            catch(e:CancellationException){throw e}catch(_:Exception){notice="Arquivo de playlist NERO inválido ou grande demais."}
+            finally{importBusy=false}
+        }
+    }
+    sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
+    pendingImport?.let{incoming->
+        AlertDialog(onDismissRequest={pendingImport=null},title={Text("Importar playlist")},text={Text(incoming.name+" · "+incoming.songs.size+" faixas. Uma nova playlist será criada; as existentes serão preservadas. Faixas sem identificador online precisam ser encontradas no NERO.")},
+            confirmButton={TextButton(onClick={
+                try{
+                    val next=onlineLists(context)+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+                    saveOnlineLists(context,next);lists=Result.success(next);notice="Playlist importada.";pendingImport=null
+                }catch(_:Exception){notice="Não foi possível importar a playlist.";pendingImport=null}
+            }){Text("Importar")}},dismissButton={TextButton(onClick={pendingImport=null}){Text("Cancelar")}})
+    }
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
     var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
     LaunchedEffect(Unit){saved=downloaded(context)}
@@ -125,7 +150,9 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO.",fontSize=12.sp,color=Color.LightGray)
+            if(active==null){OutlinedButton(enabled=!importBusy,onClick={picker.launch(arrayOf("application/json","text/plain","application/octet-stream"))},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.FileOpen,null);Spacer(Modifier.width(8.dp));Text(if(importBusy)"Lendo playlist…" else "Importar playlist compartilhada")}}
             if(active!=null){
+                OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Text("Reproduzir")}

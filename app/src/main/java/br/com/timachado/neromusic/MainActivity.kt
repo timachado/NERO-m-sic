@@ -212,7 +212,7 @@ private fun NeroApp() {
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
-                track=currentTrack,remoteCover=nowOpenRef?.coverUrl,title=title,artist=artist,position=pos,duration=duration,playing=playing,
+                track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowId},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
