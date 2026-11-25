@@ -46,7 +46,7 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},modifier:Modifier=Modifier
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier
 ){
     var fullscreen by rememberSaveable{mutableStateOf(false)}
     LaunchedEffect(videoMode){if(!videoMode)fullscreen=false}
@@ -58,6 +58,7 @@ internal fun ImmersivePlayer(
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
     var showTimer by remember{mutableStateOf(false)}
     var showMore by remember{mutableStateOf(false)}
+    val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
     var sharing by remember(title,artist){mutableStateOf(false)}
@@ -92,7 +93,7 @@ internal fun ImmersivePlayer(
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                     DropdownMenu(expanded=showMore,onDismissRequest={showMore=false}){
                         DropdownMenuItem(text={Text("Compartilhar música")},enabled=title.isNotBlank(),onClick={showMore=false;sharing=true},leadingIcon={Icon(Icons.Default.Share,null)})
-                        DropdownMenuItem(text={Text("Baixar para ouvir offline")},enabled=title.isNotBlank(),onClick={showMore=false;if(offlineTrack!=null&&allowed(offlineTrack)){if(offlineState.saved.any{it==offlineTrack})onOfflineOpen()else onOfflineSave(offlineTrack)}else downloadInfo=true},leadingIcon={Icon(Icons.Default.Download,null)})
+                        DropdownMenuItem(text={Text("Baixar para ouvir offline")},enabled=title.isNotBlank(),onClick={showMore=false;if(offlineTrack!=null&&allowed(offlineTrack)){if(offlineState.saved.any{it==offlineTrack})onOfflineOpen()else onOfflineSave(offlineTrack)}else if(nativeHit!=null){if(offlineState.nativeSaved.any{it.hit.id==nativeHit.id})onOfflineOpen()else onNativeSave(nativeHit)}else downloadInfo=true},leadingIcon={Icon(Icons.Default.Download,null)})
                         DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
@@ -147,7 +148,17 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onRepeat,enabled=ready){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
                 if(BuildConfig.DEBUG)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
-            OfflinePlayerButton(offlineTrack,track!=null,offlineState,onSave=onOfflineSave,onOpen=onOfflineOpen,onInfo={downloadInfo=true},enabled=title.isNotBlank())
+            if(nativeHit!=null){
+                val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
+                val active=offlineState.nativeActive?.id==nativeHit.id
+                OutlinedButton(enabled=saved||(offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0),onClick={if(saved)onOfflineOpen()else onNativeSave(nativeHit)},modifier=Modifier.fillMaxWidth()){
+                    Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved)neon else aqua)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if(saved)"Baixada · ouvir offline" else if(active)"Baixando "+(offlineState.progress*100).toInt()+"%" else "Baixar música")
+                }
+                if(active)LinearProgressIndicator(progress={offlineState.progress},modifier=Modifier.fillMaxWidth())
+                offlineState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+            }else OfflinePlayerButton(offlineTrack,track!=null,offlineState,onSave=onOfflineSave,onOpen=onOfflineOpen,onInfo={downloadInfo=true},enabled=title.isNotBlank())
             OutlinedButton(enabled=title.isNotBlank(),onClick={sharing=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar música")}
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
             if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
