@@ -132,6 +132,10 @@ private fun match(item:ImportedItem,index:Map<Pair<String,String>,List<Track>>):
     val exact=if(item.album.isBlank())candidates else candidates.filter{norm(it.album)==norm(item.album)}
     return exact.singleOrNull()
 }
+private fun localFingerprint(track:Track):String =
+    JSONObject().put("id",track.id).put("uri",track.uri.toString()).put("title",track.title)
+        .put("artist",track.artist).put("album",track.album).put("duration",track.duration).toString()
+
 private fun spotifyLink(uri:String):String?{
     val parts=uri.split(":")
     if(parts.size==3&&parts[0]=="spotify"&&parts[1] in setOf("track","episode")&&Regex("[A-Za-z0-9]{22}").matches(parts[2]))
@@ -148,10 +152,70 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
     var busy by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
     val index=remember(tracks){tracks.groupBy{norm(it.title) to norm(it.artist)}}
+    val trackByFingerprint=remember(tracks){tracks.associateBy{localFingerprint(it)}}
+    val links=remember(context){context.getSharedPreferences("nero_transfer_links",Context.MODE_PRIVATE)}
+    var linkRevision by remember{mutableIntStateOf(0)}
+    var linkIndex by remember{mutableStateOf<Int?>(null)}
+    var linkQuery by remember{mutableStateOf("")}
+    var choice by remember{mutableStateOf<Track?>(null)}
+    var missingOnly by remember{mutableStateOf(false)}
     val current=lists.firstOrNull{it.id==selected}
-    val matchedEntries=remember(current,index){current?.items?.mapIndexedNotNull{i,item->match(item,index)?.let{i to it}}.orEmpty()}
+    val matchedEntries=remember(current,index,trackByFingerprint,linkRevision){
+        current?.items?.mapIndexedNotNull{i,item->
+            val linked=links.getString(current.id+":"+i,null)?.let{trackByFingerprint[it]}
+            (linked ?: match(item,index))?.let{i to it}
+        }.orEmpty()
+    }
+    val matchedByPosition=remember(matchedEntries){matchedEntries.toMap()}
+    val visibleEntries=remember(current,matchedByPosition,missingOnly){
+        current?.items?.withIndex()?.filter{!missingOnly||it.index !in matchedByPosition}.orEmpty()
+    }
     val queue=remember(matchedEntries){matchedEntries.map{it.second}}
-    BackHandler(current!=null){selected=null}
+    BackHandler(current!=null&&linkIndex==null){selected=null;missingOnly=false}
+    val linkingPosition=linkIndex
+    if(current!=null&&linkingPosition!=null){
+        val original=current.items.getOrNull(linkingPosition)
+        if(original!=null){
+            val options=remember(tracks,linkQuery){
+                val term=linkQuery.trim()
+                if(term.isBlank())emptyList() else tracks.asSequence().filter{track->
+                    track.title.contains(term,true)||track.artist.contains(term,true)||track.album.contains(term,true)
+                }.take(40).toList()
+            }
+            AlertDialog(onDismissRequest={linkIndex=null;choice=null},title={Text("Vincular faixa local")},
+                text={
+                    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                        Text(original.title+" · "+original.artist, color=Color.LightGray)
+                        Text("Confira a música e a versão antes de vincular.",fontSize=12.sp)
+                        OutlinedTextField(linkQuery,{linkQuery=it;choice=null},singleLine=true,label={Text("Buscar na biblioteca")},modifier=Modifier.fillMaxWidth())
+                        LazyColumn(Modifier.heightIn(max=240.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            itemsIndexed(options){_,track->
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    RadioButton(selected=choice==track,onClick={choice=track})
+                                    Column(Modifier.weight(1f)){
+                                        Text(track.title,fontWeight=FontWeight.Medium)
+                                        Text(track.artist+" · "+track.album,fontSize=12.sp,color=Color.LightGray)
+                                    }
+                                }
+                            }
+                        }
+                        if(options.isEmpty())Text("Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)
+                    }
+                },
+                confirmButton={TextButton(enabled=choice!=null,onClick={
+                    choice?.let{links.edit().putString(current.id+":"+linkingPosition,localFingerprint(it)).apply();linkRevision++}
+                    linkIndex=null;choice=null
+                }){Text("Vincular")}},
+                dismissButton={
+                    Row{
+                        if(links.contains(current.id+":"+linkingPosition))TextButton(onClick={
+                            links.edit().remove(current.id+":"+linkingPosition).apply();linkRevision++;linkIndex=null;choice=null
+                        }){Text("Desvincular")}
+                        TextButton(onClick={linkIndex=null;choice=null}){Text("Cancelar")}
+                    }
+                })
+        }
+    }
     LaunchedEffect(Unit){
         try{lists=withContext(Dispatchers.IO){readSaved(context)}}
         catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível ler as playlists salvas."}
@@ -184,7 +248,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
     }
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
-            if(current!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
+            if(current!=null)IconButton(onClick={selected=null;missingOnly=false}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(current?.name ?: "NERO Transfer",fontSize=24.sp,fontWeight=FontWeight.Bold)
             Text("Playlists importadas do Spotify · metadados locais",color=Color(0xFF00E5FF),fontSize=12.sp)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -202,11 +266,12 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                 }
                 Text("A fila inclui somente os arquivos locais correspondentes; os demais itens permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
                 Text("As faixas sem correspondência permanecem na lista. Importar não transfere o áudio nem a assinatura Spotify.",color=Color.LightGray,fontSize=12.sp)
+                FilterChip(selected=missingOnly,onClick={missingOnly=!missingOnly},label={Text("Mostrar apenas faixas faltantes")})
             }
         }
         if(current==null){
             itemsIndexed(lists,key={_,list->list.id}){_,list->
-                Card(onClick={selected=list.id},modifier=Modifier.fillMaxWidth()){
+                Card(onClick={selected=list.id;missingOnly=false},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
                         Icon(Icons.Default.QueueMusic,null,tint=Color(0xFF39FF14))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(list.name,fontWeight=FontWeight.Bold);Text("${list.items.size} itens",fontSize=12.sp,color=Color.LightGray)}
@@ -214,17 +279,22 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                     }
                 }
             }
-        }else itemsIndexed(current.items){i,item->
-            val local=match(item,index)
+        }else itemsIndexed(visibleEntries,key={_,entry->entry.index}){_,entry->
+            val i=entry.index
+            val item=entry.value
+            val local=matchedByPosition[i]
             val link=spotifyLink(item.uri)
             Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
                 Text((i+1).toString(),color=Color.LightGray,modifier=Modifier.width(36.dp))
                 Column(Modifier.weight(1f)){
                     Text(item.title,fontWeight=FontWeight.Medium)
                     if(item.artist.isNotBlank())Text(item.artist,fontSize=12.sp,color=Color.LightGray)
-                    Text(if(local!=null)"Disponível no aparelho" else "Sem correspondência local",fontSize=11.sp,color=if(local!=null)Color(0xFF39FF14)else Color.LightGray)
+                    val manual=links.getString(current.id+":"+i,null)?.let{trackByFingerprint[it]}!=null
+                    Text(if(manual)"Vinculada manualmente" else if(local!=null)"Disponível no aparelho" else "Sem correspondência local",fontSize=11.sp,color=if(local!=null)Color(0xFF39FF14)else Color.LightGray)
+                    if(item.kind=="track")TextButton(onClick={linkQuery=item.title;choice=null;linkIndex=i},contentPadding=PaddingValues(0.dp)){Text(if(manual)"Alterar vínculo" else "Vincular faixa local",fontSize=12.sp)}
                 }
                 if(local!=null)IconButton(enabled=canPlay,onClick={val position=matchedEntries.indexOfFirst{it.first==i};if(position>=0)onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
+                if(local==null&&item.kind=="track"&&item.artist.isNotBlank())IconButton(onClick={if(!openYouTubeMusic(context,item.title+" "+item.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.Search,"Buscar faixa no YouTube Music")}
                 if(link!=null)IconButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(link)))}}){Icon(Icons.Default.OpenInNew,"Abrir faixa no Spotify")}
             }
         }

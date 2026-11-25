@@ -76,3 +76,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.3-dev
 - NERO Transfer aceita ZIP oficial ou JSON, lê em memória com limites de tamanho descompactado, número de entradas e itens, sem extrair arquivos ao sistema. Dados não relacionados a playlists são descartados. Pacotes acima dos limites devem ser descompactados manualmente e importados em partes.
 - Reprodução das faixas locais correspondentes em fila, na ordem original ou aleatória, com início por qualquer faixa disponível e contagem de itens ainda não encontrados. Referências não correspondentes são preservadas. Nenhum áudio é transferido; integração OAuth e catálogo online autorizado continuam pendentes.
+
+## 0.8.4-dev
+- NERO Transfer permite filtrar itens faltantes, pesquisar na biblioteca do aparelho e vincular ou desvincular manualmente uma faixa, após confirmação explícita. Vínculos privados são revalidados pelo identificador, URI e metadados locais; não alteram o arquivo original nem a playlist exportada. A fila preserva a ordem dos itens disponíveis.
+- Busca opcional de faixa faltante abre YouTube Music oficial mediante toque do usuário. Não implica disponibilidade, reprodução integrada ou download. Nenhum OAuth, serviço comercial ou cobrança foi ativado.
