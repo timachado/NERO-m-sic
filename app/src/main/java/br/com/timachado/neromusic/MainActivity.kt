@@ -225,7 +225,9 @@ private fun NeroApp() {
                 }
             }
             if(tab == 0 && libraryPage == 6) {
-                TransferScreen(tracks = tracks, canPlay = controller != null, onPlay = { track -> controller?.let { p -> p.setMediaItem(track.mediaItem()); p.prepare(); p.play() } })
+                TransferScreen(tracks = tracks, canPlay = controller != null, onPlay = { queue, index, random -> controller?.let { p ->
+                    if(queue.isNotEmpty()) { p.shuffleModeEnabled = random; p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex),0L); p.prepare();p.play() }
+                } })
             } else if(tab == 0 && libraryPage >= 3) {
                 key(libraryPage) {
                     LocalCollectionsScreen(kind = libraryPage, tracks = tracks, granted = granted, canPlay = controller != null,

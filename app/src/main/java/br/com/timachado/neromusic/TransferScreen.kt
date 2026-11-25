@@ -77,14 +77,46 @@ private fun parseExport(text:String):List<ImportedList>{
         ImportedList(hash,name,entries)
     }.distinctBy{it.id}
 }
-private suspend fun importFile(context:Context,uri:Uri):List<ImportedList> = withContext(Dispatchers.IO){
-    val bytes=context.contentResolver.openInputStream(uri)?.use{input ->
-        val out=ByteArrayOutputStream();val buffer=ByteArray(8192)
-        while(true){val n=input.read(buffer);if(n<0)break;require(out.size()+n<=MAX_BYTES);out.write(buffer,0,n)}
-        out.toByteArray()
-    }?:error("Arquivo indisponível")
-    parseExport(bytes.toString(Charsets.UTF_8))
+private fun readBounded(input:java.io.InputStream,max:Int):ByteArray {
+    val out=ByteArrayOutputStream();val buffer=ByteArray(8192)
+    while(true){val n=input.read(buffer);if(n<0)break;require(out.size()+n<=max);out.write(buffer,0,n)}
+    return out.toByteArray()
 }
+private suspend fun importFile(context:Context,uri:Uri):List<ImportedList> = withContext(Dispatchers.IO){
+    context.contentResolver.openInputStream(uri)?.buffered()?.use { input ->
+        input.mark(4)
+        val header=ByteArray(4);val size=input.read(header)
+        input.reset()
+        if(size==4&&header[0]==0x50.toByte()&&header[1]==0x4b.toByte()&&header[2]==3.toByte()&&header[3]==4.toByte()){
+            java.util.zip.ZipInputStream(input).use { zip ->
+                val imported=mutableListOf<ImportedList>()
+                var totalBytes=0L
+                var files=0
+                var entries=0
+                var totalItems=0
+                while(true){
+                    val entry=zip.nextEntry?:break
+                    require(++entries<=200)
+                    val name=entry.name.substringAfterLast('/')
+                    // All entries are bounded, including unrelated account data.
+                    val remaining=(MAX_BYTES*2L-totalBytes).coerceAtLeast(0).coerceAtMost(MAX_BYTES.toLong()).toInt()
+                    val data=readBounded(zip,remaining)
+                    totalBytes+=data.size
+                    if(!entry.isDirectory&&Regex("(?i)Playlist[^/]*[.]json").matches(name)){
+                        require(++files<=25)
+                        val parsed=parseExport(data.toString(Charsets.UTF_8))
+                        totalItems+=parsed.sumOf{it.items.size};require(totalItems<=50000)
+                        imported.addAll(parsed)
+                    }
+                    zip.closeEntry()
+                }
+                require(files>0)
+                imported.distinctBy{it.id}
+            }
+        }else parseExport(readBounded(input,MAX_BYTES).toString(Charsets.UTF_8))
+    }?:error("Arquivo indisponível")
+}
+
 private suspend fun saveImport(context:Context,incoming:List<ImportedList>):List<ImportedList> = withContext(Dispatchers.IO){
     val merged=(readSaved(context)+incoming).distinctBy{it.id}
     val bytes=JSONArray(merged.map{it.json()}).toString().toByteArray(Charsets.UTF_8)
@@ -107,7 +139,7 @@ private fun spotifyLink(uri:String):String?{
     return null
 }
 @Composable
-internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit){
+internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean)->Unit){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var lists by remember{mutableStateOf(emptyList<ImportedList>())}
@@ -117,6 +149,8 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->U
     var notice by remember{mutableStateOf<String?>(null)}
     val index=remember(tracks){tracks.groupBy{norm(it.title) to norm(it.artist)}}
     val current=lists.firstOrNull{it.id==selected}
+    val matchedEntries=remember(current,index){current?.items?.mapIndexedNotNull{i,item->match(item,index)?.let{i to it}}.orEmpty()}
+    val queue=remember(matchedEntries){matchedEntries.map{it.second}}
     BackHandler(current!=null){selected=null}
     LaunchedEffect(Unit){
         try{lists=withContext(Dispatchers.IO){readSaved(context)}}
@@ -131,7 +165,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->U
                 val imported=mutableListOf<ImportedList>()
                 for(uri in uris){imported.addAll(importFile(context,uri));require(imported.sumOf{it.items.size}<=50000)}
                 pending=imported.distinctBy{it.id}
-            }catch(e:CancellationException){throw e}catch(_:Exception){notice="Importação não concluída. Selecione os JSON de playlists extraídos do pacote oficial Spotify (até 12 MB por arquivo)."}
+            }catch(e:CancellationException){throw e}catch(_:Exception){notice="Importação não concluída. Selecione o ZIP de dados ou os JSON de playlists do Spotify. Arquivos grandes ou formatos incompatíveis não são importados."}
             finally{busy=false}
         }
     }
@@ -156,12 +190,17 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->U
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,color=Color.LightGray)}
             if(current==null){
-                Text("Solicite seus dados na página de privacidade do Spotify, extraia o ZIP recebido e selecione os arquivos Playlist*.json. Não é necessário fornecer senha ou token.",color=Color.LightGray,fontSize=13.sp)
+                Text("Solicite seus dados na página de privacidade do Spotify e selecione o ZIP recebido ou os arquivos Playlist*.json. Não é necessário fornecer senha ou token.",color=Color.LightGray,fontSize=13.sp)
                 OutlinedButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://www.spotify.com/account/privacy/")))}},modifier=Modifier.fillMaxWidth()){Text("Solicitar dados ao Spotify")}
-                Button(onClick={picker.launch(arrayOf("application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Importar arquivos JSON")}
+                Button(onClick={picker.launch(arrayOf("application/zip","application/x-zip-compressed","application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Importar ZIP ou JSON")}
             }else{
-                val matched=current.items.count{match(it,index)!=null}
-                Text("${current.items.size} itens · $matched disponíveis na biblioteca local",color=Color.LightGray)
+                Text("${current.items.size} itens · ${queue.size} disponíveis na biblioteca local",color=Color.LightGray)
+                Text("${current.items.size-queue.size} itens ainda sem correspondência",fontSize=12.sp,color=Color.LightGray)
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
+                    OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true)},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}
+                }
+                Text("A fila inclui somente os arquivos locais correspondentes; os demais itens permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
                 Text("As faixas sem correspondência permanecem na lista. Importar não transfere o áudio nem a assinatura Spotify.",color=Color.LightGray,fontSize=12.sp)
             }
         }
@@ -185,7 +224,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->U
                     if(item.artist.isNotBlank())Text(item.artist,fontSize=12.sp,color=Color.LightGray)
                     Text(if(local!=null)"Disponível no aparelho" else "Sem correspondência local",fontSize=11.sp,color=if(local!=null)Color(0xFF39FF14)else Color.LightGray)
                 }
-                if(local!=null)IconButton(enabled=canPlay,onClick={onPlay(local)}){Icon(Icons.Default.PlayArrow,"Reproduzir arquivo local")}
+                if(local!=null)IconButton(enabled=canPlay,onClick={val position=matchedEntries.indexOfFirst{it.first==i};if(position>=0)onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
                 if(link!=null)IconButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(link)))}}){Icon(Icons.Default.OpenInNew,"Abrir faixa no Spotify")}
             }
         }

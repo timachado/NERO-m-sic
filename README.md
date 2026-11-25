@@ -72,3 +72,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.2-dev
 - NERO Transfer: seleção de arquivos Playlist*.json da exportação pessoal Spotify, prévia e confirmação, armazenamento local atômico, preservação da ordem e itens sem correspondência. Reimportação idêntica não duplica listas. Reprodução apenas de arquivos locais com correspondência única; abertura opcional do item no Spotify.
 - Corrige falha lint ProduceStateDoesNotAssignValue em LocalCollections.kt com remember + LaunchedEffect. Build ainda precisa ser confirmado. OAuth direto e catálogo de áudio comercial não integrados.
+
+## 0.8.3-dev
+- NERO Transfer aceita ZIP oficial ou JSON, lê em memória com limites de tamanho descompactado, número de entradas e itens, sem extrair arquivos ao sistema. Dados não relacionados a playlists são descartados. Pacotes acima dos limites devem ser descompactados manualmente e importados em partes.
+- Reprodução das faixas locais correspondentes em fila, na ordem original ou aleatória, com início por qualquer faixa disponível e contagem de itens ainda não encontrados. Referências não correspondentes são preservadas. Nenhum áudio é transferido; integração OAuth e catálogo online autorizado continuam pendentes.
