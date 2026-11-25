@@ -16,6 +16,7 @@ import org.json.JSONObject
 @Composable
 internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
     val context=LocalContext.current
+    val pull by NeroAccountSync.status.collectAsState()
     val scope=rememberCoroutineScope()
     var remote by remember(user.uid){mutableStateOf<CloudLibraryRevision?>(null)}
     var plan by remember(user.uid){mutableStateOf("Não verificado")}
@@ -38,6 +39,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Biblioteca na nuvem",fontSize=20.sp,fontWeight=FontWeight.Bold)
+            pull?.takeIf{it.uid==user.uid}?.let{state->Text(when(state.state){"ready"->"Conta consultada automaticamente: ${state.favorites} favoritas · ${state.playlists} playlists. Cópia isolada para preparação da sincronização.";"loading"->"Consultando sua conta…";"pending"->"Alterações pendentes preservadas." ;else->"Consulta automática indisponível."},fontSize=12.sp,color=Color.LightGray)}
             Text("Cópia manual vinculada à sua conta Google. Não inclui arquivos de áudio, downloads nem músicas locais. Não há sincronização automática nesta versão.",fontSize=12.sp,color=Color.LightGray)
             remote?.let{Text("Na conta: ${it.snapshot.favorites.size} favoritas · ${it.snapshot.playlists.size} playlists",fontSize=13.sp)}
             OutlinedButton(enabled=enabled&&!busy,onClick={refresh()},modifier=Modifier.fillMaxWidth()){Text("Consultar biblioteca da conta")}
