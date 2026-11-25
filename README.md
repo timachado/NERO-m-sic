@@ -42,3 +42,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Tela Minha conta, acesso como visitante, cadastro e login por e-mail/senha, recuperação de senha, verificação de e-mail, login Google via Credential Manager, logout e exclusão da própria conta (pode exigir reautenticação).
 - Firebase Auth é opcional até configuração real; nenhum login simulado. Dados musicais permanecem locais; sincronização não implementada.
 - Para habilitar: crie projeto Firebase exclusivo do NERO, registre Android com applicationId br.com.timachado.neromusic, habilite Email/Password e Google em Authentication, configure SHA-1/SHA-256 do certificado que efetivamente assinará o APK, baixe google-services.json atualizado. Coloque em app/google-services.json (ignorado pelo Git) ou configure o secret de Actions NERO_GOOGLE_SERVICES_JSON com o conteúdo do arquivo. Não use service accounts, chaves privadas ou credenciais administrativas no cliente. Para Google, mantenha uma chave de assinatura estável entre builds e registre as impressões do certificado; não publique uma chave de assinatura no repositório. A configuração do Firebase e os testes de login real ainda estão pendentes.
+
+## 0.5.1-dev
+- Tela informativa de planos Free/Premium acessível em Minha conta, com benefícios futuros identificados como em desenvolvimento.
+- Sem checkout, preços, cobrança ou desbloqueio Premium. Distribuição direta prevista pelo site da T.I. Machado; ver docs/subscriptions.md.

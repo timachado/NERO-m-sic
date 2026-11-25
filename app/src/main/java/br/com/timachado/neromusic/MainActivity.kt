@@ -124,7 +124,8 @@ private fun NeroApp() {
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer || showAccount) { if(showAccount) showAccount = false else fullPlayer = false }
+    var showPlans by remember { mutableStateOf(false) }
+    BackHandler(fullPlayer || showAccount || showPlans) { if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true)) }
@@ -136,7 +137,7 @@ private fun NeroApp() {
         p.prepare(); p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer && !showAccount) Column {
+        if (!fullPlayer && !showAccount && !showPlans) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -155,8 +156,10 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (showAccount) {
-            AccountScreen(onBack = { showAccount = false }, modifier = Modifier.padding(padding))
+        if (showPlans) {
+            PlansScreen(onBack = { showPlans = false }, modifier = Modifier.padding(padding))
+        } else if (showAccount) {
+            AccountScreen(onBack = { showAccount = false }, onPlans = { showPlans = true }, modifier = Modifier.padding(padding))
         } else if (fullPlayer) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

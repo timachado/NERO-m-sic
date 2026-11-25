@@ -46,7 +46,7 @@ private fun webClientId(context:Context):String {
 }
 
 @Composable
-internal fun AccountScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
+internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     val auth=remember { authOrNull(context) }
     val manager=remember { CredentialManager.create(context) }
@@ -141,6 +141,7 @@ internal fun AccountScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             }}){Text("Esqueci minha senha")}
             TextButton(onClick=onBack){Text("Continuar como visitante")}
         }
+        OutlinedButton(enabled=!busy,onClick=onPlans,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Star,null); Spacer(Modifier.width(8.dp)); Text("Conhecer planos NERO") }
         if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=Color.LightGray)}
     }
