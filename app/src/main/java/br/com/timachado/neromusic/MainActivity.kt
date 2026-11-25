@@ -144,6 +144,15 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         lifecycle?.addObserver(observer)
         onDispose{lifecycle?.removeObserver(observer)}
     }
+    val accountUid by NeroSupabase.activeUid.collectAsState()
+    LaunchedEffect(foreground,accountUid){
+        if(!foreground||!NeroSupabase.configured)return@LaunchedEffect
+        try{
+            val signed=NeroSupabase.session(context,false)
+            if(accountUid==signed.uid)NeroAccountSync.pull(context,signed.uid)
+        }catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(_:Exception){}
+    }
     DisposableEffect(context,connectionEpoch) {
         var active = true
         connectionError=false
