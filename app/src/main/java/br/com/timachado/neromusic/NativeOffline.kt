@@ -50,7 +50,7 @@ internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress
     nativeOfflineCopy(context,hit.id)?.let{progress(1f);return@withContext it}
     val networkGuard=DownloadNetworkGuard(context)
     networkGuard.check(force=true)
-    val item=NativeMusicCatalog.resolve(hit)
+    val item=NativeMusicCatalog.resolve(hit,economical=economicalDownloads(context))
     val uri=item.localConfiguration?.uri?:error("Áudio indisponível")
     val host=uri.host.orEmpty()
     require(uri.scheme=="https"&&(host=="googlevideo.com"||host.endsWith(".googlevideo.com")))
