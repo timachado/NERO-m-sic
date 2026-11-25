@@ -17,7 +17,7 @@ internal fun requireDownloadNetwork(context:Context){
     if(!wifiOnlyDownloads(context))return
     val manager=context.getSystemService(ConnectivityManager::class.java)
     val network=manager?.activeNetwork
-    val caps=network?.let{manager.getNetworkCapabilities(it)}
+    val caps=network?.let{manager?.getNetworkCapabilities(it)}
     if(caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)!=true)throw WifiDownloadRequired()
 }
 
