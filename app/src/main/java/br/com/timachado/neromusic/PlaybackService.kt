@@ -138,6 +138,10 @@ class PlaybackService : MediaSessionService() {
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         session = MediaSession.Builder(this, player).setSessionActivity(activity).build()
+        NeroWidgetState.attach(applicationContext,player)
+        player.addListener(object:Player.Listener{
+            override fun onEvents(player:Player,events:Player.Events){NeroWidgetState.refresh(applicationContext)}
+        })
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onDestroy() {
@@ -145,6 +149,7 @@ class PlaybackService : MediaSessionService() {
         crossfade?.close();crossfade=null
         timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
+        NeroWidgetState.detach(applicationContext)
         session?.let { it.player.release(); it.release() }
         session = null
         super.onDestroy()
