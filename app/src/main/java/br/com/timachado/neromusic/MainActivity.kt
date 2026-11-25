@@ -125,8 +125,9 @@ private fun NeroApp() {
     var fullPlayer by remember { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
     var showPlans by remember { mutableStateOf(false) }
+    var showCloud by remember { mutableStateOf(false) }
     var showEq by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer || showAccount || showPlans || showEq) { if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
+    BackHandler(fullPlayer || showAccount || showPlans || showEq || showCloud) { if(showCloud) showCloud = false else if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true)) }
@@ -138,7 +139,7 @@ private fun NeroApp() {
         p.prepare(); p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer && !showAccount && !showPlans && !showEq) Column {
+        if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -157,12 +158,16 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (showEq && BuildConfig.DEBUG) {
+        if (showCloud && BuildConfig.DEBUG) {
+            CloudLibraryScreen(tracks = tracks, favoriteIds = favorites, granted = granted,
+                onMergeFavorites = { ids -> favorites = favorites + ids; prefs.edit().putStringSet("favorites", favorites).apply() },
+                onBack = { showCloud = false }, modifier = Modifier.padding(padding))
+        } else if (showEq && BuildConfig.DEBUG) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
         } else if (showPlans) {
             PlansScreen(onBack = { showPlans = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
-            AccountScreen(onBack = { showAccount = false }, onPlans = { showPlans = true }, modifier = Modifier.padding(padding))
+            AccountScreen(onBack = { showAccount = false }, onPlans = { showPlans = true }, onCloud = { showCloud = true }, modifier = Modifier.padding(padding))
         } else if (fullPlayer) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

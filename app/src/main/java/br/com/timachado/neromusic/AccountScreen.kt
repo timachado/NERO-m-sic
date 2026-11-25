@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 private val accentAccount = Color(0xFF39FF14)
-private fun authOrNull(context:Context): FirebaseAuth? = runCatching {
+internal fun authOrNull(context:Context): FirebaseAuth? = runCatching {
     val app = FirebaseApp.getApps(context).firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
         ?: FirebaseApp.initializeApp(context)
     app?.let { FirebaseAuth.getInstance(it) }
@@ -46,7 +46,7 @@ private fun webClientId(context:Context):String {
 }
 
 @Composable
-internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,modifier:Modifier=Modifier) {
+internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,onCloud:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     val auth=remember { authOrNull(context) }
     val manager=remember { CredentialManager.create(context) }
@@ -141,6 +141,7 @@ internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,modifier:Modifier=Mo
             }}){Text("Esqueci minha senha")}
             TextButton(onClick=onBack){Text("Continuar como visitante")}
         }
+        if(BuildConfig.DEBUG && user != null) OutlinedButton(enabled=!busy,onClick=onCloud,modifier=Modifier.fillMaxWidth()) { Text("Backup da biblioteca · teste") }
         OutlinedButton(enabled=!busy,onClick=onPlans,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Star,null); Spacer(Modifier.width(8.dp)); Text("Conhecer planos NERO") }
         if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=Color.LightGray)}

@@ -54,3 +54,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.6.1-dev
 - Home com Ouça novamente (faixas locais acessíveis) e Feito para você (outras faixas locais de artistas presentes no histórico ou favoritos, ordenadas por pontuação de recência e favoritos).
 - Personalização por regras no dispositivo, sem envio do histórico para terceiros e sem fingir recomendações quando não há dados suficientes. Não inclui recomendações de um catálogo comercial, aprendizado de máquina ou sincronização em nuvem.
+
+## 0.7.0-dev
+- NERO Cloud: backup manual experimental no Firestore por UID, somente debug; salva metadados de favoritos locais e playlists e permite restauração por correspondência única de título/artista/duração, mesclando dados. Não copia arquivos, histórico ou IDs locais entre aparelhos.
+- Regras propostas em firebase/firestore.rules; NÃO implantadas. Exige Firebase configurado e testes de isolamento; conta e backup devem ser excluídos integralmente antes da liberação comercial. Não há sincronização automática nem cobrança.

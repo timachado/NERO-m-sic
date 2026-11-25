@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /nero_library_backups/{uid} {
+      function owner() { return request.auth != null && request.auth.uid == uid; }
+      allow get, delete: if owner();
+      allow list: if false;
+      allow create, update: if owner()
+        && request.resource.data.keys().hasOnly(['schema', 'payload', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['schema', 'payload', 'updatedAt'])
+        && request.resource.data.schema == 1
+        && request.resource.data.payload is string
+        && request.resource.data.payload.size() <= 180000
+        && request.resource.data.updatedAt == request.time;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
