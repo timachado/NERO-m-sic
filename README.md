@@ -17,3 +17,11 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Busca do catálogo aberto e downloads autorizados mantidos.
 - Cores explícitas Aurora Neon na navegação inferior.
 - Resultados internos do YouTube Music e downloads desse serviço não implementados; downloads oficiais são gerenciados pelo próprio YouTube Music.
+
+## 0.3.0-dev
+- Exploração interna de metadados por músicas, álbuns e artistas, disponível apenas em builds debug, para avaliação não comercial do MusicBrainz. A API pública gratuita não é habilitada em release.
+- Grade de álbuns e consulta de capas via Cover Art Archive quando disponíveis; as capas pertencem aos respectivos titulares.
+- Limite de uma solicitação por segundo e cache de consultas em memória.
+- Reprodução de resultados comerciais direcionada ao YouTube Music oficial. Não há streaming nem download de faixas comerciais pelo NERO.
+- Catálogo aberto, downloads autorizados e player local mantidos.
+- Uso comercial da API e dos conteúdos depende das permissões e condições aplicáveis.

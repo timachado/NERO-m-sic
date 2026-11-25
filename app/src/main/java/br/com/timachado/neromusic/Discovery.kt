@@ -127,7 +127,7 @@ private suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Disp
 private fun openBrowser(context:Context, uri:Uri): Boolean =
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,uri)); true }.getOrDefault(false)
 
-private fun openYouTubeMusic(context: Context, query: String): Boolean {
+internal fun openYouTubeMusic(context: Context, query: String): Boolean {
     val uri = Uri.parse("https://music.youtube.com/search").buildUpon()
         .appendQueryParameter("q", query.trim().ifBlank { "música" }).build()
     val appOpened = runCatching {
@@ -140,6 +140,12 @@ private fun openYouTubeMusic(context: Context, query: String): Boolean {
 @Composable
 internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
+    var showCatalog by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = showCatalog && !offline) { showCatalog = false }
+    if (showCatalog && !offline) {
+        CatalogScreen(onBack = { showCatalog = false })
+        return
+    }
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf<String?>(null) }
@@ -179,6 +185,13 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaIt
                     Text("Buscar áudios com licença aberta")
                 }
                 Text("A busca no YouTube Music abre o aplicativo oficial ou o navegador. Downloads do YouTube Music ficam no serviço oficial; o NERO salva os áudios autorizados do catálogo aberto.",fontSize=12.sp,color=Color.LightGray)
+            }
+            if (BuildConfig.DEBUG) item {
+                OutlinedButton(onClick = { showCatalog = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.LibraryMusic, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Explorar músicas, álbuns e artistas")
+                }
             }
             item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }
             items(genres.chunked(2)) { pair ->
