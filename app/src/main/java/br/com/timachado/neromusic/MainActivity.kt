@@ -374,7 +374,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     onAccount={showAccount=true},onFavorites={tab=2},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
                     onSearch={searchSeed="";searchAutoFocus=true;tab=1},onCreate={libraryPage=7;librarySelection=null;libraryCreate=true})
             }else if(tab == 0 && libraryPage == 7) {
-                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,initialSelection=librarySelection,createOnOpen=libraryCreate,onCreated={libraryCreate=false},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
+                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,offlineState=offlineState,onDownloadPlaylist={rows->radioScope.launch{offlineManager.savePlaylist(rows)}},initialSelection=librarySelection,createOnOpen=libraryCreate,onCreated={libraryCreate=false},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=random;p.setMediaItems(queue,index.coerceIn(0,queue.lastIndex),0L);p.prepare();p.play()}
                 }})
             } else if(tab == 0 && libraryPage == 6) {
