@@ -25,6 +25,10 @@ import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit){
+    val context=androidx.compose.ui.platform.LocalContext.current
+    val savedAlbums=rememberSavedAlbums()
+    val savedKey=savedAlbumKey(album.url)
+    val saved=savedKey!=null&&savedAlbums.any{savedAlbumKey(it.url)==savedKey}
     var songs by remember(album.url){mutableStateOf(emptyList<NativeMusicHit>())}
     var busy by remember{mutableStateOf(true)}
     var failed by remember{mutableStateOf(false)}
@@ -45,6 +49,9 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
             AsyncImage(model=album.artwork,contentDescription="Capa do álbum",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)))
             Text(album.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text(album.credit,color=Color.LightGray)
+            OutlinedButton(enabled=savedKey!=null,onClick={if(!NeroSavedAlbums.toggle(context,album))android.widget.Toast.makeText(context,"Não foi possível salvar o álbum.",android.widget.Toast.LENGTH_SHORT).show()}){
+                Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(8.dp));Text(if(saved)"Álbum salvo · remover" else "Salvar álbum na biblioteca")
+            }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 Button(enabled=canPlay&&songs.isNotEmpty(),onClick={songs.firstOrNull()?.let{play(it)}}){Text("Reproduzir")}
                 OutlinedButton(enabled=songs.isNotEmpty(),onClick={adding=songs.map{it.reference()}}){Text("Salvar faixas")}
