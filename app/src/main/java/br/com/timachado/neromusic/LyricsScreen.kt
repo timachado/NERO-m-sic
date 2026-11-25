@@ -67,12 +67,15 @@ private suspend fun importLyrics(context:Context,uri:Uri,key:String):List<LyricL
     parsed
 }
 @Composable
-internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Long,duration:Long,playing:Boolean,
+internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Long,duration:Long,playing:Boolean,localUri:Uri?,
     onTogglePlay:()->Unit,onSeek:(Long)->Unit,onBack:()->Unit,modifier:Modifier=Modifier){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     val key=remember(mediaId,title,artist){lyricKey(mediaId,title,artist)}
     var lines by remember(key){mutableStateOf(emptyList<LyricLine>())}
+    var source by remember(key){mutableStateOf<String?>(null)}
+    var loading by remember(key,localUri){mutableStateOf(true)}
+    var importRevision by remember(key){mutableIntStateOf(0)}
     var notice by remember(key){mutableStateOf<String?>(null)}
     var pendingKey by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
@@ -84,14 +87,28 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
                 busy=true
                 try{
                     val imported=importLyrics(context,uri,target)
-                    if(target==currentKey){lines=imported;notice=null}
+                    if(target==currentKey){lines=imported;source="Arquivo importado";notice=null;importRevision++}
                 }catch(e:CancellationException){throw e}catch(_:Exception){if(target==currentKey)notice="Não foi possível importar. Use LRC ou TXT em UTF-8, até 256 KB."}
                 finally{busy=false}
             }
         }
     }
-    LaunchedEffect(key){
-        lines=withContext(Dispatchers.IO){runCatching{parseLyrics(lyricFile(context,key).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())}
+    LaunchedEffect(key,localUri,importRevision){
+        loading=true
+        try {
+            val result=withContext(Dispatchers.IO){
+                val imported=runCatching{parseLyrics(lyricFile(context,key).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
+                if(imported.any{it.text.isNotBlank()}) imported to "Arquivo importado"
+                else {
+                    val embedded=if(localUri!=null)runCatching{
+                        context.contentResolver.openInputStream(localUri)?.use{readEmbeddedLyrics(it)}
+                    }.getOrNull() else null
+                    val parsed=embedded?.let{parseLyrics(it)}.orEmpty()
+                    parsed to if(parsed.any{it.text.isNotBlank()})"Letra incorporada ao áudio" else null
+                }
+            }
+            lines=result.first;source=result.second
+        } finally {loading=false}
     }
     val synced=lines.firstOrNull()?.at!=null
     val active=if(synced)lines.indexOfLast{(it.at?:Long.MAX_VALUE)<=position}else -1
@@ -101,15 +118,21 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar ao player")}
             Text("Letras",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-            IconButton(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))}){Icon(Icons.Default.FileOpen,"Importar LRC ou TXT")}
+            IconButton(enabled=!busy&&!loading&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))}){Icon(Icons.Default.FileOpen,"Importar LRC ou TXT")}
         }
         Text(title,fontSize=21.sp,fontWeight=FontWeight.Bold)
         Text(artist,color=Color.LightGray)
         Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=Color(0xFF00E5FF),fontSize=12.sp)
+        source?.let{Text(it,color=Color.LightGray,fontSize=11.sp)}
         notice?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        if(lines.isEmpty()){
+        if(loading){
+            LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.weight(1f))
-            Text("Importe uma letra LRC com tempos ou um arquivo TXT que você tenha autorização para usar. Busca automática de letras ainda não está integrada.",color=Color.LightGray)
+            Text("Procurando letra no arquivo...",color=Color.LightGray)
+            Spacer(Modifier.weight(1f))
+        }else if(lines.isEmpty()){
+            Spacer(Modifier.weight(1f))
+            Text("Nenhuma letra incorporada compatível foi encontrada. Importe um LRC com tempos ou TXT autorizado. A busca online ainda não está integrada.",color=Color.LightGray)
             Button(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
             Spacer(Modifier.weight(1f))
         }else LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){

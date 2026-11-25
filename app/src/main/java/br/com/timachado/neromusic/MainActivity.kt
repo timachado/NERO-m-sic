@@ -173,6 +173,7 @@ private fun NeroApp() {
             QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false }, modifier = Modifier.padding(padding))
         } else if (showLyrics) {
             LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
+                localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
                 onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else it.play() } },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
         } else if (showCloud && BuildConfig.DEBUG) {

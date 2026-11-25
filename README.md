@@ -88,3 +88,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.6-dev
 - Fila de reprodução conectada ao MediaController: lista real do serviço, faixa atual, reprodução de qualquer item, mover e remover próximas faixas, limpar próximas após confirmação; não apaga arquivos. Edição de ordem desabilitada quando o modo aleatório está ativo.
 - Menu de músicas locais para adicionar ao fim ou reproduzir em seguida. Fila de sessão, não persistente após encerramento definitivo do serviço; testes em aparelho pendentes.
+
+## 0.8.7-dev
+- NERO Lyrics procura automaticamente letras USLT em arquivos locais ID3v2.3/v2.4 compatíveis, com prioridade ao LRC/TXT importado. Letras incorporadas sem tempos são exibidas como texto; marcações LRC existentes são sincronizadas. Tags com flags especiais e formatos não suportados são ignorados com segurança. Não implementa SYLT nem busca online; nenhum texto é enviado a terceiros.
+- Cinco testes unitários do leitor ID3 adicionados ao CI. Formatos e experiência no aparelho ainda precisam de validação.
