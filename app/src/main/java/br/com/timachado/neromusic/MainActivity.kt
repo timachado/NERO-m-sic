@@ -96,6 +96,9 @@ private fun NeroApp() {
         onDispose { active = false; MediaController.releaseFuture(future) }
     }
     var nowId by remember { mutableStateOf("") }
+    var nowOpenRef by remember { mutableStateOf<OnlineRef?>(null) }
+    var addLocal by remember { mutableStateOf<Track?>(null) }
+    var addOnline by remember { mutableStateOf<OnlineRef?>(null) }
     var title by remember { mutableStateOf("") }
     var artist by remember { mutableStateOf("") }
     var playing by remember { mutableStateOf(false) }
@@ -107,7 +110,9 @@ private fun NeroApp() {
     LaunchedEffect(controller) {
         val p = controller ?: return@LaunchedEffect
         while (true) {
-            nowId = p.currentMediaItem?.mediaId.orEmpty()
+            val currentItem=p.currentMediaItem
+            nowId = currentItem?.mediaId.orEmpty()
+            nowOpenRef = currentItem?.let(::openRefFromItem)
             title = p.mediaMetadata.title?.toString().orEmpty()
             artist = p.mediaMetadata.artist?.toString().orEmpty()
             playing = p.isPlaying
@@ -150,6 +155,8 @@ private fun NeroApp() {
         p.setMediaItems(queue.map{it.mediaItem()},0,0L)
         p.prepare();p.play()
     }
+    addLocal?.let { SaveLocalTrackDialog(it,onClose={addLocal=null}) }
+    addOnline?.let { SaveOnlineDialog(listOf(it),onClose={addOnline=null}) }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (!fullPlayer && !showAccount && !showPlans && !showEq && !showCloud && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -193,6 +200,7 @@ private fun NeroApp() {
                 track=currentTrack,title=title,artist=artist,position=pos,duration=duration,playing=playing,
                 favorite=nowId in favorites,shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId)},
+                canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else it.play()}},
                 onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
                 onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},

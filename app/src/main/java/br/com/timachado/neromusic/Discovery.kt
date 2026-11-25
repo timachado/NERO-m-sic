@@ -41,8 +41,15 @@ internal data class OpenTrack(val id: Long, val title: String, val artist: Strin
     fun json() = JSONObject().put("id",id).put("title",title).put("artist",artist).put("license",license)
         .put("source",source).put("url",url).put("mime",mime).put("size",size)
     fun item(uri: Uri) = MediaItem.Builder().setMediaId("commons:"+id).setUri(uri).setMimeType(mime)
-        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist).build()).build()
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist)
+            .setExtras(android.os.Bundle().apply{putString("nero_open_audio",json().toString())}).build()).build()
 }
+internal fun openRefFromItem(item:MediaItem):OnlineRef? = runCatching {
+    val raw=item.mediaMetadata.extras?.getString("nero_open_audio") ?: return null
+    val audio=decodeOpenTrack(JSONObject(raw))
+    if(!allowed(audio)||item.mediaId!="commons:"+audio.id)return null
+    OnlineRef(item.mediaId,audio.title,audio.artist,openAudio=audio)
+}.getOrNull()
 internal fun decodeOpenTrack(o: JSONObject) = OpenTrack(o.getLong("id"),o.getString("title"),o.getString("artist"),
     o.getString("license"),o.getString("source"),o.getString("url"),o.getString("mime"),o.getLong("size"))
 private fun storage(context: Context) = File(context.filesDir,"open-audio").apply { mkdirs() }

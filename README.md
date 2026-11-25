@@ -119,3 +119,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.4-dev
 - Salvar áudios de licença aberta da pesquisa nas mesmas playlists de referências online. Reprodução interna de faixas autorizadas ou correspondências locais únicas, em fila sequencial/aleatória; indicação explícita de disponibilidade e fonte/licença para cada áudio aberto. Preferência por cópia offline validada quando disponível. Referências sem áudio ficam preservadas; formato compatível com listas anteriores. Não ativa catálogo YouTube Music nem usa credenciais de assinatura.
+
+## 0.9.5-dev
+- Adicionar faixa diretamente do player à playlist: local ou áudio aberto autorizado, preservando as listas existentes. Referência de áudio aberto transportada nos metadados Media3, validada antes de salvar. Pesquisa local com toque para reproduzir e ação de playlist. Nenhum novo provedor de streaming ativado; compilação e testes no aparelho pendentes.

@@ -36,7 +36,7 @@ private fun clock(ms:Long):String{val sec=(ms.coerceAtLeast(0)/1000);return "%d:
 @Composable
 internal fun ImmersivePlayer(
     track:Track?,title:String,artist:String,position:Long,duration:Long,playing:Boolean,favorite:Boolean,
-    shuffle:Boolean,repeat:Int,ready:Boolean,error:String?,
+    shuffle:Boolean,repeat:Int,ready:Boolean,error:String?,canSave:Boolean,onSave:()->Unit,
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     modifier:Modifier=Modifier
@@ -73,6 +73,7 @@ internal fun ImmersivePlayer(
                 Box{
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                     DropdownMenu(expanded=showMore,onDismissRequest={showMore=false}){
+                        DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
                         DropdownMenuItem(text={Text("Rádio desta faixa")},enabled=ready&&track!=null,onClick={showMore=false;onRadio()})
                         if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Equalizador")},onClick={showMore=false;onEqualizer()})
                         DropdownMenuItem(text={Text("Fila de reprodução")},enabled=ready,onClick={showMore=false;onQueue()})
@@ -87,6 +88,7 @@ internal fun ImmersivePlayer(
                     Text(artist,color=Color.LightGray,fontSize=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                     track?.album?.takeUnless{it=="Álbum desconhecido"}?.let{Text(it,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 }
+                FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=neon)}
                 FilledTonalIconButton(onClick=onFavorite,enabled=track!=null){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(favorite)neon else Color.White)}
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }

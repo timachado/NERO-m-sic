@@ -3,6 +3,7 @@ package br.com.timachado.neromusic
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,6 +54,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var saving by remember{mutableStateOf<Long?>(null)}
     var message by remember{mutableStateOf<String?>(null)}
     var adding by remember{mutableStateOf<OnlineRef?>(null)}
+    var addingLocal by remember{mutableStateOf<Track?>(null)}
     var detail by remember{mutableStateOf<List<CatalogEntry>>(emptyList())}
     val term=query.trim()
     val local=remember(tracks,term){if(term.isBlank())emptyList()else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
@@ -76,6 +78,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
             finally{openBusy=false}
         }
     }
+    addingLocal?.let{SaveLocalTrackDialog(it,onClose={addingLocal=null})}
     adding?.let{SaveOnlineDialog(listOf(it),onClose={adding=null})}
     val entry=detail.lastOrNull()
     BackHandler(entry!=null){detail=detail.dropLast(1)}
@@ -107,9 +110,10 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     val rows=if(tab==SearchTab.ALL)local.take(5)else local
                     if(rows.isEmpty())item{Text("Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)}
                     items(rows,key={it.id}){track->
-                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                        Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){onPlay(track)},verticalAlignment=Alignment.CenterVertically){
                             LocalArtwork(track,Modifier.size(52.dp))
                             Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(track.artist,fontSize=12.sp,color=Color.LightGray)}
+                            IconButton(onClick={addingLocal=track}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist local",tint=searchAccent)}
                             IconButton(enabled=canPlay,onClick={onPlay(track)}){Icon(Icons.Default.PlayArrow,"Reproduzir arquivo local",tint=searchAccent)}
                         }
                     }
