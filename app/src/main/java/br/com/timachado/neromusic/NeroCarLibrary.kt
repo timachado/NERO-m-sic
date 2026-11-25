@@ -26,6 +26,8 @@ import kotlinx.coroutines.launch
 @UnstableApi
 internal class NeroCarLibrary(private val context:Context,private val scope:CoroutineScope):MediaLibrarySession.Callback{
     private val root="nero-car-root"
+    private val recentRoot="nero-resume-root"
+    private val resumeId="nero-resume-last"
     private val local="nero-car-local"
     private val offline="nero-car-offline"
     private val favorites="nero-car-favorites"
@@ -50,6 +52,31 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
             runCatching{readOnlineFavorites(context).map{it.id}}.getOrDefault(emptyList())
         return Catalog(device,saved,(device+saved).filter{it.mediaId in liked}.distinctBy{it.mediaId})
     }
+    private suspend fun resume():Pair<MediaItem,Long>?{
+        val record=NeroResumeStore.read(context)?:return null
+        val item=when{
+            record.id.startsWith("youtube:")&&NativeMusicCatalog.enabled->musicHitFromRef(OnlineRef(record.id,record.title,record.artist))?.queueItem()
+            record.open!=null->record.open.let{audio->
+                val copy=downloaded(context).firstOrNull{it==audio}
+                audio.item(if(copy!=null)Uri.fromFile(audioFile(context,copy))else Uri.parse(audio.url))
+            }
+            else->catalog().all.firstOrNull{it.mediaId==record.id&&it.mediaMetadata.title?.toString()==record.title&&it.mediaMetadata.artist?.toString().orEmpty()==record.artist}
+        }?:return null
+        return item to record.position
+    }
+    private fun recentItem(item:MediaItem)=browseItem(item).buildUpon().setMediaId(resumeId)
+        .setMediaMetadata(browseItem(item).mediaMetadata.buildUpon().setArtworkUri(item.mediaMetadata.artworkUri).build()).build()
+    override fun onPlaybackResumption(mediaSession:MediaSession,controller:MediaSession.ControllerInfo):ListenableFuture<MediaSession.MediaItemsWithStartPosition>{
+        if(!trusted(controller))return Futures.immediateFailedFuture(SecurityException("Controller not authorized"))
+        return async{
+            val (item,position)=resume()?:throw IllegalStateException("No saved audio")
+            MediaSession.MediaItemsWithStartPosition(listOf(item),0,position)
+        }
+    }
+    override fun onSetMediaItems(mediaSession:MediaSession,controller:MediaSession.ControllerInfo,mediaItems:List<MediaItem>,startIndex:Int,startPositionMs:Long):ListenableFuture<MediaSession.MediaItemsWithStartPosition>{
+        if(trusted(controller)&&mediaItems.size==1&&mediaItems.first().mediaId==resumeId)return onPlaybackResumption(mediaSession,controller)
+        return super.onSetMediaItems(mediaSession,controller,mediaItems,startIndex,startPositionMs)
+    }
     private fun <T> async(block:suspend ()->T):ListenableFuture<T>{
         val future=SettableFuture.create<T>()
         val job=scope.launch(Dispatchers.IO){
@@ -61,12 +88,12 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
         return future
     }
     override fun onGetLibraryRoot(session:MediaLibrarySession,browser:MediaSession.ControllerInfo,params:LibraryParams?):ListenableFuture<LibraryResult<MediaItem>> =
-        Futures.immediateFuture(if(trusted(browser))LibraryResult.ofItem(folder(root,"NERO Music"),params)else LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
+        Futures.immediateFuture(if(trusted(browser))LibraryResult.ofItem(folder(if(params?.isRecent==true)recentRoot else root,"NERO Music"),params)else LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
     override fun onGetChildren(session:MediaLibrarySession,browser:MediaSession.ControllerInfo,parentId:String,page:Int,pageSize:Int,params:LibraryParams?):ListenableFuture<LibraryResult<ImmutableList<MediaItem>>>{
         if(!trusted(browser))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
-        if(page<0||pageSize<=0||parentId !in setOf(root,local,offline,favorites))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
+        if(page<0||pageSize<=0||parentId !in setOf(root,local,offline,favorites,recentRoot))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
         return async{
-            val rows=if(parentId==root)folders() else catalog().let{data->when(parentId){local->data.local;offline->data.offline;else->data.favorites}.map(::browseItem)}
+            val rows=if(parentId==recentRoot)listOfNotNull(resume()?.first?.let(::recentItem)) else if(parentId==root)folders() else catalog().let{data->when(parentId){local->data.local;offline->data.offline;else->data.favorites}.map(::browseItem)}
             val start=(page.toLong()*pageSize).coerceAtMost(rows.size.toLong()).toInt()
             val end=(start.toLong()+pageSize).coerceAtMost(rows.size.toLong()).toInt()
             LibraryResult.ofItemList(rows.subList(start,end),params)
@@ -75,12 +102,13 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     override fun onGetItem(session:MediaLibrarySession,browser:MediaSession.ControllerInfo,mediaId:String):ListenableFuture<LibraryResult<MediaItem>>{
         if(!trusted(browser))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
         return async{
-            val item=(listOf(folder(root,"NERO Music"))+folders()).firstOrNull{it.mediaId==mediaId}
+            val item=if(mediaId==resumeId)resume()?.first?.let(::recentItem) else (listOf(folder(root,"NERO Music"))+folders()).firstOrNull{it.mediaId==mediaId}
                 ?:catalog().all.firstOrNull{it.mediaId==mediaId}?.let(::browseItem)
             if(item==null)LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)else LibraryResult.ofItem(item,null)
         }
     }
     override fun onAddMediaItems(mediaSession:MediaSession,controller:MediaSession.ControllerInfo,mediaItems:List<MediaItem>):ListenableFuture<List<MediaItem>>{
+        if(trusted(controller)&&mediaItems.size==1&&mediaItems.first().mediaId==resumeId)return async{listOf(resume()?.first?:throw IllegalStateException("No saved audio"))}
         if(own(controller))return Futures.immediateFuture(mediaItems)
         if(!trusted(controller)||mediaItems.size>1500)return Futures.immediateFailedFuture(SecurityException("Controller not authorized"))
         // Never accept arbitrary external URIs. Resolve only known playable IDs.
