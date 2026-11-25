@@ -57,7 +57,6 @@ class PlaybackService : MediaSessionService() {
                 spec.withUri(address)
             }
         }
-        NeroAudioSettings.load(applicationContext)
         // Recovery: use the original Media3 renderer and audio sink.
         val player = ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
