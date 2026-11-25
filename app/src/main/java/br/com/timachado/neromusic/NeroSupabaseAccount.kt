@@ -46,15 +46,22 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             Icon(Icons.Default.AccountCircle,"Foto do perfil",tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.fillMaxSize())
             user?.avatar?.let{photo->NeroArtwork(model=photo,contentDescription="Foto da conta Google",modifier=Modifier.fillMaxSize().clip(CircleShape),contentScale=ContentScale.Crop)}
         }
-        if(!NeroSupabase.configured)Text("O login Google aguarda configuração do Supabase. Sua biblioteca local permanece disponível.",color=Color.LightGray)
-        else if(user==null){
+        if(user==null){
             Text("Bem-vindo ao NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
-            Text("Entre com Google para compartilhar e acessar músicas e playlists recebidas.",color=Color.LightGray)
-            Button(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
+            Text("Entre ou crie sua conta com Google para compartilhar músicas e playlists.",color=Color.LightGray)
+            if(!NeroSupabase.configured)Text("O login ainda não está habilitado nesta versão. Você pode usar a biblioteca sem conta.",color=Color.LightGray,fontSize=12.sp)
+            val continueWithGoogle:()->Unit={
+                if(!NeroSupabase.configured){
+                    notice="A autenticação Google ainda precisa ser ativada pela equipe do NERO Music."
+                }else{busy=true;notice=null;scope.launch{
                 try{user=NeroSupabase.session(context,true)}
                 catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível entrar. Confira a configuração Google e a conexão."}
                 finally{busy=false}
-            }},modifier=Modifier.fillMaxWidth()){Text("Continuar com Google")}
+                }}
+            }
+            Button(enabled=!busy,onClick=continueWithGoogle,modifier=Modifier.fillMaxWidth()){Text("Continuar com Google")}
+            OutlinedButton(enabled=!busy,onClick=continueWithGoogle,modifier=Modifier.fillMaxWidth()){Text("Criar conta com Google")}
+            notice?.let{Text(it,color=MaterialTheme.colorScheme.error,fontSize=12.sp)}
         }else{
             Text(user?.displayName?.takeIf{it.isNotBlank()}?:"Minha conta",fontSize=23.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text(user?.email.orEmpty(),fontSize=14.sp,color=Color.LightGray,maxLines=2,overflow=TextOverflow.Ellipsis)
@@ -115,6 +122,6 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://timachado.ifree.page")))notice="Não foi possível abrir o site."}){Icon(Icons.Default.Language,null);Spacer(Modifier.width(8.dp));Text("Site e suporte T.I. Machado")}
         Text("NERO Music · "+BuildConfig.VERSION_NAME,fontSize=12.sp,color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-        notice?.let{Text(it,color=Color.LightGray)}
+        if(user!=null)notice?.let{Text(it,color=Color.LightGray)}
     }
 }
