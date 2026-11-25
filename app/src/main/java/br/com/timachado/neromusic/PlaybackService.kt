@@ -6,9 +6,6 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.audio.AudioSink
-import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -31,7 +28,6 @@ import kotlinx.coroutines.flow.collectLatest
 class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private var eq: SessionEqualizer? = null
-    private var crossfade: NeroLocalCrossfade? = null
     private var replaySampler:NeroReplaySampler?=null
     private val timerScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -63,21 +59,13 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         NeroAudioSettings.load(applicationContext)
-        val renderers=object:DefaultRenderersFactory(this){
-            override fun buildAudioSink(context:android.content.Context,enableFloatOutput:Boolean,enableAudioTrackPlaybackParams:Boolean):AudioSink =
-                DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(enableFloatOutput)
-                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(NeroLevelingProcessor()))
-                    .build()
-        }
-        val player = ExoPlayer.Builder(this,renderers).setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource)).build().apply {
+        // Recovery: use the original Media3 renderer and audio sink.
+        val player = ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
         }
         if(BuildConfig.DEBUG) {
-            crossfade=NeroLocalCrossfade(applicationContext,player,timerScope)
             eq = SessionEqualizer(applicationContext)
             player.addListener(object : Player.Listener {
                 override fun onAudioSessionIdChanged(audioSessionId: Int) { eq?.attach(audioSessionId) }
@@ -85,6 +73,13 @@ class PlaybackService : MediaLibraryService() {
             eq?.attach(player.audioSessionId)
         }
         replaySampler=NeroReplaySampler(applicationContext,player,timerScope)
+        player.addListener(object:Player.Listener{
+            override fun onPlayerError(error:androidx.media3.common.PlaybackException){
+                synchronized(resolved){resolved.clear()}
+                // Do not log URLs, credentials, titles or identifiers.
+                android.util.Log.w("NeroPlayback", "Playback error: "+error.errorCodeName+" / "+error.cause?.javaClass?.simpleName)
+            }
+        })
         var lastRecorded: String? = null
         player.addListener(object : Player.Listener {
             override fun onEvents(p: Player, events: Player.Events) {
@@ -148,7 +143,6 @@ class PlaybackService : MediaLibraryService() {
         session.takeIf{controllerInfo.uid==android.os.Process.myUid()||controllerInfo.isTrusted}
     override fun onDestroy() {
         replaySampler?.close();replaySampler=null
-        crossfade?.close();crossfade=null
         timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
         NeroWidgetState.detach(applicationContext)
