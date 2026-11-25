@@ -2,6 +2,7 @@ package br.com.timachado.neromusic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,7 +81,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
             else if(!loading&&songs.isEmpty())Text("Nenhuma faixa identificada para este artista.",color=Color.LightGray)
         }
         items(songs,key={it.id}){hit->
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
                 AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id))
