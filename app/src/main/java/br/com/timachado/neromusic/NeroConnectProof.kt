@@ -53,12 +53,12 @@ internal fun verifyConnectProof(challenge:ConnectChallenge,proof:String,local:Pu
 // It is never persisted as a remote authorization.
 internal class ConnectProofGate{
     private var pending:ConnectChallenge?=null
-    fun issue(local:PublicKey,peer:PublicKey,now:Long):ConnectChallenge=
+    @Synchronized fun issue(local:PublicKey,peer:PublicKey,now:Long):ConnectChallenge=
         newConnectChallenge(local,peer,now).also{pending=it}
-    fun consume(proof:String,local:PublicKey,peer:PublicKey,now:Long):Boolean{
+    @Synchronized fun consume(proof:String,local:PublicKey,peer:PublicKey,now:Long):Boolean{
         val current=pending?:return false
         pending=null
         return verifyConnectProof(current,proof,local,peer,now)
     }
-    fun clear(){pending=null}
+    @Synchronized fun clear(){pending=null}
 }
