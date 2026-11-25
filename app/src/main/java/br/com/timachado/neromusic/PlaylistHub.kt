@@ -25,10 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList())
 @Composable
-internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onArtist:(String)->Unit={},onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
+internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onArtist:(String)->Unit={},onAlbum:(NativeCollection)->Unit={},onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
     val context=LocalContext.current
     val followed=rememberFollowedArtists()
+    val albums=rememberSavedAlbums()
     var artistFilter by remember{mutableStateOf(false)}
+    var albumFilter by remember{mutableStateOf(false)}
     var lists by remember{mutableStateOf(emptyList<HubPlaylist>())}
     var failed by remember{mutableStateOf(false)}
     var loading by remember{mutableStateOf(true)}
@@ -56,7 +58,9 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
             IconButton(onClick=onCreate){Icon(Icons.Default.Add,"Criar playlist")}
         }
         Row(verticalAlignment=Alignment.CenterVertically){
-            FilterChip(selected=artistFilter,onClick={artistFilter=!artistFilter},label={Text("Artistas")})
+            FilterChip(selected=artistFilter,onClick={artistFilter=!artistFilter;albumFilter=false},label={Text("Artistas")})
+            Spacer(Modifier.width(6.dp))
+            FilterChip(selected=albumFilter,onClick={albumFilter=!albumFilter;artistFilter=false},label={Text("Álbuns")})
             Spacer(Modifier.width(6.dp))
             FilterChip(selected=false,onClick=onDownloads,label={Text("Downloads")},leadingIcon={Icon(Icons.Default.Download,null)})
             Spacer(Modifier.weight(1f))
@@ -80,13 +84,13 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         if(failed)Text("Não foi possível carregar todas as playlists.",color=MaterialTheme.colorScheme.error)
         val visible=lists.filter{it.title.contains(term,true)}.let{if(alphabetic)it.sortedBy{row->row.title.lowercase(java.util.Locale.ROOT)} else it}
         LazyColumn(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
-            if(!artistFilter&&"Músicas curtidas".contains(term,true))item{
+            if(!artistFilter&&!albumFilter&&"Músicas curtidas".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onFavorites),verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Brush.linearGradient(listOf(Color(0xFF0066FF),Color(0xFF00E5FF),Color(0xFF39FF14)))),contentAlignment=Alignment.Center){Icon(Icons.Default.Favorite,null,tint=Color.White,modifier=Modifier.size(30.dp))}
                     Column(Modifier.weight(1f).padding(start=12.dp)){Text("Músicas curtidas",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Playlist · "+(onlineFavoriteCount+localFavoriteCount)+" músicas",fontSize=12.sp,color=Color.LightGray)}
                 }
             }
-            if(!artistFilter&&"Downloads".contains(term,true))item{
+            if(!artistFilter&&!albumFilter&&"Downloads".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onDownloads),verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){Icon(Icons.Default.Download,null,tint=Color(0xFF39FF14),modifier=Modifier.size(30.dp))}
                     Column(Modifier.weight(1f).padding(start=12.dp)){Text("Downloads",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Ouvir offline",fontSize=12.sp,color=Color.LightGray)}
@@ -101,7 +105,17 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                     }
                 }
             }
-            if(!artistFilter)items(visible,key={"${it.page}:${it.id}"}){row->
+            if(albumFilter){
+                if(albums.isEmpty())item{Text("Salve seus álbuns favoritos para encontrá-los aqui.",color=Color.LightGray)}
+                val matching=albums.filter{it.title.contains(term,true)||it.credit.contains(term,true)}.let{if(alphabetic)it.sortedBy{album->album.title.lowercase(java.util.Locale.ROOT)}else it}
+                items(matching,key={it.url}){album->
+                    Row(Modifier.fillMaxWidth().clickable{onAlbum(album)}.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
+                        HubCover(listOfNotNull(album.artwork))
+                        Column(Modifier.weight(1f).padding(start=12.dp)){Text(album.title,fontSize=17.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis);Text("Álbum · "+album.credit,fontSize=12.sp,color=Color.LightGray)}
+                    }
+                }
+            }
+            if(!artistFilter&&!albumFilter)items(visible,key={"${it.page}:${it.id}"}){row->
                 Row(Modifier.fillMaxWidth().clickable{onOpen(row.page,row.id)},verticalAlignment=Alignment.CenterVertically){
                     if(row.local.isNotEmpty())PlaylistArtwork(row.local,Modifier.size(66.dp))
                     else HubCover(row.covers)
@@ -111,7 +125,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                     }
                 }
             }
-            if(!artistFilter&&!loading&&!failed&&lists.isEmpty())item{
+            if(!artistFilter&&!albumFilter&&!loading&&!failed&&lists.isEmpty())item{
                 Text("Suas playlists aparecem aqui.",color=Color.LightGray)
                 TextButton(onClick=onCreate){Text("Criar minha primeira playlist")}
                 TextButton(onClick={onOpen(6,null)}){Text("Importar minhas playlists")}
