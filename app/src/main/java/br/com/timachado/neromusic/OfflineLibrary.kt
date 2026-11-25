@@ -210,24 +210,24 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF39FF14),modifier=Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                    Text(entry.hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
+                    Text(entry.hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor("youtube:"+entry.hit.id));NowTrackStatus("youtube:"+entry.hit.id)
                     Text(entry.hit.artist,fontSize=12.sp,color=Color.LightGray)
                     Text("Disponível offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",entry.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
                 }
                 IconButton(enabled=canRemove,onClick={pendingRemoval=("youtube:"+entry.hit.id) to entry.hit.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
-                IconButton(enabled=canPlay,onClick={onPlay(queue,visible.size+nativeVisible.indexOf(entry))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                NowTrackAction("youtube:"+entry.hit.id,canPlay){onPlay(queue,visible.size+nativeVisible.indexOf(entry))}
             }
         }
         items(visible,key={it.id}){track->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF39FF14),modifier=Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                    Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
+                    Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor("commons:"+track.id));NowTrackStatus("commons:"+track.id)
                     Text(track.artist,maxLines=2,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                     Text("Disponível offline · "+track.license+" · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",track.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
                 }
                 IconButton(enabled=canRemove,onClick={pendingRemoval=("commons:"+track.id) to track.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
-                IconButton(enabled=canPlay,onClick={onPlay(queue,visible.indexOf(track))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                NowTrackAction("commons:"+track.id,canPlay){onPlay(queue,visible.indexOf(track))}
             }
         }
     }
