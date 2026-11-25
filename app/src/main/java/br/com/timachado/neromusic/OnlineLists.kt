@@ -123,7 +123,10 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     val available=remember(active,localIndex,saved){
         active?.songs?.mapNotNull{s->
             val audio=s.openAudio?.takeIf{allowed(it)&&s.id=="commons:"+it.id}
-            val local=if(s.artist.isBlank())null else localIndex[s.title.trim().lowercase(java.util.Locale.ROOT) to s.artist.trim().lowercase(java.util.Locale.ROOT)]?.singleOrNull()
+            val local=if(s.id.startsWith("local:")){
+                val id=s.id.removePrefix("local:").toLongOrNull()
+                tracks.firstOrNull{it.id==id&&it.title==s.title&&it.artist==s.artist}
+            }else if(s.artist.isBlank())null else localIndex[s.title.trim().lowercase(java.util.Locale.ROOT) to s.artist.trim().lowercase(java.util.Locale.ROOT)]?.singleOrNull()
             val media=if(audio!=null){
                 val copy=saved.firstOrNull{it==audio}
                 audio.item(if(copy!=null)Uri.fromFile(audioFile(context,copy))else Uri.parse(audio.url))
