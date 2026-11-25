@@ -22,20 +22,40 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null)
+internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null,val wifiOnly:Boolean=true,val removing:Boolean=false)
 internal class OfflineManager(private val context:Context){
-    private val _state=MutableStateFlow(OfflineState())
+    private val _state=MutableStateFlow(OfflineState(wifiOnly=wifiOnlyDownloads(context)))
     val state=_state.asStateFlow()
+    fun setWifiOnly(value:Boolean){
+        setWifiOnlyDownloads(context,value)
+        _state.update{it.copy(wifiOnly=value,notice=null)}
+    }
+    fun notify(message:String){_state.update{it.copy(notice=message)}}
+    suspend fun remove(id:String){
+        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
+        _state.update{it.copy(removing=true,notice=null)}
+        try{
+            val native=_state.value.nativeSaved.firstOrNull{"youtube:"+it.hit.id==id}
+            val open=_state.value.saved.firstOrNull{"commons:"+it.id==id}
+            if(native!=null)removeNativeDownload(context,native.hit.id)
+            else if(open!=null)removeOpenDownload(context,open)
+            else return
+            reload()
+            _state.update{it.copy(notice="Download removido. Seus favoritos e playlists foram preservados.")}
+        }catch(e:CancellationException){throw e}
+        catch(_:Exception){reload();_state.update{it.copy(notice="Não foi possível remover o arquivo.")}}
+        finally{_state.update{it.copy(removing=false)}}
+    }
     suspend fun reload(){
         try{val rows=downloaded(context);val native=nativeOfflineTracks(context);_state.update{it.copy(saved=rows,nativeSaved=native)}}
         catch(e:CancellationException){throw e}catch(_:Exception){_state.update{it.copy(notice="Não foi possível consultar os downloads.")}}
     }
     suspend fun save(track:OpenTrack){
-        if(_state.value.batchTotal>0||_state.value.nativeActive!=null)return
+        if(_state.value.batchTotal>0||_state.value.nativeActive!=null||_state.value.removing)return
         saveOne(track)
     }
     suspend fun savePlaylist(tracks:List<OpenTrack>){
-        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0)return
+        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
         val rows=tracks.filter(::allowed).distinctBy{it.id}
         if(rows.isEmpty())return
         _state.update{it.copy(batchTotal=rows.size,batchDone=0,notice=null)}
@@ -49,7 +69,7 @@ internal class OfflineManager(private val context:Context){
         }finally{_state.update{it.copy(batchTotal=0,batchDone=0)}}
     }
     suspend fun saveNative(hit:NativeMusicHit){
-        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0)return
+        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
         _state.update{it.copy(nativeActive=hit,progress=0f,notice=null)}
         try{
             saveNativeAudio(context,hit){fraction->_state.update{it.copy(progress=fraction)}}
@@ -57,6 +77,7 @@ internal class OfflineManager(private val context:Context){
             check(rows.any{it.hit.id==hit.id})
             _state.update{it.copy(nativeSaved=rows,notice="Música disponível offline.")}
         }catch(e:CancellationException){throw e}
+        catch(_:WifiDownloadRequired){notify("Conecte-se ao Wi-Fi ou altere a preferência em Downloads.")}
         catch(_:Exception){_state.update{it.copy(notice="Não foi possível baixar esta música. Verifique a conexão e tente novamente.")}}
         finally{_state.update{it.copy(nativeActive=null,progress=0f)}}
     }
@@ -69,6 +90,7 @@ internal class OfflineManager(private val context:Context){
             check(rows.any{it==track})
             _state.update{it.copy(saved=rows,notice="Música disponível offline.")}
         }catch(e:CancellationException){throw e}
+        catch(_:WifiDownloadRequired){notify("Conecte-se ao Wi-Fi ou altere a preferência em Downloads.")}
         catch(_:Exception){_state.update{it.copy(notice="Falha ao baixar. Confira o espaço livre e a conexão.")}}
         finally{_state.update{it.copy(active=null,progress=0f)}}
     }
@@ -100,7 +122,7 @@ internal fun NativeDownloadIcon(hit:NativeMusicHit,state:OfflineState,onSave:(Na
     }
 }
 @Composable
-internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit){
+internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={}){
     val context=androidx.compose.ui.platform.LocalContext.current
     val rows=state.saved
     var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
@@ -114,9 +136,24 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
     }
     val queue=remember(visible,nativeVisible){(visible.map{it.item(Uri.fromFile(audioFile(context,it)))}+nativeVisible.map{it.item(context)}).withOrigin(PlaybackOrigin("offline","Downloads",""))}
     val total=rows.size+state.nativeSaved.size
+    val canRemove=state.active==null&&state.nativeActive==null&&state.batchTotal==0&&!state.removing
+    var pendingRemoval by remember{mutableStateOf<Pair<String,String>?>(null)}
+    pendingRemoval?.let{entry->
+        AlertDialog(onDismissRequest={pendingRemoval=null},title={Text("Remover download?")},
+            text={Text(entry.second+" será removida do armazenamento offline, mas continuará nos seus favoritos e playlists.")},
+            confirmButton={TextButton(enabled=canRemove,onClick={pendingRemoval=null;onRemove(entry.first)}){Text("Remover")}},
+            dismissButton={TextButton(onClick={pendingRemoval=null}){Text("Cancelar")}})
+    }
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
             Text("Downloads",fontSize=25.sp,fontWeight=FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    Text("Baixar somente pelo Wi-Fi",fontWeight=FontWeight.Medium)
+                    Text("Economize seus dados móveis",fontSize=12.sp,color=Color.LightGray)
+                }
+                Switch(checked=state.wifiOnly,onCheckedChange=onWifiChange)
+            }
             Text(total.toString()+" músicas disponíveis offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",(rows.sumOf{it.size}+state.nativeSaved.sumOf{it.size})/1048576.0),color=Color.LightGray,fontSize=13.sp)
             if(total>0){
                 OutlinedTextField(
@@ -165,6 +202,7 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                     Text(entry.hit.artist,fontSize=12.sp,color=Color.LightGray)
                     Text("Disponível offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",entry.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
                 }
+                IconButton(enabled=canRemove,onClick={pendingRemoval=("youtube:"+entry.hit.id) to entry.hit.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
                 IconButton(enabled=canPlay,onClick={onPlay(queue,visible.size+nativeVisible.indexOf(entry))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
             }
         }
@@ -176,6 +214,7 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                     Text(track.artist,maxLines=2,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                     Text("Disponível offline · "+track.license+" · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",track.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
                 }
+                IconButton(enabled=canRemove,onClick={pendingRemoval=("commons:"+track.id) to track.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
                 IconButton(enabled=canPlay,onClick={onPlay(queue,visible.indexOf(track))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
             }
         }
