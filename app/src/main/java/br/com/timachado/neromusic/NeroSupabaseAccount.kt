@@ -31,6 +31,8 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
     var user by remember{mutableStateOf<NeroSession?>(null)}
     var busy by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
+    var privacyPage by remember{mutableStateOf<NeroPrivacyPage?>(null)}
+    privacyPage?.let{NeroPrivacyDialog(it,onClose={privacyPage=null})}
     LaunchedEffect(Unit){
         try{user=NeroSupabase.session(context,false)}
         catch(e:CancellationException){throw e}catch(_:Exception){}
@@ -102,6 +104,13 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             }
         }
         Text("Privacidade e suporte",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+            Column(Modifier.padding(12.dp)){
+                TextButton(onClick={privacyPage=NeroPrivacyPage.DATA}){Icon(Icons.Default.Shield,null);Spacer(Modifier.width(8.dp));Text("Privacidade e seus dados")}
+                TextButton(onClick={privacyPage=NeroPrivacyPage.TERMS}){Icon(Icons.Default.Description,null);Spacer(Modifier.width(8.dp));Text("Informações de uso")}
+                TextButton(onClick={privacyPage=NeroPrivacyPage.ACCOUNT}){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Solicitar exclusão da conta")}
+            }
+        }
         Text("Preferências musicais armazenadas localmente. ${hidden.size} músicas ocultadas das recomendações.",fontSize=13.sp,color=Color.LightGray)
         TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://timachado.ifree.page")))notice="Não foi possível abrir o site."}){Icon(Icons.Default.Language,null);Spacer(Modifier.width(8.dp));Text("Site e suporte T.I. Machado")}
         Text("NERO Music · "+BuildConfig.VERSION_NAME,fontSize=12.sp,color=Color.LightGray)
