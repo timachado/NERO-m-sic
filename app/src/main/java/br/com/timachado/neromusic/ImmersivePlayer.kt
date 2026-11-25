@@ -46,12 +46,12 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},modifier:Modifier=Modifier
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},modifier:Modifier=Modifier
 ){
     var fullscreen by rememberSaveable{mutableStateOf(false)}
     LaunchedEffect(videoMode){if(!videoMode)fullscreen=false}
     if(fullscreen&&videoMode&&videoPlayer!=null){
-        FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()})
+        FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()},pipSupported=pipSupported,onPip=onPip)
         return
     }
     val deadline by NeroSleepTimer.deadline.collectAsState()
@@ -76,7 +76,8 @@ internal fun ImmersivePlayer(
             }
         },confirmButton={TextButton(onClick={showTimer=false}){Text("Fechar")}},
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
-    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF233743),Color(0xFF0D181D),Color.Black)))){
+    val tones=rememberPlayerTones(track,remoteCover)
+    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(tones,Color(0xFF0D181D),Color.Black)))){
         val coverSize=minOf(maxWidth-40.dp,maxHeight*.46f,410.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
@@ -103,7 +104,10 @@ internal fun ImmersivePlayer(
                 NativeVideoSurface(videoPlayer,Modifier.fillMaxWidth().aspectRatio(16f/9f).clip(RoundedCornerShape(14.dp)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
                     ClipQualityMenu(videoQuality,onVideoQuality,ready)
-                    TextButton(onClick={fullscreen=true}){Icon(Icons.Default.Fullscreen,null);Spacer(Modifier.width(6.dp));Text("Tela cheia")}
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        if(pipSupported)IconButton(onClick=onPip){Icon(Icons.Default.PictureInPictureAlt,"Janela flutuante")}
+                        IconButton(onClick={fullscreen=true}){Icon(Icons.Default.Fullscreen,"Tela cheia")}
+                    }
                 }
             }
             else if(remoteCover!=null&&track==null)AsyncImage(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))

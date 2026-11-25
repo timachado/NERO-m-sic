@@ -72,7 +72,7 @@ internal fun ClipQualityMenu(quality:Int,onQuality:(Int)->Unit,enabled:Boolean=t
     }
 }
 @Composable
-internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit){
+internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit,pipSupported:Boolean=false,onPip:()->Unit={}){
     val context=LocalContext.current
     val activity=remember(context){findActivity(context)}
     DisposableEffect(activity){
@@ -104,6 +104,7 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
                 Text(artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,style=MaterialTheme.typography.bodySmall)
             }
             ClipQualityMenu(quality,onQuality)
+            if(pipSupported)IconButton(onClick=onPip){Icon(Icons.Default.PictureInPictureAlt,"Janela flutuante")}
             IconButton(onClick=onAudio){Icon(Icons.Default.MusicNote,"Voltar para música")}
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha=.65f)).padding(horizontal=20.dp),horizontalAlignment=Alignment.CenterHorizontally){

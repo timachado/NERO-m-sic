@@ -35,7 +35,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 private val artSlots=Semaphore(2)
-private suspend fun artwork(context:Context,track:Track,size:Int):Bitmap? = artSlots.withPermit {
+internal suspend fun artwork(context:Context,track:Track,size:Int):Bitmap? = artSlots.withPermit {
     withContext(Dispatchers.IO) {
         if(Build.VERSION.SDK_INT>=29) {
             val thumb=runCatching { context.contentResolver.loadThumbnail(track.uri,Size(size,size),null) }.getOrNull()

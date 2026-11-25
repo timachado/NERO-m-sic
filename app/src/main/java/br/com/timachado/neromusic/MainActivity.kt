@@ -1,6 +1,10 @@
 package br.com.timachado.neromusic
 
 import android.Manifest
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
+import android.util.Rational
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,6 +54,15 @@ private val Green = Color(0xFF39FF14)
 private val SurfaceDark = Color(0xFF10171C)
 
 class MainActivity : ComponentActivity() {
+    private var pipMode by mutableStateOf(false)
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode:Boolean,newConfig:Configuration){
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode,newConfig)
+        pipMode=isInPictureInPictureMode
+    }
+    private fun enterClipPip():Boolean{
+        if(!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE))return false
+        return runCatching{enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16,9)).build())}.getOrDefault(false)
+    }
     private var incomingShare by mutableStateOf<String?>(null)
     private var shareRevision by mutableIntStateOf(0)
     private fun acceptShare(intent:Intent?){
@@ -59,13 +72,14 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);acceptShare(intent)}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pipMode=isInPictureInPictureMode
         if(savedInstanceState==null)acceptShare(intent) else savedInstanceState.getString("nero_pending_share")?.let{incomingShare=it}
         setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Green, secondary = Cyan,
             background = Color.Black, surface = SurfaceDark, onPrimary = Color.Black,
             primaryContainer = Color(0xFF102B23), onPrimaryContainer = Green,
             secondaryContainer = Color(0xFF12313A), onSecondaryContainer = Cyan,
             tertiary = Blue, tertiaryContainer = Color(0xFF10243E), onTertiaryContainer = Cyan,
-            onBackground = Color.White, onSurface = Color.White)) { NeroApp(incomingShare,shareRevision,onShareClosed={incomingShare=null}) } }
+            onBackground = Color.White, onSurface = Color.White)) { NeroApp(incomingShare,shareRevision,onShareClosed={incomingShare=null},pipMode=pipMode,pipSupported=packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE),onPip={enterClipPip()}) } }
     }
     override fun onSaveInstanceState(outState:Bundle){super.onSaveInstanceState(outState);outState.putString("nero_pending_share",incomingShare)}
 }
@@ -74,7 +88,7 @@ private fun timestamp(ms: Long): String {
     return "%d:%02d".format(s / 60, s % 60)
 }
 @Composable
-private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit) {
+private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit,pipMode:Boolean,pipSupported:Boolean,onPip:()->Boolean) {
     val context = LocalContext.current
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) }
@@ -160,7 +174,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var librarySelection by remember { mutableStateOf<String?>(null) }
     var libraryCreate by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
-    var fullPlayer by remember { mutableStateOf(false) }
+    var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
     var showPlans by remember { mutableStateOf(false) }
     var showCloud by remember { mutableStateOf(false) }
@@ -186,6 +200,15 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         p.repeatMode=Player.REPEAT_MODE_OFF
         p.setMediaItems(queue.map{it.mediaItem()},0,0L)
         p.prepare();p.play()
+    }
+    if(pipMode){
+        Box(Modifier.fillMaxSize().background(Color.Black),contentAlignment=Alignment.Center){
+            val p=controller
+            if(p!=null&&videoMode)NativeVideoSurface(p,Modifier.fillMaxSize())
+            else if(nowOpenRef?.coverUrl!=null)AsyncImage(model=nowOpenRef?.coverUrl,contentDescription=null,modifier=Modifier.fillMaxHeight().aspectRatio(1f))
+            else Icon(Icons.Default.MusicNote,null,tint=Cyan)
+        }
+        return
     }
     addLocal?.let { SaveLocalTrackDialog(it,onClose={addLocal=null}) }
     addOnline?.let { SaveOnlineDialog(listOf(it),onClose={addOnline=null}) }
@@ -252,7 +275,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
                 track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,mediaId=nowId,origin=nowOrigin,
-                videoPlayer=controller,videoMode=videoMode,canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
+                videoPlayer=controller,videoMode=videoMode,pipSupported=pipSupported,onPip={if(!onPip())android.widget.Toast.makeText(context,"Janela flutuante indisponível. Confira a permissão no Android.",android.widget.Toast.LENGTH_SHORT).show()},canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
                 videoQuality=videoQuality,onVideoQuality={quality->controller?.let{p->
                     val item=p.currentMediaItem
                     val index=p.currentMediaItemIndex

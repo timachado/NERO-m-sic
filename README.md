@@ -200,3 +200,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.31-dev
 - Tela cheia imersiva de clipes em paisagem, restauração da orientação e barras ao sair, controles de reprodução e seleção de limite de qualidade por faixa (Auto até 720p, 360/480/720/1080p). Escolhe melhor MP4 muxado compatível até o limite; não garante disponibilidade de 1080p nem adaptação dinâmica de bitrate. Mantém índice, posição e metadados da fila ao trocar qualidade, com cache separado. Mesmo MediaController; sem player externo. Build e validação física pendentes.
+
+## 0.9.32-dev
+- PiP explícito via botão em vídeo normal e tela cheia, usando a mesma sessão Media3 e renderização isolada no modo flutuante; preserva player aberto ao voltar. Depende de suporte/permissão do Android. Cores dinâmicas extraídas de miniatura local/remota, com fundo escuro, acentos Aurora Neon fixos e transição de 500ms. Sem mudanças de catálogo, autenticação ou dados. Build e testes físicos pendentes.
