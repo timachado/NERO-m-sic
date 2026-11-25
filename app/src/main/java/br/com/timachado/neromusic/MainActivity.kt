@@ -162,7 +162,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
             shuffle = p.shuffleModeEnabled
             repeat = p.repeatMode
-            playbackError = p.playerError?.let { "Não foi possível reproduzir esta faixa." }
+            playbackError = p.playerError?.let { "Falha na reprodução ("+it.errorCodeName+"). Toque em Play para tentar novamente." }
             delay(350)
         }
     }
@@ -268,7 +268,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (showLyrics) {
             LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
-                onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else it.play() } },
+                onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else { if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play() } } },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
         } else if (showCloud && BuildConfig.DEBUG) {
             CloudLibraryScreen(tracks = tracks, favoriteIds = favorites, granted = granted,
@@ -317,7 +317,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowId},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
-                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else it.play()}},
+                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else {if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play()}}},
                 onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
                 onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
                 onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
