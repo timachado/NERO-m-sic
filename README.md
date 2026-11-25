@@ -191,3 +191,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.28-dev
 - Player com origem da fila em metadados MediaItem, cabeçalho clicável, prévia de letra, músicas do álbum confirmado por ID e sugestões por artista; correção de paginação das paradas. Build e teste físico pendentes. Não altera playlists salvas.
+
+## 0.9.29-dev
+- Busca destaca a faixa atual por ID exato, com indicação verde e controle pausa/continuar sem recriar a fila. Toque na faixa ativa abre o player. Card Tocando agora usa estado real da sessão. Remove aba Vídeos, bloco de busca de vídeos e navegação web/embedded do fluxo de pesquisa. Mantém a reprodução musical nativa experimental, as informações da fonte/licença e os recursos existentes; não implementa vídeo nativo. Build e teste Android pendentes.
