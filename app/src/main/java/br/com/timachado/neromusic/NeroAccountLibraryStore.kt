@@ -70,6 +70,18 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    suspend fun replacePlaylists(context:Context,uid:String,expected:List<OnlineList>,next:List<OnlineList>)=mutex.withLock{
+        require(NeroSupabase.activeUid.value==uid)
+        withContext(Dispatchers.IO){
+            val empty=CloudLibrarySnapshot(emptyList(),emptyList())
+            val current=NeroAccountLibraryStore.read(context,uid)?:NeroAccountLibraryState(0,empty,empty)
+            require(current.pending.playlists==expected)
+            require(NeroSupabase.activeUid.value==uid)
+            NeroAccountLibraryStore.write(context,uid,current.copy(pending=current.pending.copy(playlists=next)))
+        }
+        changesState.value++
+        editsState.value++
+    }
     suspend fun importGuestFavorites(context:Context,uid:String)=mutex.withLock{
         require(NeroSupabase.activeUid.value==uid)
         val app=context.applicationContext
