@@ -35,6 +35,14 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 private const val COLLECTION="nero_shared"
+private const val PREVIEWS="nero_shared_previews"
+private data class SharedPreview(val title:String,val subtitle:String,val count:Long,val single:Boolean)
+private suspend fun fetchPreview(input:String):SharedPreview?{
+    val id=ShareLinks.parse(input)?:return null
+    val doc=FirebaseFirestore.getInstance().collection(PREVIEWS).document(id).get(Source.SERVER).await()
+    if(!doc.exists())return null
+    return SharedPreview(doc.getString("title").orEmpty(),doc.getString("subtitle").orEmpty(),doc.getLong("count")?:0L,doc.getBoolean("single")?:false)
+}
 
 
 private class GoogleRequired:Exception()
@@ -54,17 +62,26 @@ private suspend fun googleSession(context:Context,interactive:Boolean):String{
     if(user.getIdToken(true).await().signInProvider!="google.com")throw GoogleRequired()
     return user.uid
 }
-private suspend fun publishShare(context:Context,playlist:SharedPlaylist):String{
+private suspend fun publishShare(context:Context,playlist:SharedPlaylist,single:Boolean):String{
     if(!ShareLinks.configured)throw ShareNotConfigured()
     val uid=googleSession(context,true)
     val payload=encodePlaylist(playlist).toString(Charsets.UTF_8)
     require(payload.toByteArray(Charsets.UTF_8).size<=180000)
     val code=UUID.randomUUID().toString().replace("-","")
-    FirebaseFirestore.getInstance().collection(COLLECTION).document(code)
-        .set(mapOf("owner" to uid,"createdAt" to FieldValue.serverTimestamp(),"payload" to payload)).await()
-    // Do not use a locally queued write as a public share.
-    val doc=FirebaseFirestore.getInstance().collection(COLLECTION).document(code).get(Source.SERVER).await()
-    check(doc.exists()&&!doc.metadata.hasPendingWrites())
+    val db=FirebaseFirestore.getInstance()
+    val content=db.collection(COLLECTION).document(code)
+    val preview=db.collection(PREVIEWS).document(code)
+    // Public presentation contains only explicitly disclosed display metadata.
+    // Never store media IDs, playable URLs, owner UID or the track list here.
+    val batch=db.batch()
+    batch.set(content,mapOf("owner" to uid,"createdAt" to FieldValue.serverTimestamp(),"payload" to payload))
+    batch.set(preview,mapOf("createdAt" to FieldValue.serverTimestamp(),"title" to playlist.name.take(100),
+        "subtitle" to if(single)playlist.songs.first().artist.take(300) else "Playlist NERO Music",
+        "count" to playlist.songs.size,"single" to single))
+    batch.commit().await()
+    val doc=content.get(Source.SERVER).await()
+    val publicDoc=preview.get(Source.SERVER).await()
+    check(doc.exists()&&!doc.metadata.hasPendingWrites()&&publicDoc.exists()&&!publicDoc.metadata.hasPendingWrites())
     return ShareLinks.url(code)
 }
 private suspend fun fetchShare(context:Context,input:String,interactive:Boolean=true):Pair<String,SharedPlaylist>{
@@ -91,7 +108,7 @@ internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose
         busy=true;message=null
         scope.launch{
             try{
-                val url=link?:publishShare(context,playlist).also{link=it}
+                val url=link?:publishShare(context,playlist,single).also{link=it}
                 if(action=="copy"){
                     val clipboard=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",url))
@@ -120,8 +137,8 @@ internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose
             Button(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("send")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("WhatsApp e redes sociais")}
             OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text("Copiar link")}
             if(single)OutlinedButton(enabled=!busy,onClick={share("card")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text("Status e Stories")}
-            Text("Acesso com conta Google · link privado válido por 7 dias.",style=MaterialTheme.typography.bodySmall)
-            Text("Qualquer pessoa com o link e uma sessão Google pode acessar. O card público não inclui áudio.",style=MaterialTheme.typography.bodySmall)
+            Text("Acesso com conta Google · link válido por 7 dias.",style=MaterialTheme.typography.bodySmall)
+            Text("Quem recebe o link pode ver o título, artista (música) e quantidade de faixas. A lista completa e a reprodução exigem Google. O card público não inclui áudio.",style=MaterialTheme.typography.bodySmall)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             message?.let{Text(it,color=if(it=="Link copiado.")Color(0xFF39FF14)else MaterialTheme.colorScheme.error)}
         }
@@ -133,6 +150,7 @@ internal fun ReceiveShareDialog(onClose:()->Unit,onImport:(SharedPlaylist)->Unit
     val scope=rememberCoroutineScope()
     var code by remember(initialLink){mutableStateOf(initialLink)}
     var result by remember{mutableStateOf<Pair<String,SharedPlaylist>?>(null)}
+    var preview by remember{mutableStateOf<SharedPreview?>(null)}
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
     fun open(interactive:Boolean=true){
@@ -141,6 +159,12 @@ internal fun ReceiveShareDialog(onClose:()->Unit,onImport:(SharedPlaylist)->Unit
             try{result=fetchShare(context,code,interactive)}
             catch(e:CancellationException){throw e}catch(e:GoogleRequired){message="Entre com Google para abrir este link."}catch(e:Exception){message=shareError(e)}
             finally{busy=false}
+        }
+    }
+    LaunchedEffect(code){
+        preview=null
+        if(ShareLinks.parse(code)!=null){
+            try{preview=fetchPreview(code)}catch(e:CancellationException){throw e}catch(_:Exception){/* No public preview for older or expired links. */}
         }
     }
     LaunchedEffect(initialLink){if(initialLink.isNotBlank()&&ShareLinks.parse(initialLink)!=null)open(false)}
@@ -159,9 +183,21 @@ internal fun ReceiveShareDialog(onClose:()->Unit,onImport:(SharedPlaylist)->Unit
     }
     AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text("Abrir compartilhamento")},text={
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            if(result==null)Text(if(initialLink.isNotBlank())"Entre com Google para abrir este compartilhamento." else "Cole o link recebido.")
+            if(result==null){
+                Card(modifier=Modifier.fillMaxWidth()){
+                    Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
+                        Icon(if(preview?.single==true)Icons.Default.MusicNote else Icons.Default.QueueMusic,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(52.dp))
+                        Column(Modifier.weight(1f).padding(start=12.dp)){
+                            Text("NERO MUSIC",color=Color(0xFF39FF14),style=MaterialTheme.typography.labelSmall)
+                            Text(preview?.title?.takeIf{it.isNotBlank()}?:"Conteúdo compartilhado",style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                            preview?.let{Text(it.subtitle,maxLines=1,overflow=TextOverflow.Ellipsis);Text(it.count.toString()+" faixa(s)",style=MaterialTheme.typography.bodySmall)}
+                        }
+                    }
+                }
+                Text(if(initialLink.isNotBlank())"Entre com Google para ouvir ou salvar na biblioteca." else "Cole o link recebido e entre com Google.")
+            }
             if(initialLink.isBlank())OutlinedTextField(code,{code=it.take(512);result=null},enabled=!busy,singleLine=true,label={Text("Link NERO")})
-            if(result==null)Button(enabled=!busy&&ShareLinks.parse(code)!=null,onClick={open()},modifier=Modifier.fillMaxWidth()){Text("Acessar com Google")}
+            if(result==null)Button(enabled=!busy&&ShareLinks.parse(code)!=null,onClick={open()},modifier=Modifier.fillMaxWidth()){Text("Entrar com Google para ouvir")}
             result?.second?.let{playlist->
                 Text(playlist.name,style=MaterialTheme.typography.titleMedium)
                 Text(playlist.songs.size.toString()+" faixa(s)")

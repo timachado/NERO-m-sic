@@ -31,6 +31,33 @@ service cloud.firestore {
         && request.resource.data.payload.size() <= 180000;
       allow delete: if googleSession() && resource.data.owner == request.auth.uid;
     }
+    match /nero_shared_previews/{code} {
+      function googleSession() {
+        return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+      }
+      function validCode() { return code.matches('^[0-9a-f]{32}
+  }
+}
+); }
+      function parentPath() { return /databases/$(database)/documents/nero_shared/$(code); }
+      allow get: if validCode() && resource.data.createdAt is timestamp
+        && request.time < resource.data.createdAt + duration.value(7, 'd')
+        && exists(parentPath());
+      allow list, update: if false;
+      allow create: if googleSession() && validCode()
+        && existsAfter(parentPath())
+        && getAfter(parentPath()).data.owner == request.auth.uid
+        && getAfter(parentPath()).data.createdAt == request.time
+        && request.resource.data.keys().hasOnly(['createdAt','title','subtitle','count','single'])
+        && request.resource.data.keys().hasAll(['createdAt','title','subtitle','count','single'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100
+        && request.resource.data.subtitle is string && request.resource.data.subtitle.size() <= 300
+        && request.resource.data.count is int && request.resource.data.count >= 1 && request.resource.data.count <= 1000
+        && request.resource.data.single is bool
+        && (!request.resource.data.single || request.resource.data.count == 1);
+      allow delete: if googleSession() && exists(parentPath()) && get(parentPath()).data.owner == request.auth.uid;
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }
