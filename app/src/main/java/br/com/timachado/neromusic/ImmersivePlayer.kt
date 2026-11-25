@@ -58,6 +58,7 @@ internal fun ImmersivePlayer(
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
     var showTimer by remember{mutableStateOf(false)}
     var showMore by remember{mutableStateOf(false)}
+    val castContext=androidx.compose.ui.platform.LocalContext.current
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
@@ -99,6 +100,10 @@ internal fun ImmersivePlayer(
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
                         if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Equalizador")},onClick={showMore=false;onEqualizer()})
+                        if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Transmitir para TV")},enabled=ready&&!videoMode,onClick={
+                            showMore=false
+                            castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity"))
+                        })
                         DropdownMenuItem(text={Text("Fila de reprodução")},enabled=ready,onClick={showMore=false;onQueue()})
                         DropdownMenuItem(text={Text("Temporizador")},enabled=ready,onClick={showMore=false;showTimer=true})
                     }
