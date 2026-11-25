@@ -49,7 +49,6 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,onRe
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
-        if(BuildConfig.DEBUG)user?.let{session->NeroCloudBackupCard(session.uid,!busy,onRestored)}
         Text("Suas playlists e favoritos existentes continuam no aparelho.",color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         notice?.let{Text(it,color=Color.LightGray)}
