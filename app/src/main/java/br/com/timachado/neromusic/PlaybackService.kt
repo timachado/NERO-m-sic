@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.collectLatest
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private var eq: SessionEqualizer? = null
+    private var crossfade: NeroLocalCrossfade? = null
     private val timerScope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
@@ -73,6 +74,7 @@ class PlaybackService : MediaSessionService() {
             setHandleAudioBecomingNoisy(true)
         }
         if(BuildConfig.DEBUG) {
+            crossfade=NeroLocalCrossfade(applicationContext,player,timerScope)
             eq = SessionEqualizer(applicationContext)
             player.addListener(object : Player.Listener {
                 override fun onAudioSessionIdChanged(audioSessionId: Int) { eq?.attach(audioSessionId) }
@@ -136,6 +138,7 @@ class PlaybackService : MediaSessionService() {
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onDestroy() {
+        crossfade?.close();crossfade=null
         timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
         session?.let { it.player.release(); it.release() }
