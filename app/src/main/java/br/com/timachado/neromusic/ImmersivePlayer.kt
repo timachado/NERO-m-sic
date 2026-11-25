@@ -65,6 +65,7 @@ internal fun ImmersivePlayer(
         runCatching{castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity"))}.onFailure{android.widget.Toast.makeText(castContext,"Transmissão indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
     },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
+    val hiddenSongs=rememberHiddenSongs()
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
     var sharing by remember(title,artist){mutableStateOf(false)}
@@ -101,6 +102,12 @@ internal fun ImmersivePlayer(
                         DropdownMenuItem(text={Text("Compartilhar música")},enabled=title.isNotBlank(),onClick={showMore=false;sharing=true},leadingIcon={Icon(Icons.Default.Share,null)})
                         DropdownMenuItem(text={Text("Baixar para ouvir offline")},enabled=title.isNotBlank(),onClick={showMore=false;if(offlineTrack!=null&&allowed(offlineTrack)){if(offlineState.saved.any{it==offlineTrack})onOfflineOpen()else onOfflineSave(offlineTrack)}else if(nativeHit!=null){if(offlineState.nativeSaved.any{it.hit.id==nativeHit.id})onOfflineOpen()else onNativeSave(nativeHit)}else downloadInfo=true},leadingIcon={Icon(Icons.Default.Download,null)})
                         DropdownMenuItem(text={Text(if(favorite)"Remover dos favoritos" else "Curtir música")},enabled=canSave,onClick={showMore=false;onFavorite()},leadingIcon={Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,null,tint=if(favorite)neon else Color.White)})
+                        if(nativeHit!=null)DropdownMenuItem(text={Text(if(nativeHit.id in hiddenSongs)"Voltar a recomendar esta música" else "Não recomendar esta música")},onClick={
+                            showMore=false
+                            val hidden=nativeHit.id in hiddenSongs
+                            val ok=NeroHiddenSongs.toggle(castContext,nativeHit.id)
+                            android.widget.Toast.makeText(castContext,if(!ok)"Não foi possível atualizar a preferência." else if(hidden)"Música liberada para recomendações." else "Música ocultada das recomendações.",android.widget.Toast.LENGTH_SHORT).show()
+                        })
                         DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
