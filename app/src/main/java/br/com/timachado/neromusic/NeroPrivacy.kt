@@ -27,7 +27,7 @@ internal fun NeroPrivacyDialog(page:NeroPrivacyPage,onClose:()->Unit){
             when(page){
                 NeroPrivacyPage.DATA->{
                     Text("Dados no aparelho",fontWeight=FontWeight.Bold)
-                    Text("Favoritos online são armazenados por conta e podem ser enviados à nuvem quando o serviço estiver disponível. Playlists, histórico, preferências e downloads continuam no aparelho nesta versão.")
+                    Text("Favoritos online são armazenados por conta e podem ser enviados à nuvem quando o serviço estiver disponível. Playlists online também podem ser sincronizadas. Histórico, preferências e downloads continuam no aparelho nesta versão.")
                     Text("Login e compartilhamento",fontWeight=FontWeight.Bold)
                     Text("Ao entrar com Google, o NERO usa o Supabase para autenticação e compartilhamento. Nome, e-mail e foto disponíveis podem ser exibidos no perfil. A sessão é armazenada com criptografia do Android.")
                     Text("Serviços externos",fontWeight=FontWeight.Bold)
