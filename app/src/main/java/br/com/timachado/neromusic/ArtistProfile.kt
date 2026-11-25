@@ -65,7 +65,7 @@ internal fun ArtistProfileCard(artist:String,onOpen:(()->Unit)?=null,expanded:Bo
                 if(!profile?.description.isNullOrBlank()){
                     Text(profile!!.description,maxLines=if(expanded)10 else 4,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                     val context=androidx.compose.ui.platform.LocalContext.current
-                    profile.bioSource?.let{source->
+                    profile?.bioSource?.let{source->
                         TextButton(onClick={openBrowser(context,android.net.Uri.parse(source))},contentPadding=PaddingValues(0.dp)){Text("Fonte: Wikipédia · CC BY-SA",fontSize=11.sp)}
                     }
                 }else Text("Biografia em português ainda indisponível.",color=Color.LightGray,fontSize=13.sp)
