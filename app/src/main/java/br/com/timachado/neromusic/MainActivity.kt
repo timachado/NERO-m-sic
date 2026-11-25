@@ -150,7 +150,9 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var searchSeed by remember { mutableStateOf("") }
     var searchAutoFocus by remember { mutableStateOf(false) }
 
-    var libraryPage by remember { mutableIntStateOf(0) }
+    var libraryPage by remember { mutableIntStateOf(8) }
+    var librarySelection by remember { mutableStateOf<String?>(null) }
+    var libraryCreate by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
@@ -186,7 +188,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 val next=onlineLists(context)+OnlineList(java.util.UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
                 saveOnlineLists(context,next)
                 fullPlayer=false;showAccount=false;showPlans=false;showEq=false;showCloud=false;showLyrics=false;showQueue=false
-                tab=0;libraryPage=7;onShareClosed()
+                tab=0;libraryPage=7;librarySelection=next.last().id;onShareClosed()
             },onPlay=if(controller!=null){incoming:SharedPlaylist->
                 val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem()else null}
                 if(queue.isNotEmpty()){controller?.let{player->player.shuffleModeEnabled=false;player.repeatMode=Player.REPEAT_MODE_OFF;player.setMediaItems(queue,0,0L);player.prepare();player.play()};fullPlayer=true}
@@ -211,7 +213,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 0, onClick = { tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 1, onClick = { if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 2, onClick = { tab = 2 }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favoritos") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 4, onClick = { tab = 4 }, icon = { Icon(Icons.Default.Download, null) }, label = { Text("Offline") })
@@ -275,7 +277,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             )
         } else Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
             Spacer(Modifier.height(14.dp))
-            if(tab!=1){
+            if(tab!=1&&tab!=0){
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.ic_nero), null, tint = Color.Unspecified, modifier = Modifier.size(40.dp))
                 Text(" NERO", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color.White)
@@ -287,17 +289,23 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)
             Spacer(Modifier.height(22.dp))
             }
-            if(tab == 0) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros","Importadas","Online").withIndex().toList()) { entry ->
-                    FilterChip(selected = libraryPage == entry.index, onClick = { libraryPage = entry.index }, label = { Text(entry.value) })
+            if(tab==0&&libraryPage!=8){
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    IconButton(onClick={libraryPage=8;librarySelection=null}){Icon(Icons.Default.ArrowBack,"Voltar à biblioteca")}
+                    Text("Sua biblioteca",fontSize=22.sp,fontWeight=FontWeight.Bold)
                 }
+                BackHandler{libraryPage=8;librarySelection=null}
             }
-            if(tab == 0 && libraryPage == 7) {
-                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
+            if(tab==0&&libraryPage==8){
+                PlaylistHub(tracks=tracks,onlineFavoriteCount=onlineFavorites.getOrDefault(emptyList()).size,localFavoriteCount=favorites.size,
+                    onAccount={showAccount=true},onFavorites={tab=2},onOpen={page,id->libraryPage=page;librarySelection=id;libraryCreate=false},
+                    onSearch={searchSeed="";searchAutoFocus=true;tab=1},onCreate={libraryPage=7;librarySelection=null;libraryCreate=true})
+            }else if(tab == 0 && libraryPage == 7) {
+                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,initialSelection=librarySelection,createOnOpen=libraryCreate,onCreated={libraryCreate=false},onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=random;p.setMediaItems(queue,index.coerceIn(0,queue.lastIndex),0L);p.prepare();p.play()}
                 }})
             } else if(tab == 0 && libraryPage == 6) {
-                TransferScreen(tracks = tracks, canPlay = controller != null, onPlay = { queue, index, random -> controller?.let { p ->
+                TransferScreen(tracks = tracks, canPlay = controller != null, initialSelection=librarySelection, onPlay = { queue, index, random -> controller?.let { p ->
                     if(queue.isNotEmpty()) { p.shuffleModeEnabled = random; p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex),0L); p.prepare();p.play() }
                 } })
             } else if(tab == 0 && libraryPage >= 3) {
@@ -308,7 +316,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                         } })
                 }
             } else if(tab == 0 && libraryPage != 0) {
-                PersonalLibraryScreen(historyMode = libraryPage == 2, tracks = tracks, granted = granted,
+                PersonalLibraryScreen(historyMode = libraryPage == 2, tracks = tracks, granted = granted, initialSelection=librarySelection,
                     canPlay = controller != null, onPermission = { request.launch(permission) },
                     onPlay = { queue, index -> controller?.let { p ->
                         if(queue.isNotEmpty()) { p.shuffleModeEnabled=false; p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex), 0L); p.prepare(); p.play() }

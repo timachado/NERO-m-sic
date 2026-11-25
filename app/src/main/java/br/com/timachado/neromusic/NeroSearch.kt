@@ -42,7 +42,7 @@ private val searchAccent=Color(0xFF39FF14)
 private val searchAqua=Color(0xFF00E5FF)
 private val genres=listOf("Sertanejo","Pagode","Gospel","MPB","Pop","Rock","Samba","Forró","Eletrônica","Jazz","Hip-hop","Clássica")
 private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83,0xFF323E68,0xFF17615E,0xFF715026,0xFF205D76,0xFF454B62,0xFF285342,0xFF3D5266)
-private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),YOUTUBE("YouTube")}
+private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),YOUTUBE("Vídeos")}
 
 @Composable
 internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onPauseAudio:()->Unit={},onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={}){
@@ -327,13 +327,13 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         }
                     }
                 }
-                if(tab==SearchTab.ALL)item{OutlinedButton(onClick={tab=SearchTab.YOUTUBE},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.PlayCircle,null);Spacer(Modifier.width(8.dp));Text("Vídeos musicais do YouTube")}}
+                if(tab==SearchTab.ALL)item{OutlinedButton(onClick={tab=SearchTab.YOUTUBE},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.PlayCircle,null);Spacer(Modifier.width(8.dp));Text("Vídeos musicais no NERO")}}
                 if(tab==SearchTab.YOUTUBE){
-                    item{Text("YouTube · vídeos musicais",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Reprodução no player oficial incorporado.",fontSize=12.sp,color=Color.LightGray)}
+                    item{Text("NERO · vídeos musicais",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Reprodução pelo player oficial do YouTube incorporado.",fontSize=12.sp,color=Color.LightGray)}
                     item{
                         if(!YouTubeCatalog.configured)Text("Busca pela página oficial, dentro do NERO.",fontSize=12.sp,color=Color.LightGray)
                         Button(enabled=term.length>=3,onClick={onPauseAudio();youtubeBrowser=term},modifier=Modifier.fillMaxWidth()){
-                            Icon(Icons.Default.Search,null);Spacer(Modifier.width(8.dp));Text("Pesquisar YouTube dentro do NERO")
+                            Icon(Icons.Default.Search,null);Spacer(Modifier.width(8.dp));Text("Pesquisar vídeos no NERO")
                         }
                     }
                     youtubeError?.let{err->item{Text(err,color=Color.LightGray);if(YouTubeCatalog.configured)TextButton(onClick={revision++}){Text("Tentar novamente")}}}

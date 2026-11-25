@@ -90,16 +90,22 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
-internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={}){
+internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={}){
     val context=LocalContext.current
     var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
-    var selected by remember{mutableStateOf<String?>(null)}
+    var selected by remember(initialSelection){mutableStateOf(initialSelection)}
     var remove by remember{mutableStateOf<OnlineRef?>(null)}
     var notice by remember{mutableStateOf<String?>(null)}
     val scope=rememberCoroutineScope()
     var resolving by remember{mutableStateOf<String?>(null)}
     var sharing by remember{mutableStateOf<SharedPlaylist?>(null)}
     var openShared by remember{mutableStateOf(false)}
+    var create by remember{mutableStateOf(createOnOpen)}
+    var newName by remember{mutableStateOf("")}
+    if(create)AlertDialog(onDismissRequest={create=false;onCreated()},title={Text("Nova playlist")},text={OutlinedTextField(newName,{newName=it.take(80)},label={Text("Nome da playlist")},singleLine=true)},confirmButton={TextButton(enabled=newName.isNotBlank(),onClick={
+        try{val new=OnlineList(UUID.randomUUID().toString(),newName.trim(),emptyList());val next=onlineLists(context)+new;saveOnlineLists(context,next);lists=Result.success(next);selected=new.id;newName="";create=false;onCreated()}
+        catch(_:Exception){notice="Não foi possível criar a playlist.";create=false;onCreated()}
+    }){Text("Criar")}},dismissButton={TextButton(onClick={create=false;onCreated()}){Text("Cancelar")}})
     sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
     if(openShared)ReceiveShareDialog(onClose={openShared=false},
         onImport={incoming->
@@ -142,7 +148,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO.",fontSize=12.sp,color=Color.LightGray)
-            if(active==null){OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
+            if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
             if(active!=null){
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)

@@ -58,11 +58,11 @@ internal fun recordListening(context:Context,id:String,title:String,artist:Strin
 
 @Composable
 internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, granted:Boolean, canPlay:Boolean,
-    onPermission:()->Unit, onPlay:(List<Track>,Int)->Unit, onShuffle:(List<Track>)->Unit) {
+    onPermission:()->Unit, onPlay:(List<Track>,Int)->Unit, onShuffle:(List<Track>)->Unit,initialSelection:String?=null) {
     val context=LocalContext.current
     var playlists by remember { mutableStateOf(mixes(context)) }
     var recent by remember { mutableStateOf(history(context)) }
-    var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedId by remember(initialSelection) { mutableStateOf(initialSelection) }
     var showEditor by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
     var deleteConfirm by remember { mutableStateOf(false) }

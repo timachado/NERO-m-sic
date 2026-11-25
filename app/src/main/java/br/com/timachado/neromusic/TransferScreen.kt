@@ -33,14 +33,14 @@ import java.security.MessageDigest
 import java.util.Locale
 
 private const val MAX_BYTES=12*1024*1024
-private data class ImportedItem(val title:String,val artist:String,val album:String,val uri:String,val kind:String){
+internal data class ImportedItem(val title:String,val artist:String,val album:String,val uri:String,val kind:String){
     fun json()=JSONObject().put("title",title).put("artist",artist).put("album",album).put("uri",uri).put("kind",kind)
 }
-private data class ImportedList(val id:String,val name:String,val items:List<ImportedItem>){
+internal data class ImportedList(val id:String,val name:String,val items:List<ImportedItem>){
     fun json()=JSONObject().put("id",id).put("name",name).put("items",JSONArray(items.map{it.json()}))
 }
 private fun store(context:Context)=AtomicFile(File(context.filesDir,"nero-imported-playlists.json"))
-private fun readSaved(context:Context):List<ImportedList>{
+internal fun readSaved(context:Context):List<ImportedList>{
     val file=store(context)
     if(!file.baseFile.exists())return emptyList()
     val data=JSONArray(file.readFully().toString(Charsets.UTF_8))
@@ -143,12 +143,12 @@ private fun spotifyLink(uri:String):String?{
     return null
 }
 @Composable
-internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean)->Unit){
+internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean)->Unit,initialSelection:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var lists by remember{mutableStateOf(emptyList<ImportedList>())}
     var pending by remember{mutableStateOf<List<ImportedList>?>(null)}
-    var selected by remember{mutableStateOf<String?>(null)}
+    var selected by remember(initialSelection){mutableStateOf(initialSelection)}
     var busy by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
     val index=remember(tracks){tracks.groupBy{norm(it.title) to norm(it.artist)}}

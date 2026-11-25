@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 46
-        versionName = "0.9.24-dev"
+        versionCode = 47
+        versionName = "0.9.25-dev"
         val shareHost = System.getenv("NERO_SHARE_HOST").orEmpty().trim().lowercase()
         require(shareHost.isEmpty() || Regex("[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+").matches(shareHost)) { "Invalid share host" }
         manifestPlaceholders["neroShareHost"] = shareHost.ifEmpty { "nero-share-unconfigured.invalid" }
