@@ -88,8 +88,6 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     val prefs=remember { settings(context) }
     val status=EqRuntime.state
-    var leveling by remember{mutableStateOf(context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).getBoolean("leveling",false))}
-    var crossfadeSeconds by remember{mutableIntStateOf(context.getSharedPreferences("nero_audio",Context.MODE_PRIVATE).getInt("crossfade_seconds",0).coerceIn(0,8))}
     var revision by remember { mutableIntStateOf(0) }
     DisposableEffect(prefs) {
         val listener=SharedPreferences.OnSharedPreferenceChangeListener { _,_ -> revision++ }
@@ -118,19 +116,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Text("NERO Audio",fontSize=23.sp,fontWeight=FontWeight.Bold)
         }
         Text("Ajustes de som · desenvolvimento",color=Color(0xFF00E5FF),fontSize=12.sp)
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-            Column(Modifier.weight(1f)){
-                Text("Nivelar volume",fontSize=18.sp)
-                Text("Suaviza diferenças de intensidade sem aumentar picos.",fontSize=12.sp,color=Color.LightGray)
-            }
-            Switch(checked=leveling,onCheckedChange={leveling=it;NeroAudioSettings.setLeveling(context,it)})
-        }
-        Text("Funciona em áudio PCM compatível; não é normalização LUFS por faixa.",fontSize=12.sp,color=Color.LightGray)
-        HorizontalDivider()
-        Text("Transição entre faixas",fontWeight=FontWeight.Bold,fontSize=18.sp)
-        Text(if(crossfadeSeconds==0)"Crossfade desligado" else "Crossfade: "+crossfadeSeconds+" s",color=Color(0xFF00E5FF))
-        Slider(value=crossfadeSeconds.toFloat(),onValueChange={crossfadeSeconds=it.roundToInt();NeroAudioSettings.setCrossfade(context,crossfadeSeconds)},valueRange=0f..8f,steps=7)
-        Text("Experimental: sobreposição de faixas locais compatíveis. Desative equalização, nivelamento, repetição, aleatório e temporizador para testar. Streaming e clipes mantêm a transição padrão.",fontSize=12.sp,color=Color.LightGray)
+        Text("Nivelamento e crossfade temporariamente desativados para recuperar a estabilidade da reprodução. Suas preferências foram preservadas.",color=Color.LightGray)
         Text("Gapless: a fila padrão usa a continuidade do Media3 quando os arquivos e a saída permitem. Sem garantia de ausência de pausas.",fontSize=12.sp,color=Color.LightGray)
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
