@@ -40,7 +40,7 @@ internal enum class CatalogKind(val label:String,val resource:String,val resultK
     ALBUM("Álbuns","release-group","release-groups"),
     ARTIST("Artistas","artist","artists")
 }
-internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind) {
+internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind,val releaseDate:String="") {
     val coverUrl: String? get() = if(kind == CatalogKind.ALBUM) "https://coverartarchive.org/release-group/$id/front-250" else null
     val searchText: String get() = listOf(title,credit).filter { it.isNotBlank() }.joinToString(" ")
 }
@@ -114,6 +114,28 @@ internal object DevCatalog {
                 JSONObject(connection.inputStream.bufferedReader().use{it.readText()})
             }finally{connection.disconnect()}
         }
+    }
+
+    suspend fun releases(days:Int,genre:String?):List<CatalogEntry>{
+        require(days in setOf(7,30,90))
+        require(genre==null || genre in setOf("pop","rock","jazz","gospel","samba","sertanejo","pagode","electronic","hip hop","mpb"))
+        val today=java.time.LocalDate.now()
+        val from=today.minusDays((days-1).toLong())
+        val tags=genre?.let{" AND tag:\"$it\""} ?: ""
+        val query="firstreleasedate:[$from TO $today] AND (primarytype:album OR primarytype:single OR primarytype:ep) AND status:official"+tags
+        val data=fetchDetails("release-group",mapOf("query" to query,"limit" to "50"))
+        val rows=data.optJSONArray("release-groups")?:return emptyList()
+        return (0 until rows.length()).mapNotNull { i ->
+            val o=rows.optJSONObject(i)?:return@mapNotNull null
+            val id=o.optString("id");val title=o.optString("title");val date=o.optString("first-release-date")
+            val parsed=runCatching{java.time.LocalDate.parse(date)}.getOrNull()?:return@mapNotNull null
+            if(!idPattern.matches(id)||title.isBlank()||parsed.isBefore(from)||parsed.isAfter(today))return@mapNotNull null
+            val arr=o.optJSONArray("artist-credit")
+            val artist=if(arr==null)"" else (0 until arr.length()).joinToString(""){j->
+                arr.optJSONObject(j)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
+            }.trim()
+            CatalogEntry(id,title,artist,CatalogKind.ALBUM,date)
+        }.distinctBy{it.id}.sortedWith(compareByDescending<CatalogEntry>{it.releaseDate}.thenBy{it.title})
     }
     suspend fun discography(id:String):List<CatalogEntry> {
         require(idPattern.matches(id))

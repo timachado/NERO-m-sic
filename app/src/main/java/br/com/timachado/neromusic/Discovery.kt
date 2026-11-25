@@ -141,9 +141,15 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showCatalog by remember { mutableStateOf(false) }
+    var showReleases by remember { mutableStateOf(false) }
     var catalogQuery by remember { mutableStateOf("") }
     var catalogKind by remember { mutableStateOf(CatalogKind.SONG) }
     androidx.activity.compose.BackHandler(enabled = showCatalog && !offline) { showCatalog = false }
+    androidx.activity.compose.BackHandler(enabled=showReleases&&!offline){showReleases=false}
+    if(showReleases&&!offline){
+        RecentReleasesScreen(onBack={showReleases=false})
+        return
+    }
     if (showCatalog && !offline) {
         CatalogScreen(onBack = { showCatalog = false }, initialQuery = catalogQuery, initialKind = catalogKind)
         return
@@ -200,6 +206,16 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }
             if (BuildConfig.DEBUG && !searchOnly) item {
+                Card(onClick={showReleases=true},modifier=Modifier.fillMaxWidth()){
+                    Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
+                        Icon(Icons.Default.NewReleases,null,tint=aqua,modifier=Modifier.size(32.dp))
+                        Column(Modifier.weight(1f).padding(horizontal=10.dp)){
+                            Text("Lançamentos",fontWeight=FontWeight.Bold,fontSize=19.sp)
+                            Text("Álbuns, EPs e singles por data e gênero",fontSize=12.sp,color=Color.LightGray)
+                        }
+                        Icon(Icons.Default.KeyboardArrowRight,"Explorar lançamentos")
+                    }
+                }
                 CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })
             }
             item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }

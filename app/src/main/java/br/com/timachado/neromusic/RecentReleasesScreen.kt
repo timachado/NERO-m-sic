@@ -1,0 +1,87 @@
+package br.com.timachado.neromusic
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
+
+@Composable
+internal fun RecentReleasesScreen(onBack:()->Unit){
+    val genres=listOf("Todos" to null,"Pop" to "pop","Rock" to "rock","MPB" to "mpb","Gospel" to "gospel","Sertanejo" to "sertanejo","Pagode" to "pagode","Samba" to "samba","Jazz" to "jazz","Eletrônica" to "electronic","Hip-hop" to "hip hop")
+    var days by remember{mutableIntStateOf(30)}
+    var genre by remember{mutableStateOf<String?>(null)}
+    var reload by remember{mutableIntStateOf(0)}
+    var busy by remember{mutableStateOf(true)}
+    var failed by remember{mutableStateOf(false)}
+    var results by remember{mutableStateOf(emptyList<CatalogEntry>())}
+    var selected by remember{mutableStateOf<CatalogEntry?>(null)}
+    BackHandler(selected!=null){selected=null}
+    LaunchedEffect(days,genre,reload){
+        busy=true;failed=false;results=emptyList()
+        try{results=DevCatalog.releases(days,genre)}
+        catch(e:CancellationException){throw e}
+        catch(_:Exception){failed=true}
+        finally{busy=false}
+    }
+    selected?.let{entry->
+        key(entry.id){CatalogDetailsScreen(entry,onBack={selected=null},onAlbum={selected=it})}
+        return
+    }
+    Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
+            Text("Lançamentos",fontSize=24.sp,fontWeight=FontWeight.Bold)
+        }
+        Text("Datas de primeira publicação registradas no MusicBrainz. Prévia não comercial; não é ranking de popularidade.",fontSize=12.sp,color=Color.LightGray)
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            listOf(7,30,90).forEach{period->FilterChip(selected=days==period,onClick={days=period},label={Text("$period dias")})}
+        }
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            items(genres){(label,tag)->FilterChip(selected=genre==tag,onClick={genre=tag},label={Text(label)})}
+        }
+        if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(failed){
+            Text("Não foi possível consultar os lançamentos.",color=Color.LightGray)
+            TextButton(onClick={reload++}){Text("Tentar novamente")}
+        }else if(!busy&&results.isEmpty())Text("Nenhum lançamento encontrado com esses filtros.",color=Color.LightGray)
+        else if(!busy)Text("${results.size} resultados da amostra (até 50), ordenados por data.",fontSize=12.sp,color=Color.LightGray)
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
+            items(results.chunked(2)){pair->
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    pair.forEach{entry->
+                        Card(onClick={selected=entry},modifier=Modifier.weight(1f)){
+                            Column(Modifier.padding(8.dp)){
+                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
+                                    Icon(Icons.Default.Album,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(40.dp))
+                                    AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
+                                }
+                                Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                Text(entry.credit,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Text(entry.releaseDate,fontSize=11.sp,color=Color(0xFF00E5FF))
+                            }
+                        }
+                    }
+                    if(pair.size==1)Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}

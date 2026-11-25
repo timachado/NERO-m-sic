@@ -92,3 +92,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.7-dev
 - NERO Lyrics procura automaticamente letras USLT em arquivos locais ID3v2.3/v2.4 compatíveis, com prioridade ao LRC/TXT importado. Letras incorporadas sem tempos são exibidas como texto; marcações LRC existentes são sincronizadas. Tags com flags especiais e formatos não suportados são ignorados com segurança. Não implementa SYLT nem busca online; nenhum texto é enviado a terceiros.
 - Cinco testes unitários do leitor ID3 adicionados ao CI. Formatos e experiência no aparelho ainda precisam de validação.
+
+## 0.8.8-dev
+- Seção Lançamentos experimental: consulta MusicBrainz por data inicial de publicação oficial, período de 7/30/90 dias e tags de gênero, com capas e navegação por álbum. Amostra de até 50 resultados ordenada localmente por data; não é ranking, catálogo completo nem garantia de disponibilidade. Mantém restrição DEBUG, limite de requisições compartilhado e busca externa no YouTube Music. Integração real ainda precisa de testes em aparelho.
