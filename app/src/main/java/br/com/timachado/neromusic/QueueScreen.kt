@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import coil.compose.AsyncImage
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -134,7 +133,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                 var menu by remember(i,item){mutableStateOf(false)}
                 Row(Modifier.fillMaxWidth().background(if(current)Color(0xFF102B23)else Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                     val artwork=item.mediaMetadata.artworkUri
-                    if(artwork!=null)AsyncImage(model=artwork,contentDescription=null,modifier=Modifier.size(46.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
+                    if(artwork!=null)NeroArtwork(model=artwork,contentDescription=null,modifier=Modifier.size(46.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
                     else LocalArtwork(byId[item.mediaId],Modifier.size(46.dp))
                     Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                         Text(title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(current)Color(0xFF39FF14)else Color.White)
