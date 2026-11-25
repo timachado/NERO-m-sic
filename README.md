@@ -68,3 +68,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.8.1-dev
 - Catálogo experimental: páginas de artistas, discografia, páginas de álbuns, seleção de edição oficial, ordem das faixas e duração quando disponível. Busca de reprodução no YouTube Music externo.
 - Consultas por identificadores MusicBrainz com limitação compartilhada de uma requisição por segundo. Continua somente debug, sem licença comercial de catálogo ou streaming.
+
+## 0.8.2-dev
+- NERO Transfer: seleção de arquivos Playlist*.json da exportação pessoal Spotify, prévia e confirmação, armazenamento local atômico, preservação da ordem e itens sem correspondência. Reimportação idêntica não duplica listas. Reprodução apenas de arquivos locais com correspondência única; abertura opcional do item no Spotify.
+- Corrige falha lint ProduceStateDoesNotAssignValue em LocalCollections.kt com remember + LaunchedEffect. Build ainda precisa ser confirmado. OAuth direto e catálogo de áudio comercial não integrados.

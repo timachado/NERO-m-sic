@@ -17,3 +17,6 @@ Decisão: congelar a preparação comercial ativa até validar o núcleo musical
 - MusicKit para Android é opção oficial a avaliar para usuários autorizados com assinatura Apple Music; não equivale a conceder esse serviço pela assinatura NERO.
 - 0.8.1-dev: detalhes experimentais do catálogo MusicBrainz por ID, discografia de artistas, escolha de edição de álbum e faixas numeradas; reprodução externa permanece.
 Fontes: https://github.com/EchoMusicApp/Echo-Music ; https://developer.apple.com/musickit/ ; https://musicbrainz.org/doc/MusicBrainz_API
+
+## NERO Transfer
+Importação de dados pessoais de playlists pelo arquivo JSON exportado pelo Spotify, sem copiar áudio, acessar credenciais ou depender da API. Preserva ordem, duplicatas e referências sem correspondência; toca somente arquivo local com correspondência única de título, artista e álbum quando informado. Conexão oficial OAuth para migração futura depende de acesso aprovado; modo de desenvolvimento Spotify limita a 5 usuários autorizados e exige Premium do proprietário. Não confundir portabilidade de dados com licença de streaming. A declaração não comercial do Echo não concede direitos sobre conteúdo; o NERO pretende cobrar assinatura, portanto direitos e licença GPL de eventual código reutilizado precisam ser respeitados.

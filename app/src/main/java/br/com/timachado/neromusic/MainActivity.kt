@@ -220,11 +220,13 @@ private fun NeroApp() {
                 FilterChip(selected = localSearch, onClick = { localSearch = true }, label = { Text("No aparelho") })
             }
             if(tab == 0) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros").withIndex().toList()) { entry ->
+                items(listOf("Músicas","Playlists","Histórico","Álbuns","Artistas","Gêneros","Importadas").withIndex().toList()) { entry ->
                     FilterChip(selected = libraryPage == entry.index, onClick = { libraryPage = entry.index }, label = { Text(entry.value) })
                 }
             }
-            if(tab == 0 && libraryPage >= 3) {
+            if(tab == 0 && libraryPage == 6) {
+                TransferScreen(tracks = tracks, canPlay = controller != null, onPlay = { track -> controller?.let { p -> p.setMediaItem(track.mediaItem()); p.prepare(); p.play() } })
+            } else if(tab == 0 && libraryPage >= 3) {
                 key(libraryPage) {
                     LocalCollectionsScreen(kind = libraryPage, tracks = tracks, granted = granted, canPlay = controller != null,
                         onPermission = { request.launch(permission) }, onPlay = { queue, index -> controller?.let { p ->

@@ -60,9 +60,9 @@ private suspend fun artwork(context:Context,track:Track,size:Int):Bitmap? = artS
 @Composable
 internal fun LocalArtwork(track:Track?, modifier:Modifier=Modifier, large:Boolean=false) {
     val context=LocalContext.current
-    val image by produceState<Bitmap?>(null,track?.uri,large) {
-        value=null
-        if(track!=null)value=artwork(context,track,if(large)720 else 256)
+    var image by remember(track?.uri,large) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(track?.uri,large) {
+        image=if(track!=null)artwork(context,track,if(large)720 else 256) else null
     }
     Box(modifier.clip(RoundedCornerShape(if(large)24.dp else 10.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center) {
         val bitmap=image
