@@ -65,5 +65,19 @@ internal class NeroConnectIdentity(context:Context){
         check(prefs.edit().putString("peer_public",connectPublicOffer(peer)).commit())
     }
     fun peerOffer():String?=prefs.getString("peer_public",null)?.takeIf{runCatching{parseConnectOffer(it);true}.getOrDefault(false)}
+    fun issue(gate:ConnectProofGate):String{
+        val peer=parseConnectOffer(requireNotNull(peerOffer()))
+        return gate.issue(publicKey(),peer,System.currentTimeMillis()).wire()
+    }
+    fun prove(challengeWire:String):String{
+        val peer=parseConnectOffer(requireNotNull(peerOffer()))
+        val local=publicKey()
+        val privateKey=store.getKey(keyAlias,null) as java.security.PrivateKey
+        return signConnectChallenge(parseConnectChallenge(challengeWire),local,peer,privateKey,System.currentTimeMillis())
+    }
+    fun verify(gate:ConnectProofGate,proof:String):Boolean{
+        val peer=parseConnectOffer(requireNotNull(peerOffer()))
+        return gate.consume(proof,publicKey(),peer,System.currentTimeMillis())
+    }
     fun revoke(){check(prefs.edit().remove("peer_public").commit())}
 }
