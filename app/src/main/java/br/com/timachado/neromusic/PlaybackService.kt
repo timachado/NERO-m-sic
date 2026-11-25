@@ -11,12 +11,21 @@ import androidx.media3.session.MediaSessionService
 
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
+    private var eq: SessionEqualizer? = null
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val player = ExoPlayer.Builder(this).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
+        }
+        if(BuildConfig.DEBUG) {
+            eq = SessionEqualizer(applicationContext)
+            player.addListener(object : Player.Listener {
+                override fun onAudioSessionIdChanged(audioSessionId: Int) { eq?.attach(audioSessionId) }
+            })
+            eq?.attach(player.audioSessionId)
         }
         var lastRecorded: String? = null
         player.addListener(object : Player.Listener {
@@ -37,6 +46,7 @@ class PlaybackService : MediaSessionService() {
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
     override fun onDestroy() {
+        eq?.close(); eq = null
         session?.let { it.player.release(); it.release() }
         session = null
         super.onDestroy()

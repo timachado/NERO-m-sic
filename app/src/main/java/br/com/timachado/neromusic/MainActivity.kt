@@ -125,7 +125,8 @@ private fun NeroApp() {
     var fullPlayer by remember { mutableStateOf(false) }
     var showAccount by remember { mutableStateOf(false) }
     var showPlans by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer || showAccount || showPlans) { if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
+    var showEq by remember { mutableStateOf(false) }
+    BackHandler(fullPlayer || showAccount || showPlans || showEq) { if(showEq) showEq = false else if(showPlans) showPlans = false else if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true)) }
@@ -137,7 +138,7 @@ private fun NeroApp() {
         p.prepare(); p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer && !showAccount && !showPlans) Column {
+        if (!fullPlayer && !showAccount && !showPlans && !showEq) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -156,7 +157,9 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (showPlans) {
+        if (showEq && BuildConfig.DEBUG) {
+            EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
+        } else if (showPlans) {
             PlansScreen(onBack = { showPlans = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
             AccountScreen(onBack = { showAccount = false }, onPlans = { showPlans = true }, modifier = Modifier.padding(padding))
@@ -164,7 +167,8 @@ private fun NeroApp() {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { fullPlayer = false }) { Icon(Icons.Default.KeyboardArrowDown, "Minimizar") }
-                    Text("REPRODUZINDO", color = Cyan, fontWeight = FontWeight.Bold)
+                    Text("REPRODUZINDO", color = Cyan, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if(BuildConfig.DEBUG) IconButton(onClick = { showEq = true }) { Icon(Icons.Default.Equalizer, "Equalizador", tint = Green) }
                 }
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.fillMaxWidth().aspectRatio(1f).background(Brush.linearGradient(listOf(Blue.copy(alpha=.65f), SurfaceDark, Green.copy(alpha=.35f))), RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {

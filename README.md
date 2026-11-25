@@ -46,3 +46,7 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 ## 0.5.1-dev
 - Tela informativa de planos Free/Premium acessível em Minha conta, com benefícios futuros identificados como em desenvolvimento.
 - Sem checkout, preços, cobrança ou desbloqueio Premium. Distribuição direta prevista pelo site da T.I. Machado; ver docs/subscriptions.md.
+
+## 0.6.0-dev
+- Equalizador Android ligado à sessão de áudio Media3 do NERO, controles das bandas disponíveis no dispositivo, ganhos limitados a ±6 dB e predefinições Plano, Graves, Voz e Brilho.
+- Ajustes salvos localmente. Efeito liberado somente no debug para validação; nenhuma assinatura ativa nem concessão Premium. Não altera áudio externo. Compatibilidade e efeito audível dependem do aparelho e precisam de teste real.
