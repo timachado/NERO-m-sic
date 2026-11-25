@@ -278,8 +278,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     }
     CompositionLocalProvider(LocalNeroNowPlaying provides NeroNowPlaying(nowId,playing,buffering,playbackError!=null,open={playerAlbum=null;playerArtist=null;fullPlayer=true})) {
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showEq && !showLyrics && !showQueue) Column {
-            if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (playerAlbum==null && playerArtist==null && !fullPlayer && !showEq && !showLyrics && !showQueue) Column {
+            if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { showAccount=false;fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val cover=nowOpenRef?.coverUrl
                 if(cover!=null)NeroArtwork(model=cover,contentDescription="Capa atual",modifier=Modifier.size(48.dp),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
                 else LocalArtwork(tracks.firstOrNull{it.id.toString()==nowId},Modifier.size(48.dp))
@@ -291,9 +291,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
             NavigationBar(containerColor = Color.Black) {
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 3, onClick = { tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab == 1, onClick = { if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = tab in setOf(0,2,4), onClick = { tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 1, onClick = { showAccount=false;if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab in setOf(0,2,4), onClick = { showAccount=false;tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=Color(0xFF102B23),unselectedIconColor=Color(0xFFB9C6CF),unselectedTextColor=Color(0xFFB9C6CF)),selected=showAccount,onClick={showAccount=true},icon={Icon(Icons.Default.AccountCircle,null)},label={Text("Conta")})
             }
         }
     }) { padding ->
@@ -315,7 +316,12 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (showEq && BuildConfig.DEBUG) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
-            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding))
+            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding),
+                favoriteCount=favorites.size+onlineFavorites.getOrDefault(emptyList()).size,
+                autoplay=autoplay,onAutoplay={autoplay=!autoplay;NeroAutoplay.set(context,autoplay)},
+                onLibrary={showAccount=false;tab=0;libraryPage=8;librarySelection=null},
+                onDownloads={showAccount=false;tab=4},
+                onHistory={showAccount=false;tab=0;libraryPage=2;librarySelection=null})
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
