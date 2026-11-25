@@ -17,9 +17,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favoriteCount:Int=0,autoplay:Boolean=false,onAutoplay:()->Unit={},onLibrary:()->Unit={},onDownloads:()->Unit={},onHistory:()->Unit={}){
+internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favoriteCount:Int=0,autoplay:Boolean=false,onAutoplay:()->Unit={},onLibrary:()->Unit={},onDownloads:()->Unit={},onHistory:()->Unit={},wifiOnly:Boolean=true,onWifiChange:(Boolean)->Unit={},economicalDownload:Boolean=false,onDownloadQuality:(Boolean)->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
+    var economical by remember{mutableStateOf(economicalStreaming(context))}
     val followed=rememberFollowedArtists()
     val albums=rememberSavedAlbums()
     val hidden=rememberHiddenSongs()
@@ -69,6 +70,26 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         Text("Reprodução",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Reprodução automática");Text("Continuar com músicas semelhantes ao terminar a fila.",fontSize=12.sp,color=Color.LightGray)};Switch(checked=autoplay,onCheckedChange={onAutoplay()})}
+        }
+        Text("Qualidade do áudio",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                Text("Reprodução online",fontWeight=FontWeight.Medium)
+                Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=!economical,onClick={economical=false;setEconomicalStreaming(context,false)});Text("Maior qualidade disponível")}
+                Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=economical,onClick={economical=true;setEconomicalStreaming(context,true)});Text("Economia de dados")}
+                Text("Aplica-se às próximas aberturas de áudio do catálogo compatível, sem reiniciar a música atual.",fontSize=12.sp,color=Color.LightGray)
+            }
+        }
+        Text("Downloads",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
+            Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+                Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Baixar somente por Wi-Fi");Text("Evita downloads pela rede móvel.",fontSize=12.sp,color=Color.LightGray)};Switch(checked=wifiOnly,onCheckedChange=onWifiChange)}
+                HorizontalDivider()
+                Text("Qualidade de novos downloads",fontWeight=FontWeight.Medium)
+                Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=!economicalDownload,onClick={onDownloadQuality(false)});Text("Maior qualidade disponível")}
+                Row(verticalAlignment=Alignment.CenterVertically){RadioButton(selected=economicalDownload,onClick={onDownloadQuality(true)});Text("Economizar armazenamento")}
+                Text("Arquivos já baixados não são alterados.",fontSize=12.sp,color=Color.LightGray)
+            }
         }
         Text("Privacidade e suporte",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Text("Preferências musicais armazenadas localmente. ${hidden.size} músicas ocultadas das recomendações.",fontSize=13.sp,color=Color.LightGray)
