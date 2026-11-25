@@ -134,3 +134,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.9-dev
 - Correção candidata para conflito de classes Protobuf em debug; mantém integração musical experimental e Firebase. Ver docs/build-099.md. Validação pendente.
+
+## 0.9.10-dev
+- Novidades musicais na home: vitrine dinâmica de até 12 lançamentos dos últimos 30 dias encontrados no MusicBrainz. Atualiza ao abrir, com cache compartilhado de 15 min e consulta periódica enquanto a tela está ativa, botão de atualização manual e preservação dos resultados visíveis se uma nova consulta falhar. Tela completa com filtro, data da última consulta e atualização. Toque na vitrine encaminha à busca interna por título e artista; não há correspondência automática garantida nem ranking YouTube Music. Sem servidor novo, sem tarefas de fundo e sem atualização de APK por música. Prévia debug, teste em aparelho pendente.

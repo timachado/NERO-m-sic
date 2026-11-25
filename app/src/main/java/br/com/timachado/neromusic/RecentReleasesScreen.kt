@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 
 @Composable
 internal fun RecentReleasesScreen(onBack:()->Unit){
@@ -31,15 +36,23 @@ internal fun RecentReleasesScreen(onBack:()->Unit){
     var reload by remember{mutableIntStateOf(0)}
     var busy by remember{mutableStateOf(true)}
     var failed by remember{mutableStateOf(false)}
-    var results by remember{mutableStateOf(emptyList<CatalogEntry>())}
+    var results by remember(days,genre){mutableStateOf(emptyList<CatalogEntry>())}
+    var fetchedAt by remember(days,genre){mutableLongStateOf(0L)}
+    val lifecycle=(LocalContext.current as? LifecycleOwner)?.lifecycle
     var selected by remember{mutableStateOf<CatalogEntry?>(null)}
     BackHandler(selected!=null){selected=null}
-    LaunchedEffect(days,genre,reload){
-        busy=true;failed=false;results=emptyList()
-        try{results=DevCatalog.releases(days,genre)}
-        catch(e:CancellationException){throw e}
-        catch(_:Exception){failed=true}
-        finally{busy=false}
+    LaunchedEffect(days,genre,reload,lifecycle){
+        var force=reload>0
+        suspend fun update(){
+            busy=true;failed=false
+            try{val snapshot=DevCatalog.releaseSnapshot(days,genre,force);results=snapshot.entries;fetchedAt=snapshot.fetchedAt}
+            catch(e:CancellationException){throw e}
+            catch(_:Exception){failed=true}
+            finally{busy=false;force=false}
+        }
+        if(lifecycle==null){update()}else lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){
+            while(true){update();delay(900000L)}
+        }
     }
     selected?.let{entry->
         key(entry.id){CatalogDetailsScreen(entry,onBack={selected=null},onAlbum={selected=it})}
@@ -48,7 +61,8 @@ internal fun RecentReleasesScreen(onBack:()->Unit){
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("Lançamentos",fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text("Lançamentos",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            IconButton(enabled=!busy,onClick={reload++}){Icon(Icons.Default.Refresh,"Atualizar lançamentos")}
         }
         Text("Datas de primeira publicação registradas no MusicBrainz. Prévia não comercial; não é ranking de popularidade.",fontSize=12.sp,color=Color.LightGray)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -57,9 +71,10 @@ internal fun RecentReleasesScreen(onBack:()->Unit){
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(genres){(label,tag)->FilterChip(selected=genre==tag,onClick={genre=tag},label={Text(label)})}
         }
+        if(fetchedAt>0L)Text("Última consulta: "+java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT,java.text.DateFormat.SHORT).format(java.util.Date(fetchedAt)),fontSize=11.sp,color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(failed){
-            Text("Não foi possível consultar os lançamentos.",color=Color.LightGray)
+            Text(if(results.isEmpty())"Não foi possível consultar os lançamentos." else "Não foi possível atualizar. Exibindo a última consulta.",color=Color.LightGray)
             TextButton(onClick={reload++}){Text("Tentar novamente")}
         }else if(!busy&&results.isEmpty())Text("Nenhum lançamento encontrado com esses filtros.",color=Color.LightGray)
         else if(!busy)Text("${results.size} resultados da amostra (até 50), ordenados por data.",fontSize=12.sp,color=Color.LightGray)

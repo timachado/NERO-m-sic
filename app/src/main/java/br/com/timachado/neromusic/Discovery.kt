@@ -211,6 +211,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                         Icon(Icons.Default.KeyboardArrowRight,"Explorar lançamentos")
                     }
                 }
+                DynamicReleaseShelf(onOpen={showReleases=true},onSearch={onSearch(it)})
                 CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })
             }
             item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }
