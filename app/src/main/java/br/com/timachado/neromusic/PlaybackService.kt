@@ -46,12 +46,13 @@ class PlaybackService : MediaLibraryService() {
                 if(!NativeMusicCatalog.enabled||uri.host !in setOf("track","video")||!Regex("[A-Za-z0-9_-]{11}").matches(id))throw IOException("Fonte musical indisponível")
                 val video=uri.host=="video"
                 val quality=if(video)uri.getQueryParameter("quality")?.toIntOrNull()?.takeIf{it in listOf(0,360,480,720,1080)}?:0 else 0
-                val cacheKey=(if(video)"video:"+quality+":"else "audio:")+id
+                val economical=!video&&economicalStreaming(applicationContext)
+                val cacheKey=(if(video)"video:"+quality+":"else "audio:"+economical+":")+id
                 val cached=synchronized(resolved){resolved[cacheKey]}
                 val now=android.os.SystemClock.elapsedRealtime()
                 val local=if(!video)nativeOfflineCopy(applicationContext,id)?.item(applicationContext)?.localConfiguration?.uri else null
                 val address=if(local!=null)local else if(cached!=null&&now-cached.second in 0L..300000L)cached.first else try{
-                    val item=runBlocking{val hit=NativeMusicHit(id,"","",0L);if(video)NativeMusicCatalog.resolveVideo(hit,quality)else NativeMusicCatalog.resolve(hit)}
+                    val item=runBlocking{val hit=NativeMusicHit(id,"","",0L);if(video)NativeMusicCatalog.resolveVideo(hit,quality)else NativeMusicCatalog.resolve(hit,economical=economical)}
                     val direct=item.localConfiguration?.uri?:throw IOException("Áudio indisponível")
                     synchronized(resolved){resolved[cacheKey]=direct to android.os.SystemClock.elapsedRealtime()}
                     direct
