@@ -279,7 +279,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (showPlans) {
             PlansScreen(onBack = { showPlans = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
-            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding))
+            NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding),onRestored={onlineFavorites=runCatching{readOnlineFavorites(context)}})
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
