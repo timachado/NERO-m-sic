@@ -124,6 +124,19 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         }
     }
 }
+// Append/insert without replacing the current timeline or changing play intent.
+internal fun enqueueNeroItem(controller:MediaController?,item:MediaItem,next:Boolean):String{
+    val p=controller?:return "Player indisponível."
+    val state=snapshot(p)
+    if(!state.canEdit)return "Fila indisponível."
+    if(next&&state.shuffle&&state.items.isNotEmpty())return "Desative o aleatório para reproduzir a seguir."
+    return try{
+        if(next&&state.current in state.items.indices)p.addMediaItem(state.current+1,item)
+        else p.addMediaItem(item)
+        if(state.items.isEmpty())p.prepare()
+        if(next)"Adicionada para tocar a seguir." else "Adicionada à fila."
+    }catch(_:Exception){"Não foi possível adicionar à fila."}
+}
 @Composable
 internal fun QueueAddMenu(controller:MediaController?,track:Track){
     var open by remember{mutableStateOf(false)}
