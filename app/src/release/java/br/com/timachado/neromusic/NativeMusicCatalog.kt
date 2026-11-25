@@ -6,5 +6,6 @@ internal object NativeMusicCatalog{
     suspend fun suggestions(query:String):List<String> = emptyList()
     suspend fun collections(query:String,kind:NativeCollectionKind):List<NativeCollection> = emptyList()
     suspend fun albumTracks(album:NativeCollection):List<NativeMusicHit> = emptyList()
+    suspend fun brazilChart():List<ChartSong> = emptyList()
     suspend fun resolve(hit:NativeMusicHit):MediaItem = error("Fonte não disponível neste build")
 }

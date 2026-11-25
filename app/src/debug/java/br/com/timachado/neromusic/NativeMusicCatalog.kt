@@ -100,6 +100,28 @@ internal object NativeMusicCatalog{
             }.distinctBy{it.id}.take(30)
         }
     }
+    suspend fun brazilChart():List<ChartSong> = withContext(Dispatchers.IO){
+        lock.withLock{
+            initialize()
+            val info=PlaylistInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/playlist?list=PL4fGSI1pDJn7rGBE8kEC0CqTa1nMh9AKB")
+            // Preserve source positions, even when a track cannot be displayed.
+            val rows=info.relatedItems.toMutableList()
+            var page=info.nextPage
+            var requests=0
+            while(rows.size<100&&page!=null&&page.isValid&&requests<5){
+                val next=PlaylistInfo.getMoreItems(ServiceList.YouTube,info.url,page)
+                if(next.items.isEmpty())break
+                rows.addAll(next.items)
+                page=next.nextPage
+                requests++
+            }
+            rows.take(100).mapIndexedNotNull{i,item->
+                val id=idFromUrl(item.url)?:return@mapIndexedNotNull null
+                if(item.name.isBlank())return@mapIndexedNotNull null
+                ChartSong(i+1,id,item.name,item.uploaderName.orEmpty(),"https://i.ytimg.com/vi/"+id+"/mqdefault.jpg","https://music.youtube.com/watch?v="+id)
+            }.distinctBy{it.id}
+        }
+    }
     suspend fun resolve(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){
         lock.withLock{
             initialize()

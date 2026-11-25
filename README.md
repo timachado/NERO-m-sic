@@ -185,3 +185,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.26-dev
 - Android account/share now uses Supabase Auth Google and protected Supabase RPC. Native credential nonce, encrypted session, public preview only, exact link access. SQL deployment draft and setup notes added. No project selected or changed yet. Build and backend validation pending.
+
+## 0.9.27-dev
+- Paradas digitais: consulta à playlist oficial Top 100 músicas — Brasil do YouTube Music Global Charts, preservando a ordem de origem, com cache de uma hora e atualização manual. Usa o extrator público já existente no debug; fonte identificada, sem ranking inventado. Disponibilidade no dispositivo e build pendentes. O release não inclui o extrator experimental.

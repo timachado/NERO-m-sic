@@ -37,9 +37,7 @@ import java.net.URL
 
 internal data class ChartSong(val rank:Int,val id:String,val title:String,val artist:String,val artwork:String?,val officialUrl:String?)
 internal data class ChartSnapshot(val songs:List<ChartSong>,val fetchedAt:Long,val sourceUpdated:String)
-private const val chartFeed="https://rss.applemarketingtools.com/api/v2/br/music/most-played/50/songs.json"
-private const val chartPage="https://music.apple.com/br/playlist/top-100-brasil/pl.11ac7cc7d09741c5822e8c66e5c7edbb"
-
+private const val chartPage="https://music.youtube.com/playlist?list=PL4fGSI1pDJn7rGBE8kEC0CqTa1nMh9AKB"
 internal object DigitalCharts{
     private val mutex=Mutex()
     private var last:ChartSnapshot?=null
@@ -47,31 +45,9 @@ internal object DigitalCharts{
         mutex.withLock{
             val now=System.currentTimeMillis()
             last?.let{if(!force&&now-it.fetchedAt in 0L..3600000L)return@withLock it}
-            val c=URL(chartFeed).openConnection() as HttpURLConnection
-            c.connectTimeout=12000;c.readTimeout=15000;c.instanceFollowRedirects=false
-            c.setRequestProperty("Accept","application/json")
-            try{
-                check(c.responseCode==200)
-                val bytes=c.inputStream.use{input->
-                    val out=java.io.ByteArrayOutputStream();val buffer=ByteArray(8192)
-                    while(true){val count=input.read(buffer);if(count<0)break;require(out.size()+count<=1024*1024);out.write(buffer,0,count)}
-                    out.toByteArray()
-                }
-                val feed=JSONObject(bytes.toString(Charsets.UTF_8)).getJSONObject("feed")
-                val rows=feed.getJSONArray("results")
-                val songs=(0 until minOf(rows.length(),50)).mapNotNull{i->
-                    val row=rows.optJSONObject(i)?:return@mapNotNull null
-                    val id=row.optString("id");val title=row.optString("name");val artist=row.optString("artistName")
-                    if(id.isBlank()||title.isBlank()||artist.isBlank())return@mapNotNull null
-                    val art=row.optString("artworkUrl100").takeIf{value->
-                        val uri=Uri.parse(value);uri.scheme=="https"&&(uri.host=="mzstatic.com"||uri.host?.endsWith(".mzstatic.com")==true)
-                    }
-                    val link=row.optString("url").takeIf{value->val uri=Uri.parse(value);uri.scheme=="https"&&uri.host=="music.apple.com"}
-                    ChartSong(i+1,id,title,artist,art,link)
-                }.distinctBy{it.id}
-                check(songs.isNotEmpty())
-                ChartSnapshot(songs,System.currentTimeMillis(),feed.optString("updated")).also{last=it}
-            }finally{c.disconnect()}
+            val songs=NativeMusicCatalog.brazilChart()
+            check(songs.isNotEmpty())
+            ChartSnapshot(songs,System.currentTimeMillis(),"").also{last=it}
         }
     }
 }
@@ -102,7 +78,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
             Text("Paradas digitais",fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar parada")}
         }
-        Text("Brasil · mais tocadas no Apple Music",fontSize=12.sp,color=Color.LightGray)
+        Text("Brasil · Top músicas da semana",fontSize=12.sp,color=Color.LightGray)
         snapshot?.let{data->Text("Consultado: "+java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT,java.text.DateFormat.SHORT).format(java.util.Date(data.fetchedAt)),fontSize=11.sp,color=Color.LightGray)}
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Text(if(snapshot==null)"Parada temporariamente indisponível." else "Falha na atualização. Exibindo a última consulta.",fontSize=12.sp,color=Color.LightGray)
@@ -123,7 +99,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
                     }
                 }
             }
-            TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Recolher parada" else "Ver todas as "+songs.size+" posições")}
+            TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Recolher parada" else "Ver "+songs.size+" posições disponíveis")}
             if(expanded)for(song in songs){
                 Card(onClick={onSearch(song.title+" "+song.artist)},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
@@ -133,7 +109,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit){
                 }
             }
         }
-        TextButton(onClick={openBrowser(context,Uri.parse(chartPage))}){Text("Fonte oficial: Apple Music")}
-        Text("Toque em uma faixa para buscar no NERO. A posição é da fonte indicada, não do Spotify.",fontSize=11.sp,color=Color.LightGray)
+        TextButton(onClick={openBrowser(context,Uri.parse(chartPage))}){Text("Consultar ranking original")}
+        Text("Ranking semanal do YouTube Music Global Charts. Toque em uma faixa para buscar no NERO.",fontSize=11.sp,color=Color.LightGray)
     }
 }
