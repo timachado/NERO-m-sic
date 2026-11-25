@@ -91,10 +91,11 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
 private fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
     LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
         items(rows,key={it.id}){hit->
-            Card(onClick={val (queue,index)=nativeQueue(rows,hit);onQueue(queue,index)},enabled=canPlay,modifier=Modifier.width(132.dp)){
+            val now=LocalNeroNowPlaying.current
+            Card(onClick={if(now.matches(hit.reference().id))now.open()else{val (queue,index)=nativeQueue(rows,hit);onQueue(queue,index)}},enabled=canPlay,modifier=Modifier.width(132.dp)){
                 Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
                     AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
-                    Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));NowTrackStatus(hit.reference().id)
                     Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
             }
