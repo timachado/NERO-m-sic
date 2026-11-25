@@ -31,3 +31,9 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Busca online na aba Buscar, com filtro para manter a pesquisa local.
 - Atalhos de catálogo com termo pré-preenchido e cartões de gêneros Aurora Neon.
 - Preserva o catálogo aberto e downloads autorizados; YouTube Music permanece externo. Lançamentos reais, personalização e catálogo comercial integrado ainda pendentes.
+
+## 0.4.0-dev
+- Playlists persistentes de faixas locais: criar, renomear, adicionar, retirar, excluir lista sem apagar áudio e reproduzir em fila.
+- Histórico das últimas 100 faixas distintas reproduzidas no serviço Media3, inclusive em segundo plano; reprodução direta de registros locais disponíveis.
+- Histórico e playlists armazenados no dispositivo, sem conta ou servidor. Histórico de reprodução externa no YouTube Music não é capturado. Playlists de conteúdo online ainda pendentes.
+- APK de desenvolvimento, sujeito a compilação e teste em dispositivo.

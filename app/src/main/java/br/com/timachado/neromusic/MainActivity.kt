@@ -120,6 +120,7 @@ private fun NeroApp() {
     }
     var tab by remember { mutableIntStateOf(3) }
     var localSearch by remember { mutableStateOf(false) }
+    var libraryPage by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
     BackHandler(fullPlayer) { fullPlayer = false }
@@ -195,7 +196,18 @@ private fun NeroApp() {
                 FilterChip(selected = !localSearch, onClick = { localSearch = false }, label = { Text("Online") })
                 FilterChip(selected = localSearch, onClick = { localSearch = true }, label = { Text("No aparelho") })
             }
-            if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
+            if(tab == 0) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Músicas","Playlists","Histórico").forEachIndexed { index, label ->
+                    FilterChip(selected = libraryPage == index, onClick = { libraryPage = index }, label = { Text(label) })
+                }
+            }
+            if(tab == 0 && libraryPage != 0) {
+                PersonalLibraryScreen(historyMode = libraryPage == 2, tracks = tracks, granted = granted,
+                    canPlay = controller != null, onPermission = { request.launch(permission) },
+                    onPlay = { queue, index -> controller?.let { p ->
+                        if(queue.isNotEmpty()) { p.setMediaItems(queue.map { it.mediaItem() }, index.coerceIn(0,queue.lastIndex), 0L); p.prepare(); p.play() }
+                    } })
+            } else if (tab == 3 || tab == 4 || (tab == 1 && !localSearch)) {
                 key(tab) {
                 DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
