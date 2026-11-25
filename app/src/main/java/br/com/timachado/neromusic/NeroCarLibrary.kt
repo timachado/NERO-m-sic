@@ -86,7 +86,20 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
         // Never accept arbitrary external URIs. Resolve only known playable IDs.
         return async{
             val available=catalog().all.associateBy{it.mediaId}
-            mediaItems.map{available[it.mediaId]?:throw IllegalArgumentException("Unknown media item")}
+            mediaItems.flatMap{request->
+                val exact=available[request.mediaId]
+                if(exact!=null)listOf(exact)else{
+                    val query=request.requestMetadata.searchQuery?.trim()?.take(120).orEmpty()
+                    if(query.isBlank())throw IllegalArgumentException("Unknown media item")
+                    val matches=available.values.filter{item->
+                        val metadata=item.mediaMetadata
+                        listOf(metadata.title,metadata.artist,metadata.albumTitle).any{it?.toString()?.contains(query,true)==true}||
+                            (metadata.title.toString()+" "+metadata.artist.toString()).contains(query,true)
+                    }.sortedByDescending{it.mediaMetadata.title?.toString()?.equals(query,true)==true}.take(50)
+                    if(matches.isEmpty())throw IllegalArgumentException("No offline search matches")
+                    matches
+                }
+            }.distinctBy{it.mediaId}.take(1500)
         }
     }
 }
