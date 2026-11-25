@@ -49,7 +49,7 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),CLIPS("Clipes")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",initialOpenAudio:Boolean=false,onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={}){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",initialOpenAudio:Boolean=false,onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->},autoFocus:Boolean=false,onExit:()->Unit={},onlineFavoriteIds:Set<String> = emptySet(),onFavorite:(OnlineRef)->Unit={},currentId:String="",currentTitle:String="",currentArtist:String="",currentCover:String?=null,currentPlaying:Boolean=false,currentVideo:Boolean=false,onCurrentToggle:()->Unit={},onOpenPlayer:()->Unit={},offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
@@ -80,10 +80,8 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var busy by remember{mutableStateOf(false)}
 
     var openResults by remember{mutableStateOf(emptyList<OpenTrack>())}
-    var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
     var openBusy by remember{mutableStateOf(false)}
     var openError by remember{mutableStateOf(false)}
-    var saving by remember{mutableStateOf<Long?>(null)}
     var message by remember{mutableStateOf<String?>(null)}
     val voice=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
         val spoken=result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
@@ -107,7 +105,6 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var resolving by remember{mutableStateOf<String?>(null)}
     val term=query.trim()
     val local=remember(tracks,term){if(term.isBlank())emptyList()else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
-    LaunchedEffect(Unit){saved=downloaded(context)}
     LaunchedEffect(term,tab,revision,editing){
         openResults=emptyList();openError=false;busy=false;openBusy=false;message=null
         if(term.length<3||editing)return@LaunchedEffect
@@ -302,23 +299,35 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     }
                 }
                 if(tab==SearchTab.OPEN||(!NativeMusicCatalog.enabled&&tab==SearchTab.ALL)){
-                    item{Text("Áudio com licença aberta",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Fonte: Wikimedia Commons",fontSize=12.sp,color=Color.LightGray)}
+                    item{
+                        Text("Áudio com licença aberta",fontSize=19.sp,fontWeight=FontWeight.Bold)
+                        Text("Fonte: Wikimedia Commons",fontSize=12.sp,color=Color.LightGray)
+                        offlineState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+                    }
                     if(openError)item{TextButton(onClick={revision++}){Text("Falha na consulta. Tentar novamente")}}
                     if(!openBusy&&!openError&&openResults.isEmpty())item{Text("Nenhum áudio compatível encontrado.",color=Color.LightGray)}
                     items(if(tab==SearchTab.ALL)openResults.take(5)else openResults,key={it.id}){audio->
-                        val downloaded=saved.any{it.id==audio.id}
+                        val localAudio=offlineState.saved.firstOrNull{it.id==audio.id}
+                        val downloaded=localAudio!=null
+                        val downloading=offlineState.active?.id==audio.id
                         Column(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(10.dp)){
                             Row(verticalAlignment=Alignment.CenterVertically){
                                 Column(Modifier.weight(1f)){Text(audio.title);Text(audio.artist,fontSize=12.sp,color=Color.LightGray);Text(audio.license,fontSize=11.sp,color=searchAccent)}
                                 IconButton(onClick={adding=OnlineRef("commons:"+audio.id,audio.title,audio.artist,openAudio=audio)}){Icon(Icons.Default.PlaylistAdd,"Adicionar áudio à playlist",tint=searchAccent)}
-                                IconButton(enabled=canPlay,onClick={onOpenPlay(audio.item(if(downloaded)Uri.fromFile(audioFile(context,audio))else Uri.parse(audio.url)))}){Icon(Icons.Default.PlayArrow,"Reproduzir áudio autorizado")}
+                                IconButton(enabled=canPlay,onClick={onOpenPlay(if(localAudio!=null)localAudio.item(Uri.fromFile(audioFile(context,localAudio)))else audio.item(Uri.parse(audio.url)))}){Icon(Icons.Default.PlayArrow,"Reproduzir áudio autorizado")}
                             }
                             Row(verticalAlignment=Alignment.CenterVertically){
                                 TextButton(onClick={openBrowser(context,Uri.parse(audio.source))}){Text("Fonte e licença")}
-                                if(downloaded)Text("Salvo")else TextButton(enabled=saving==null,onClick={
-                                    saving=audio.id;scope.launch{try{saveAudio(context,audio);saved=downloaded(context);message="Áudio salvo."}catch(e:CancellationException){throw e}catch(_:Exception){message="Falha ao salvar."}finally{saving=null}}
-                                }){Text(if(saving==audio.id)"Salvando…"else "Baixar")}
+                                if(downloaded){
+                                    Icon(Icons.Default.CheckCircle,"Disponível offline",tint=searchAccent)
+                                    Text("Baixada",color=searchAccent)
+                                }else TextButton(enabled=offlineState.active==null,onClick={onOfflineSave(audio)}){
+                                    Icon(Icons.Default.Download,null)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if(downloading)"Baixando "+(offlineState.progress*100).toInt()+"%" else "Baixar")
+                                }
                             }
+                            if(downloading)LinearProgressIndicator(progress={offlineState.progress},modifier=Modifier.fillMaxWidth())
                         }
                     }
                 }
