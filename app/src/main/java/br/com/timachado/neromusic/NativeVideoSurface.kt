@@ -8,6 +8,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -56,23 +59,23 @@ private tailrec fun findActivity(context:Context):Activity?=when(context){
     else->null
 }
 @Composable
-internal fun ClipQualityMenu(quality:Int,onQuality:(Int)->Unit,enabled:Boolean=true){
+internal fun ClipQualityMenu(quality:Int,onQuality:(Int)->Unit,enabled:Boolean=true,onExpandedChange:(Boolean)->Unit={}){
     var expanded by remember{mutableStateOf(false)}
     Box{
-        TextButton(onClick={expanded=true},enabled=enabled){
+        TextButton(onClick={expanded=true;onExpandedChange(true)},enabled=enabled){
             Icon(Icons.Default.HighQuality,null)
             Spacer(Modifier.width(6.dp))
             Text(if(quality==0)"Auto (até 720p)" else "Até "+quality+"p")
         }
-        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
+        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false;onExpandedChange(false)}){
             listOf(0,360,480,720,1080).forEach{q->
-                DropdownMenuItem(text={Text(if(q==0)"Auto (até 720p)" else "Até "+q+"p")},onClick={expanded=false;if(q!=quality)onQuality(q)},leadingIcon={if(q==quality)Icon(Icons.Default.Check,null)})
+                DropdownMenuItem(text={Text(if(q==0)"Auto (até 720p)" else "Até "+q+"p")},onClick={expanded=false;onExpandedChange(false);if(q!=quality)onQuality(q)},leadingIcon={if(q==quality)Icon(Icons.Default.Check,null)})
             }
         }
     }
 }
 @Composable
-internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit,pipSupported:Boolean=false,onPip:()->Unit={}){
+internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit,pipSupported:Boolean=false,onPip:()->Unit={},favorite:Boolean=false,canFavorite:Boolean=false,onFavorite:()->Unit={}){
     val context=LocalContext.current
     val activity=remember(context){findActivity(context)}
     DisposableEffect(activity){
@@ -95,26 +98,38 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
     }
     BackHandler(onBack=onClose)
     var seek by remember(title,artist){mutableStateOf<Float?>(null)}
+    var controlsVisible by remember{mutableStateOf(false)}
+    var interaction by remember{mutableIntStateOf(0)}
+    var qualityOpen by remember{mutableStateOf(false)}
+    val show=controlsVisible||!playing||error!=null||seek!=null||qualityOpen
+    fun keepControls(){controlsVisible=true;interaction++}
+    LaunchedEffect(controlsVisible,playing,error,seek!=null,qualityOpen,interaction){
+        if(controlsVisible&&playing&&error==null&&seek==null&&!qualityOpen){delay(4000);controlsVisible=false}
+    }
     Box(Modifier.fillMaxSize().background(Color.Black)){
         NativeVideoSurface(player,Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().clickable(interactionSource=remember{MutableInteractionSource()},indication=null,onClickLabel=if(show)"Ocultar controles" else "Mostrar controles"){if(playing&&error==null){controlsVisible=!controlsVisible;interaction++}else keepControls()})
+        if(show){
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().background(Color.Black.copy(alpha=.65f)).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onClose){Icon(Icons.Default.FullscreenExit,"Sair da tela cheia")}
             Column(Modifier.weight(1f)){
                 Text(title,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text(artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,style=MaterialTheme.typography.bodySmall)
             }
-            ClipQualityMenu(quality,onQuality)
+            ClipQualityMenu(quality,{keepControls();onQuality(it)},onExpandedChange={qualityOpen=it;keepControls()})
+            IconButton(enabled=canFavorite,onClick={keepControls();onFavorite()}){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,if(favorite)"Descurtir música" else "Curtir música",tint=if(favorite)Color(0xFF39FF14)else Color.White)}
             if(pipSupported)IconButton(onClick=onPip){Icon(Icons.Default.PictureInPictureAlt,"Janela flutuante")}
             IconButton(onClick=onAudio){Icon(Icons.Default.MusicNote,"Voltar para música")}
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha=.65f)).padding(horizontal=20.dp),horizontalAlignment=Alignment.CenterHorizontally){
             if(error!=null){Text("Vídeo indisponível nesta qualidade.",color=Color.LightGray);TextButton(onClick=onAudio){Text("Voltar para música")}}
-            Slider(value=seek?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={seek=it},onValueChangeFinished={seek?.let{onSeek((it*duration).toLong())};seek=null},enabled=duration>0)
+            Slider(value=seek?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={seek=it;keepControls()},onValueChangeFinished={seek?.let{onSeek((it*duration).toLong())};seek=null;keepControls()},enabled=duration>0)
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)){
-                IconButton(onClick=onPrevious){Icon(Icons.Default.SkipPrevious,"Anterior")}
-                FilledIconButton(onClick=onToggle){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar")}
-                IconButton(onClick=onNext){Icon(Icons.Default.SkipNext,"Próximo")}
+                IconButton(onClick={keepControls();onPrevious()}){Icon(Icons.Default.SkipPrevious,"Anterior")}
+                FilledIconButton(onClick={keepControls();onToggle()}){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar")}
+                IconButton(onClick={keepControls();onNext()}){Icon(Icons.Default.SkipNext,"Próximo")}
             }
+        }
         }
     }
 }
