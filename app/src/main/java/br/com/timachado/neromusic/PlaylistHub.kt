@@ -26,6 +26,9 @@ private data class HubPlaylist(val id:String,val title:String,val count:Int,val 
 @Composable
 internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onArtist:(String)->Unit={},onAlbum:(NativeCollection)->Unit={},onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
     val context=LocalContext.current
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
     val pinPrefs=remember(context){context.getSharedPreferences("nero_playlist_pins",0)}
     var pins by remember(pinPrefs){mutableStateOf(pinPrefs.getStringSet("keys",emptySet()).orEmpty().toSet())}
     fun togglePin(row:HubPlaylist){
@@ -38,19 +41,19 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
     val albums=rememberSavedAlbums()
     var artistFilter by remember{mutableStateOf(false)}
     var albumFilter by remember{mutableStateOf(false)}
-    var lists by remember{mutableStateOf(emptyList<HubPlaylist>())}
+    var lists by remember(uid,ready){mutableStateOf(emptyList<HubPlaylist>())}
     var failed by remember{mutableStateOf(false)}
     var loading by remember{mutableStateOf(true)}
     var searching by remember{mutableStateOf(false)}
     var term by remember{mutableStateOf("")}
     var alphabetic by remember{mutableStateOf(false)}
     var more by remember{mutableStateOf(false)}
-    LaunchedEffect(tracks){
+    LaunchedEffect(tracks,uid,ready,changes){
         loading=true
         val result=withContext(Dispatchers.IO){
             val index=tracks.associateBy{it.id}
             runCatching{
-                onlineLists(context).asReversed().map{HubPlaylist(it.id,it.name,it.songs.size,7,it.songs.mapNotNull{song->song.coverUrl}.distinct().take(4))}+
+                (if(ready)scopedOnlineLists(context,uid)else emptyList()).asReversed().map{HubPlaylist(it.id,it.name,it.songs.size,7,it.songs.mapNotNull{song->song.coverUrl}.distinct().take(4))}+
                 mixes(context).asReversed().map{HubPlaylist(it.id,it.name,it.ids.size,1,emptyList(),it.ids.mapNotNull{ id->index[id]}.take(4))}+
                 readSaved(context).asReversed().map{HubPlaylist(it.id,it.name,it.items.size,6,emptyList())}
             }
