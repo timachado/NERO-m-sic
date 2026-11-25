@@ -20,7 +20,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
-import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 
 @Composable
@@ -43,10 +42,10 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
     val now=LocalNeroNowPlaying.current
     fun play(hit:NativeMusicHit){if(now.matches(hit.reference().id)){now.open();return};val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("album",album.title,album.url,album.credit,album.artwork)),index)}
-    LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
         item{
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            AsyncImage(model=album.artwork,contentDescription="Capa do álbum",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)))
+            NeroArtwork(model=album.artwork,contentDescription="Capa do álbum",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxWidth().aspectRatio(1f).heightIn(max=340.dp).clip(RoundedCornerShape(16.dp)))
             Text(album.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text(album.credit,color=Color.LightGray)
             OutlinedButton(enabled=savedKey!=null,onClick={if(!NeroSavedAlbums.toggle(context,album))android.widget.Toast.makeText(context,"Não foi possível salvar o álbum.",android.widget.Toast.LENGTH_SHORT).show()}){
@@ -62,7 +61,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         }
         items(songs,key={it.id}){hit->
             Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
-                AsyncImage(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
+                NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
                 NowTrackAction(hit.reference().id,canPlay){play(hit)}
@@ -82,9 +81,9 @@ internal fun NativeAlbumsShelf(onSearch:(String)->Unit,onAlbum:(NativeCollection
         Text("Seleção de sertanejo · catálogo NERO Music",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
             items(rows,key={it.url}){entry->
-                Card(onClick={onAlbum(entry)},modifier=Modifier.width(140.dp)){
+                Card(onClick={onAlbum(entry)},modifier=Modifier.width(140.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                     Column(Modifier.padding(8.dp)){
-                        AsyncImage(model=entry.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
+                        NeroArtwork(model=entry.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                         Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold)
                         Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                     }
