@@ -201,7 +201,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                     s.coverUrl?.let{AsyncImage(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
-                    Text(s.title,fontWeight=FontWeight.Medium);Text(s.artist,fontSize=12.sp,color=Color.LightGray)
+                    Text(s.title,fontWeight=FontWeight.Medium,color=nowTrackColor(byId[s.id]?.mediaId));Text(s.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(byId[s.id]?.mediaId)
                     Text(if(s.id in byId)"Disponível no NERO" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"NERO Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
                     s.openAudio?.takeIf{allowed(it)}?.let{audio->
                         Text(audio.license,fontSize=11.sp,color=Color.LightGray)
@@ -209,7 +209,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                     }
                 }
                 val position=available.indexOfFirst{it.first==s.id}
-                if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
+                if(position>=0)NowTrackAction(queue[position].mediaId,canPlay){onPlay(queue,position,false)}
                 else IconButton(onClick={onSearch(s.title+" "+s.artist)}){Icon(Icons.Default.Search,"Encontrar faixa no NERO")}
                 var options by remember(s.id){mutableStateOf(false)}
                 Box{
