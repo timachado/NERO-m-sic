@@ -209,3 +209,8 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.34-dev
 - Download pelo player para áudios com licença aberta e origem validada, progresso, lista Offline com tamanho, fila local e atalho de descoberta. Download protegido por mutex e cancelamento cooperativo; mantém armazenamento existente. Faixa local indicada como já disponível, sem duplicar arquivos. Catálogo experimental YouTube não possui autorização de download no NERO; não armazena suas mídias. Busca por voz via reconhecedor do Android, consulta a partir da transcrição; serviço de reconhecimento pode processar voz conforme configuração do aparelho. Não é reconhecimento de música ambiente. Build e teste físico pendentes.
+
+
+## 0.9.35.1-dev — NERO Audio transições
+- NERO Audio acrescenta crossfade experimental de 0–8 s (0 por padrão), com dois decodificadores apenas para pares de arquivos locais compatíveis. A sessão principal mantém fila, metadados e foco; a secundária pré-carrega a próxima faixa e é liberada no retorno à sessão principal. Pausa, seek, mudança de fila, falha e perda de foco interrompem a sobreposição. Não funciona em streaming, clipes, reprodução aleatória, repetição, temporizador, equalização ou nivelamento ativos. O handoff pode causar pequena descontinuidade e exige validação física. Gapless usa a fila padrão do Media3; não é um efeito novo nem garantia de reprodução sem pausas.
+- Testes unitários da curva complementar; verificar em Android com arquivos locais: 0/3/8 s, troca de faixa, pausa, seek, fila editada, retirada de fones, modo avião, retorno do player e uso de áudio em segundo plano. Testar duas faixas consecutivas de um álbum contínuo com crossfade desligado para avaliar gapless.
