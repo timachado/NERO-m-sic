@@ -1,6 +1,6 @@
-# NERO Music — direção 0.9.42-dev
+# NERO Music — direção 0.9.42.1-dev
 
-Versão focada em música: Início, Buscar e Biblioteca (músicas curtidas e downloads dentro da Biblioteca). Preserva reprodução padrão Media3, busca, playlists e importação, letras, rádio, recomendações, histórico, clipes, equalizador e widget. NERO Identify, Connect, Together, Cast, Auto, backup Cloud experimental e efeitos de áudio experimentais foram retirados do código ativo; o snapshot anterior está em `archive/experimental-0.9.41.3`. Nenhuma biblioteca ou credencial foi apagada. O histórico de versões abaixo descreve experimentos passados, não a disponibilidade atual. Compilação e testes físicos da nova versão pendentes.
+Versão focada em música: Início, Buscar e Biblioteca (músicas curtidas e downloads dentro da Biblioteca). Preserva reprodução padrão Media3, busca, playlists e importação, letras, rádio, recomendações, histórico, clipes, equalizador e widget. Bluetooth continua pela saída de áudio do Android. Android Auto (músicas locais, downloads e favoritos offline) e Google Cast (faixas compatíveis de áudio livre) foram restaurados em debug, com testes físicos pendentes. NERO Identify, Connect, Together, backup Cloud experimental e efeitos de áudio experimentais permanecem retirados do código ativo; o snapshot anterior está em `archive/experimental-0.9.41.3`. Nenhuma biblioteca ou credencial foi apagada. O histórico de versões abaixo descreve experimentos passados, não a disponibilidade atual. Compilação e testes físicos da nova versão pendentes.
 
 # NERO Music
 
