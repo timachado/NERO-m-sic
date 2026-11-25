@@ -2,6 +2,8 @@ package br.com.timachado.neromusic
 
 import android.os.SystemClock
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.media3.common.MediaItem
 import androidx.compose.foundation.layout.*
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -43,7 +45,7 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,modifier:Modifier=Modifier
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},modifier:Modifier=Modifier
 ){
     val deadline by NeroSleepTimer.deadline.collectAsState()
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
@@ -72,9 +74,9 @@ internal fun ImmersivePlayer(
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Minimizar player")}
-                Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text("NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
-                    Text("Reproduzindo",fontSize=15.sp,fontWeight=FontWeight.Medium)
+                Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
+                    Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
+                    Text(origin?.name?:"Reproduzindo",fontSize=15.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
                 }
                 Box{
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
@@ -127,6 +129,10 @@ internal fun ImmersivePlayer(
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
             if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
             error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+            if(mediaId.isNotBlank()){
+                PlayerLyricsPreview(mediaId,title,artist,position,duration,track?.uri,onLyrics)
+                PlayerContextShelf(shareRef,artist,origin,ready,onOpenAlbum,onExploreArtist,onRelatedQueue)
+            }
         }
     }
 }

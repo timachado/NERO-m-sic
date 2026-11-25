@@ -36,7 +36,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         finally{busy=false}
     }
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
-    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue,index)}
+    fun play(hit:NativeMusicHit){val (queue,index)=nativeQueue(songs,hit);onQueue(queue.withOrigin(PlaybackOrigin("album",album.title,album.url,album.credit,album.artwork)),index)}
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         item{
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}

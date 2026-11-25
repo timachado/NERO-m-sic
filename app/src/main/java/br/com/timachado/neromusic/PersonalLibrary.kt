@@ -58,7 +58,7 @@ internal fun recordListening(context:Context,id:String,title:String,artist:Strin
 
 @Composable
 internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, granted:Boolean, canPlay:Boolean,
-    onPermission:()->Unit, onPlay:(List<Track>,Int)->Unit, onShuffle:(List<Track>)->Unit,initialSelection:String?=null) {
+    onPermission:()->Unit, onPlay:(List<Track>,Int,PlaybackOrigin?)->Unit, onShuffle:(List<Track>,PlaybackOrigin?)->Unit,initialSelection:String?=null) {
     val context=LocalContext.current
     var playlists by remember { mutableStateOf(mixes(context)) }
     var recent by remember { mutableStateOf(history(context)) }
@@ -122,7 +122,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                         Text(h.artist, fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                         Text(DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(h.at)),fontSize=11.sp,color=Color.LightGray)
                     }
-                    if(track!=null) IconButton(enabled=canPlay,onClick={onPlay(listOf(track),0)}){Icon(Icons.Default.PlayArrow,"Reproduzir novamente",tint=accent)}
+                    if(track!=null) IconButton(enabled=canPlay,onClick={onPlay(listOf(track),0,null)}){Icon(Icons.Default.PlayArrow,"Reproduzir novamente",tint=accent)}
                     else Text("Registro",fontSize=11.sp,color=Color.LightGray)
                 }
             }
@@ -165,10 +165,10 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                 OutlinedButton(enabled=queue.isNotEmpty(),onClick={sharing=SharedPlaylist(selected.name,queue.map{SharedSong(it.title,it.artist)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 if(!granted) TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")}
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Button(enabled=canPlay && queue.isNotEmpty(),onClick={onPlay(queue,0)},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
+                    Button(enabled=canPlay && queue.isNotEmpty(),onClick={onPlay(queue,0,PlaybackOrigin("local_playlist",selected.name,selected.id))},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
                     OutlinedButton(onClick={adding=!adding;query=""},enabled=granted,modifier=Modifier.weight(1f)){Text(if(adding)"Concluir" else "Adicionar")}
                 }
-                OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onShuffle(queue)},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Shuffle,null);Spacer(Modifier.width(8.dp));Text("Reprodução aleatória")}
+                OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onShuffle(queue,PlaybackOrigin("local_playlist",selected.name,selected.id))},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Shuffle,null);Spacer(Modifier.width(8.dp));Text("Reprodução aleatória")}
                 if(adding) OutlinedTextField(query,{query=it},modifier=Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Filtrar músicas")})
                 else if(queue.size<selected.ids.size) Text("Algumas faixas não estão acessíveis.",color=Color.LightGray,fontSize=12.sp)
             }
@@ -183,7 +183,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                 items(queue,key={it.id}) { t ->
                     Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
                         LocalArtwork(t,Modifier.size(44.dp))
-                        IconButton(enabled=canPlay,onClick={onPlay(queue,queue.indexOf(t))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=accent)}
+                        IconButton(enabled=canPlay,onClick={onPlay(queue,queue.indexOf(t),PlaybackOrigin("local_playlist",selected.name,selected.id))}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=accent)}
                         Column(Modifier.weight(1f)) {
                             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis)
                             Text(t.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)

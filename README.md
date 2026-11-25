@@ -188,3 +188,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.27-dev
 - Paradas digitais: consulta à playlist oficial Top 100 músicas — Brasil do YouTube Music Global Charts, preservando a ordem de origem, com cache de uma hora e atualização manual. Usa o extrator público já existente no debug; fonte identificada, sem ranking inventado. Disponibilidade no dispositivo e build pendentes. O release não inclui o extrator experimental.
+
+## 0.9.28-dev
+- Player com origem da fila em metadados MediaItem, cabeçalho clicável, prévia de letra, músicas do álbum confirmado por ID e sugestões por artista; correção de paginação das paradas. Build e teste físico pendentes. Não altera playlists salvas.

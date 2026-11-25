@@ -108,7 +108,7 @@ internal object NativeMusicCatalog{
             val rows=info.relatedItems.toMutableList()
             var page=info.nextPage
             var requests=0
-            while(rows.size<100&&page!=null&&page.isValid&&requests<5){
+            while(rows.size<100&&page!=null&&requests<5){
                 val next=PlaylistInfo.getMoreItems(ServiceList.YouTube,info.url,page)
                 if(next.items.isEmpty())break
                 rows.addAll(next.items)

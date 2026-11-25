@@ -160,7 +160,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         if(!canPlay)return
         rememberQuery(term);focusManager.clearFocus();keyboard?.hide()
         val (queue,index)=nativeQueue(nativeResults+moreArtist,hit)
-        onNativeQueue(queue,index)
+        onNativeQueue(queue.withOrigin(PlaybackOrigin("search",term,"")),index)
     }
     val selectedAlbum=albumPage
     BackHandler(selectedAlbum!=null){albumPage=null}

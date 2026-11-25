@@ -132,7 +132,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             media?.let{s.id to it}
         }.orEmpty()
     }
-    val queue=remember(available){available.map{it.second}}
+    val queue=remember(available,active){available.map{it.second}.withOrigin(active?.let{PlaybackOrigin("playlist",it.name,it.id)})}
     val byId=remember(available){available.toMap()}
     BackHandler(active!=null){selected=null}
     val pending=remove

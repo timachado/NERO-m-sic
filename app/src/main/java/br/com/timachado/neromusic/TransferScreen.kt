@@ -143,7 +143,7 @@ private fun spotifyLink(uri:String):String?{
     return null
 }
 @Composable
-internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean)->Unit,initialSelection:String?=null){
+internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean,PlaybackOrigin?)->Unit,initialSelection:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var lists by remember{mutableStateOf(emptyList<ImportedList>())}
@@ -263,8 +263,8 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                 Text("${current.items.size} itens · ${queue.size} disponíveis na biblioteca local",color=Color.LightGray)
                 Text("${current.items.size-queue.size} itens ainda sem correspondência",fontSize=12.sp,color=Color.LightGray)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
-                    OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true)},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}
+                    Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
+                    OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}
                 }
                 Text("A fila inclui somente os arquivos locais correspondentes; os demais itens permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
                 Text("As faixas sem correspondência permanecem na lista. Importar não transfere o áudio nem a assinatura Spotify.",color=Color.LightGray,fontSize=12.sp)
@@ -296,7 +296,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                     Text(if(manual)"Vinculada manualmente" else if(local!=null)"Disponível no aparelho" else "Sem correspondência local",fontSize=11.sp,color=if(local!=null)Color(0xFF39FF14)else Color.LightGray)
                     if(item.kind=="track")TextButton(onClick={linkQuery=item.title;choice=null;linkIndex=i},contentPadding=PaddingValues(0.dp)){Text(if(manual)"Alterar vínculo" else "Vincular faixa local",fontSize=12.sp)}
                 }
-                if(local!=null)IconButton(enabled=canPlay,onClick={val position=matchedEntries.indexOfFirst{it.first==i};if(position>=0)onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
+                if(local!=null)IconButton(enabled=canPlay,onClick={val position=matchedEntries.indexOfFirst{it.first==i};if(position>=0)onPlay(queue,position,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
                 if(local==null&&item.kind=="track"&&item.artist.isNotBlank())IconButton(onClick={if(!openYouTubeMusic(context,item.title+" "+item.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.Search,"Buscar faixa no YouTube Music")}
                 if(link!=null)IconButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(link)))}}){Icon(Icons.Default.OpenInNew,"Abrir faixa no Spotify")}
             }

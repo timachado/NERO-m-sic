@@ -29,11 +29,11 @@ import java.io.File
 import java.security.MessageDigest
 
 private const val MAX_LYRICS=256*1024
-private data class LyricLine(val at:Long?,val text:String)
+internal data class LyricLine(val at:Long?,val text:String)
 private val stamp=Regex("\\[(\\d{1,4}):(\\d{2})(?:[.:](\\d{1,3}))?]")
 private val offsetTag=Regex("(?i)\\[offset:([+-]?\\d{1,8})]")
 private val metadata=Regex("^\\[[A-Za-z]+:.*]$")
-private fun parseLyrics(text:String):List<LyricLine> {
+internal fun parseLyrics(text:String):List<LyricLine> {
     val offset=offsetTag.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
     val timed=mutableListOf<LyricLine>()
     val plain=mutableListOf<LyricLine>()
@@ -167,4 +167,13 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar")
         }
     }
+}
+
+internal suspend fun playerPreviewLyrics(context:Context,mediaId:String,title:String,artist:String,duration:Long,localUri:Uri?):List<LyricLine>{
+    val local=withContext(Dispatchers.IO){
+        val imported=runCatching{parseLyrics(lyricFile(context,lyricKey(mediaId,title,artist)).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
+        if(imported.isNotEmpty())imported else if(localUri!=null)runCatching{context.contentResolver.openInputStream(localUri)?.use{readEmbeddedLyrics(it)}?.let{parseLyrics(it)}.orEmpty()}.getOrDefault(emptyList())else emptyList()
+    }
+    if(local.isNotEmpty()||!BuildConfig.DEBUG||duration<=0)return local
+    return OnlineLyrics.lookup(title,artist,(duration+500L)/1000L)?.let{parseLyrics(it.text)}.orEmpty()
 }
