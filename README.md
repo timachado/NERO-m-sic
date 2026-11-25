@@ -37,3 +37,8 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Histórico das últimas 100 faixas distintas reproduzidas no serviço Media3, inclusive em segundo plano; reprodução direta de registros locais disponíveis.
 - Histórico e playlists armazenados no dispositivo, sem conta ou servidor. Histórico de reprodução externa no YouTube Music não é capturado. Playlists de conteúdo online ainda pendentes.
 - APK de desenvolvimento, sujeito a compilação e teste em dispositivo.
+
+## 0.5.0-dev — conta NERO
+- Tela Minha conta, acesso como visitante, cadastro e login por e-mail/senha, recuperação de senha, verificação de e-mail, login Google via Credential Manager, logout e exclusão da própria conta (pode exigir reautenticação).
+- Firebase Auth é opcional até configuração real; nenhum login simulado. Dados musicais permanecem locais; sincronização não implementada.
+- Para habilitar: crie projeto Firebase exclusivo do NERO, registre Android com applicationId br.com.timachado.neromusic, habilite Email/Password e Google em Authentication, configure SHA-1/SHA-256 do certificado que efetivamente assinará o APK, baixe google-services.json atualizado. Coloque em app/google-services.json (ignorado pelo Git) ou configure o secret de Actions NERO_GOOGLE_SERVICES_JSON com o conteúdo do arquivo. Não use service accounts, chaves privadas ou credenciais administrativas no cliente. Para Google, mantenha uma chave de assinatura estável entre builds e registre as impressões do certificado; não publique uma chave de assinatura no repositório. A configuração do Firebase e os testes de login real ainda estão pendentes.

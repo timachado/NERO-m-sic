@@ -123,7 +123,8 @@ private fun NeroApp() {
     var libraryPage by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
     var fullPlayer by remember { mutableStateOf(false) }
-    BackHandler(fullPlayer) { fullPlayer = false }
+    var showAccount by remember { mutableStateOf(false) }
+    BackHandler(fullPlayer || showAccount) { if(showAccount) showAccount = false else fullPlayer = false }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true)) }
@@ -135,7 +136,7 @@ private fun NeroApp() {
         p.prepare(); p.play()
     }
     Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
-        if (!fullPlayer) Column {
+        if (!fullPlayer && !showAccount) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.GraphicEq, null, tint = Cyan)
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -154,7 +155,9 @@ private fun NeroApp() {
             }
         }
     }) { padding ->
-        if (fullPlayer) {
+        if (showAccount) {
+            AccountScreen(onBack = { showAccount = false }, modifier = Modifier.padding(padding))
+        } else if (fullPlayer) {
             Column(Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { fullPlayer = false }) { Icon(Icons.Default.KeyboardArrowDown, "Minimizar") }
@@ -188,6 +191,7 @@ private fun NeroApp() {
                 Text(" NERO", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text(" MUSIC", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Green)
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = { showAccount = true }) { Icon(Icons.Default.AccountCircle, "Minha conta", tint = Cyan) }
                 IconButton(onClick = { if (granted) scan++ else request.launch(permission) }) { Icon(Icons.Default.Refresh, "Atualizar biblioteca") }
             }
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)
