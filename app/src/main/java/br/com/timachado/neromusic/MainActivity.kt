@@ -155,8 +155,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             videoMode=currentItem?.isNeroVideo()==true
             videoQuality=currentItem?.videoQuality()?:0
             nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
-            title = p.mediaMetadata.title?.toString().orEmpty()
-            artist = p.mediaMetadata.artist?.toString().orEmpty()
+            title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
+            artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
             playing = p.isPlaying
             pos = p.currentPosition.coerceAtLeast(0)
             duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
@@ -264,7 +264,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             BackHandler{playerArtist=null;fullPlayer=true}
             key(name){NativeArtistScreen(name,emptyList(),controller!=null,onBack={playerArtist=null;fullPlayer=true},onQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}};playerArtist=null;fullPlayer=true},onExplore={term->playerArtist=null;fullPlayer=false;searchSeed=term;searchAutoFocus=false;tab=1},onAlbum={playerAlbum=it})}
         } else if (showQueue) {
-            QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false }, modifier = Modifier.padding(padding))
+            QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false;fullPlayer=true }, modifier = Modifier.padding(padding),sourceTitle=nowOrigin?.name?.takeIf{it.isNotBlank()},onHome={showQueue=false;fullPlayer=false;tab=3})
         } else if (showLyrics) {
             LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
@@ -307,10 +307,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 onOriginClick={origin->when(origin.kind){
                     "album"->origin.album()?.let{playerAlbum=it}
                     "artist"->playerArtist=origin.name
-                    "chart"->{fullPlayer=false;tab=3}
+                    "chart"->{showQueue=true}
                     "playlist","local_playlist","imported"->{fullPlayer=false;tab=0;libraryPage=when(origin.kind){"playlist"->7;"local_playlist"->1;else->6};librarySelection=origin.id;libraryCreate=false}
-                    "favorites"->{fullPlayer=false;tab=2}
-                    "search"->{fullPlayer=false;searchSeed=origin.name;searchAutoFocus=false;tab=1}
+                    "favorites"->{showQueue=true}
+                    "search"->{showQueue=true}
                     else->showQueue=true
                 }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->playerArtist=term},
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
