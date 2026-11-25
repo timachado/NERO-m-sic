@@ -58,6 +58,10 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
     LaunchedEffect(Unit){
         while(true){played=replayTracks(NeroReplay.entries(context),NeroReplay.today(),30);kotlinx.coroutines.delay(10000L)}
     }
+    val hidden=rememberHiddenSongs()
+    var resetHidden by remember{mutableStateOf(false)}
+    val visibleMix=filterRecommendedSongs(mix,hidden)
+    if(resetHidden)AlertDialog(onDismissRequest={resetHidden=false},title={Text("Restaurar recomendações?")},text={Text("As músicas ocultadas poderão voltar a aparecer no seu mix. Seus favoritos e playlists não serão alterados.")},confirmButton={TextButton(onClick={NeroHiddenSongs.reset(context);resetHidden=false}){Text("Restaurar")}},dismissButton={TextButton(onClick={resetHidden=false}){Text("Cancelar")}})
     val followed=rememberFollowedArtists()
     val artists=remember(recent,liked,played,followed){preferredMixArtists(followed,mixArtists(played,liked.map{it.artist},recent.map{it.artist}))}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
@@ -65,6 +69,7 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
             Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
             OnlineDiscoveryRow(recent,canPlay,onQueue)
         }
+        if(hidden.isNotEmpty())TextButton(onClick={resetHidden=true}){Text("Restaurar músicas ocultadas (${hidden.size})")}
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
             Text("Sugestões pelos artistas que você segue, mais ouvidos, favoritos e recentes. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
@@ -74,16 +79,16 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
                     try{
                         val excluded=(recent+liked).map{it.id}.toSet()+played.map{it.id.removePrefix("youtube:")}
                         val rows=artists.flatMap{NativeMusicCatalog.search(it).take(12)}
-                        mix=rows.filter{it.id !in excluded}.distinctBy{it.id}.take(24)
+                        mix=filterRecommendedSongs(rows.filter{it.id !in excluded},NeroHiddenSongs.read(context)).distinctBy{it.id}.take(24)
                         if(mix.isEmpty())notice="Nenhuma nova faixa encontrada."
                     }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
                     finally{busy=false}
                 }
             }){Text(if(busy)"Preparando mix…" else if(mix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
-            if(mix.isNotEmpty()){
-                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
-                OnlineDiscoveryRow(mix,canPlay,onQueue)
+            if(visibleMix.isNotEmpty()){
+                Button(enabled=canPlay,onClick={onQueue(visibleMix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
+                OnlineDiscoveryRow(visibleMix,canPlay,onQueue)
             }
         }
     }
