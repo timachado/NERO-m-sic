@@ -54,7 +54,11 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
     }
     val recent=remember(heard){heard.mapNotNull{it.asNativeHit()}.distinctBy{it.id}.take(12)}
     val liked=remember(favorites){favorites.mapNotNull(::musicHitFromRef)}
-    val artists=remember(recent,liked){(liked+recent).map{it.artist.removeSuffix(" - Topic").trim()}.filter{it.length>=3}.distinctBy{it.lowercase(java.util.Locale.ROOT)}.take(3)}
+    var played by remember{mutableStateOf(replayTracks(NeroReplay.entries(context),NeroReplay.today(),30))}
+    LaunchedEffect(Unit){
+        while(true){played=replayTracks(NeroReplay.entries(context),NeroReplay.today(),30);kotlinx.coroutines.delay(10000L)}
+    }
+    val artists=remember(recent,liked,played){mixArtists(played,liked.map{it.artist},recent.map{it.artist})}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         if(recent.isNotEmpty()){
             Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -62,12 +66,12 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
         }
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
-            Text("Sugestões a partir dos artistas que você ouviu ou favoritou. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
+            Text("Sugestões pelos artistas mais ouvidos nos últimos 30 dias, favoritos e recentes. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(enabled=!busy,onClick={
                 busy=true;notice=null
                 scope.launch{
                     try{
-                        val excluded=(recent+liked).map{it.id}.toSet()
+                        val excluded=(recent+liked).map{it.id}.toSet()+played.map{it.id.removePrefix("youtube:")}
                         val rows=artists.flatMap{NativeMusicCatalog.search(it).take(12)}
                         mix=rows.filter{it.id !in excluded}.distinctBy{it.id}.take(24)
                         if(mix.isEmpty())notice="Nenhuma nova faixa encontrada."
@@ -77,7 +81,7 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
             }){Text(if(busy)"Preparando mix…" else if(mix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(mix.isNotEmpty()){
-                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()},0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
+                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()}.withOrigin(PlaybackOrigin("playlist","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
                 OnlineDiscoveryRow(mix,canPlay,onQueue)
             }
         }
