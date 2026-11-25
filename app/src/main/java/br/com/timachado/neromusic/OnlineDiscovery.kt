@@ -1,0 +1,99 @@
+package br.com.timachado.neromusic
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.media3.common.MediaItem
+import coil.compose.AsyncImage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+
+internal object NeroAutoplay{
+    fun enabled(context:Context)=context.getSharedPreferences("nero_playback",0).getBoolean("online_autoplay",false)
+    fun set(context:Context,value:Boolean){context.getSharedPreferences("nero_playback",0).edit().putBoolean("online_autoplay",value).apply()}
+}
+internal fun Heard.asNativeHit():NativeMusicHit?=musicHitFromRef(OnlineRef(id,title,artist))
+internal suspend fun onlineRadio(seed:NativeMusicHit,excluded:Set<String>):List<NativeMusicHit>{
+    val artist=seed.artist.removeSuffix(" - Topic").trim()
+    val term=artist.ifBlank{seed.title}.take(100)
+    if(term.length<3)return emptyList()
+    val rows=NativeMusicCatalog.search(term)
+    return rows.filter{it.id!=seed.id&&it.id !in excluded}.distinctBy{it.id}.take(20)
+}
+@Composable
+internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
+    if(!NativeMusicCatalog.enabled)return
+    val context=LocalContext.current
+    val prefs=remember(context){context.getSharedPreferences("nero_personal",0)}
+    var heard by remember{mutableStateOf(history(context))}
+    val scope=rememberCoroutineScope()
+    var mix by remember{mutableStateOf(emptyList<NativeMusicHit>())}
+    var busy by remember{mutableStateOf(false)}
+    var notice by remember{mutableStateOf<String?>(null)}
+    DisposableEffect(prefs){
+        val listener=SharedPreferences.OnSharedPreferenceChangeListener{_,key->if(key=="history"||key==null)heard=history(context)}
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
+    }
+    val recent=remember(heard){heard.mapNotNull{it.asNativeHit()}.distinctBy{it.id}.take(12)}
+    val liked=remember(favorites){favorites.mapNotNull(::musicHitFromRef)}
+    val artists=remember(recent,liked){(liked+recent).map{it.artist.removeSuffix(" - Topic").trim()}.filter{it.length>=3}.distinctBy{it.lowercase(java.util.Locale.ROOT)}.take(3)}
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        if(recent.isNotEmpty()){
+            Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
+            OnlineDiscoveryRow(recent,canPlay,onQueue)
+        }
+        if(artists.isNotEmpty()){
+            Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
+            Text("Sugestões a partir dos artistas que você ouviu ou favoritou. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
+            OutlinedButton(enabled=!busy,onClick={
+                busy=true;notice=null
+                scope.launch{
+                    try{
+                        val excluded=(recent+liked).map{it.id}.toSet()
+                        val rows=artists.flatMap{NativeMusicCatalog.search(it).take(12)}
+                        mix=rows.filter{it.id !in excluded}.distinctBy{it.id}.take(24)
+                        if(mix.isEmpty())notice="Nenhuma nova faixa encontrada."
+                    }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
+                    finally{busy=false}
+                }
+            }){Text(if(busy)"Preparando mix…" else if(mix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
+            notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+            if(mix.isNotEmpty()){
+                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()},0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
+                OnlineDiscoveryRow(mix,canPlay,onQueue)
+            }
+        }
+    }
+}
+@Composable
+private fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
+    LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        items(rows,key={it.id}){hit->
+            Card(onClick={val (queue,index)=nativeQueue(rows,hit);onQueue(queue,index)},enabled=canPlay,modifier=Modifier.width(132.dp)){
+                Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+                    AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
+                    Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                    Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}

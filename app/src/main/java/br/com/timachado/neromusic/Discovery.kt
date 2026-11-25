@@ -145,7 +145,7 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onlineFavorites:List<OnlineRef> = emptyList(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showReleases by remember { mutableStateOf(false) }
     var selectedAlbum by remember { mutableStateOf<NativeCollection?>(null) }
@@ -195,6 +195,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
                 DigitalChartsShelf(onSearch=onSearch)
+                OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue)
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }

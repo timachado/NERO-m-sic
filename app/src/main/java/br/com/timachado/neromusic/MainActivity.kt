@@ -39,6 +39,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 
 private val Blue = Color(0xFF0066FF)
@@ -88,6 +90,9 @@ private fun NeroApp() {
         favorites = if (id in favorites) favorites - id else favorites + id
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
+    val radioScope=rememberCoroutineScope()
+    var radioBusy by remember{mutableStateOf(false)}
+    var autoplay by remember{mutableStateOf(NeroAutoplay.enabled(context))}
     var onlineFavorites by remember { mutableStateOf(runCatching{readOnlineFavorites(context)}) }
     fun toggleOnline(ref:OnlineRef){
         try{val current=readOnlineFavorites(context);val next=if(current.any{it.id==ref.id})current.filterNot{it.id==ref.id}else listOf(ref)+current
@@ -216,7 +221,30 @@ private fun NeroApp() {
                 onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
                 onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
                 onLyrics={showLyrics=true},onQueue={showQueue=true},onEqualizer={showEq=true},
-                onRadio={if(currentTrack!=null){val next=buildRadio(tracks,favorites,history(context),currentTrack);if(next.isNotEmpty())startRadio(next)}},
+                canRadio=currentTrack!=null||(NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null),radioBusy=radioBusy,autoplay=autoplay,
+                onToggleAutoplay={autoplay=!autoplay;NeroAutoplay.set(context,autoplay)},
+                onRadio={
+                    if(currentTrack!=null){val next=buildRadio(tracks,favorites,history(context),currentTrack);if(next.isNotEmpty())startRadio(next)}
+                    else if(!radioBusy){
+                        val seed=nowOpenRef?.let(::musicHitFromRef)
+                        val p=controller
+                        if(seed!=null&&p!=null){
+                            radioBusy=true
+                            radioScope.launch{
+                                try{
+                                    val rows=onlineRadio(seed,setOf(seed.id))
+                                    if(controller===p&&p.currentMediaItem?.mediaId=="youtube:"+seed.id){
+                                        if(rows.isNotEmpty()){
+                                            p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF
+                                            p.setMediaItems((listOf(seed)+rows).map{it.queueItem()},0,0L);p.prepare();p.play()
+                                        }else android.widget.Toast.makeText(context,"Nenhuma faixa para a rádio.",android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Rádio temporariamente indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
+                                finally{radioBusy=false}
+                            }
+                        }
+                    }
+                },
                 modifier=Modifier.padding(padding)
             )
         } else Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
@@ -274,7 +302,7 @@ private fun NeroApp() {
                     }})
             } else if (tab == 3 || tab == 4) {
                 key(tab) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onSearch = { term -> searchSeed=term;searchAutoFocus=false;tab=1 }, onSearchFocus={searchSeed="";searchAutoFocus=true;tab=1}, onNativeQueue={queue,index->controller?.let{p->
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onlineFavorites=onlineFavorites.getOrDefault(emptyList()), onSearch = { term -> searchSeed=term;searchAutoFocus=false;tab=1 }, onSearchFocus={searchSeed="";searchAutoFocus=true;tab=1}, onNativeQueue={queue,index->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
                 }}, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }

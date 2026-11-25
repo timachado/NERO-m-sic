@@ -10,6 +10,8 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -72,6 +74,36 @@ class PlaybackService : MediaSessionService() {
                 val artist = p.mediaMetadata.artist?.toString().orEmpty()
                 recordListening(applicationContext, id, title, artist)
                 lastRecorded = id
+            }
+        })
+        var autoplayJob:Job?=null
+        // At most one extension per end event. A user pause, replacement or repeat
+        // change invalidates the pending extension.
+        player.addListener(object:Player.Listener{
+            override fun onPlaybackStateChanged(state:Int){
+                if(state!=Player.STATE_ENDED){autoplayJob?.cancel();return}
+                if(!NativeMusicCatalog.enabled||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
+                    player.repeatMode!=Player.REPEAT_MODE_OFF||NeroSleepTimer.deadline.value!=null)return
+                val seed=player.currentMediaItem?.let(::youtubeRefFromItem)?.let(::musicHitFromRef)?:return
+                val ids=(0 until player.mediaItemCount).map{player.getMediaItemAt(it).mediaId}
+                val excluded=(ids+history(applicationContext).map{it.id}).map{it.removePrefix("youtube:")}.toSet()
+                autoplayJob?.cancel()
+                autoplayJob=timerScope.launch{
+                    try{
+                        val next=onlineRadio(seed,excluded).take(10)
+                        if(next.isEmpty()||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
+                            player.playbackState!=Player.STATE_ENDED||player.repeatMode!=Player.REPEAT_MODE_OFF||
+                            NeroSleepTimer.deadline.value!=null||
+                            (0 until player.mediaItemCount).map{player.getMediaItemAt(it).mediaId}!=ids)return@launch
+                        // Keep a bounded timeline, including the last track for Previous.
+                        player.setMediaItems((listOf(seed)+next).map{it.queueItem()},1,0L)
+                        player.prepare()
+                        player.play()
+                    }catch(e:CancellationException){throw e}catch(_:Exception){/* End normally if no more tracks can be found. */}
+                }
+            }
+            override fun onPlayWhenReadyChanged(playWhenReady:Boolean,reason:Int){
+                if(!playWhenReady)autoplayJob?.cancel()
             }
         })
         timerScope.launch {

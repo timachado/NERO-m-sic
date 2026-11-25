@@ -158,3 +158,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.17-dev
 - Corrige chave de abertura ausente em OnlineListsScreen (falha da 0.9.16). Marca NERO Music nos títulos de catálogo, álbuns e novidades; fonte técnica disponível nas informações do catálogo e nos componentes oficiais. Favoritos online persistidos em arquivo atômico separado, ação no player e nos resultados completos de músicas, aba Favoritos unificada com músicas locais e reprodução em fila. Preserva favoritos locais e playlists existentes. Sem sincronização em nuvem, sem mudanças no provedor. Compilação e teste físico pendentes.
+
+## 0.9.18-dev
+- Histórico online em Ouça novamente; mix sob demanda com até três artistas do histórico e favoritos, sem transmitir arquivo de histórico. Rádio online por consulta ao artista atual e exclusão de IDs repetidos. Autoplay online opcional (desligado por padrão) no menu do player: ao terminar a fila e sem repeat ou temporizador ativo, busca até dez faixas adicionais, evita IDs do histórico e respeita mudanças de fila e pausa. Não é recomendação oficial Spotify nem ranking; baseada em buscas. Testes de compilação e reprodução física pendentes.

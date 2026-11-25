@@ -42,6 +42,7 @@ internal fun ImmersivePlayer(
     shuffle:Boolean,repeat:Int,ready:Boolean,error:String?,canSave:Boolean,onSave:()->Unit,
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
+    canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
     modifier:Modifier=Modifier
 ){
     val deadline by NeroSleepTimer.deadline.collectAsState()
@@ -77,7 +78,8 @@ internal fun ImmersivePlayer(
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                     DropdownMenu(expanded=showMore,onDismissRequest={showMore=false}){
                         DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
-                        DropdownMenuItem(text={Text("Rádio desta faixa")},enabled=ready&&track!=null,onClick={showMore=false;onRadio()})
+                        DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
+                        if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
                         if(BuildConfig.DEBUG)DropdownMenuItem(text={Text("Equalizador")},onClick={showMore=false;onEqualizer()})
                         DropdownMenuItem(text={Text("Fila de reprodução")},enabled=ready,onClick={showMore=false;onQueue()})
                         DropdownMenuItem(text={Text("Temporizador")},enabled=ready,onClick={showMore=false;showTimer=true})
@@ -119,7 +121,7 @@ internal fun ImmersivePlayer(
                 if(BuildConfig.DEBUG)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
-            if(track!=null)OutlinedButton(onClick=onRadio,enabled=ready){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
+            if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
             error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
         }
     }
