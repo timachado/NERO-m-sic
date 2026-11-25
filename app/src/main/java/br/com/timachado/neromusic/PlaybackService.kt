@@ -140,13 +140,30 @@ class PlaybackService : MediaLibraryService() {
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         session.takeIf{controllerInfo.uid==android.os.Process.myUid()||controllerInfo.isTrusted}
-    override fun onDestroy() {
+    // Dismissing the task is an explicit exit. Home and screen lock do not call this.
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        NeroSleepTimer.cancel()
+        session?.player?.let { player ->
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+        }
+        // Release bound external controllers as well (Android Auto, widgets).
+        closePlayback()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+    private fun closePlayback() {
         replaySampler?.close();replaySampler=null
         timerScope.cancel(); NeroSleepTimer.cancel()
         eq?.close(); eq = null
         NeroWidgetState.detach(applicationContext)
-        session?.let { it.player.release(); it.release() }
-        session = null
+        val active=session
+        session=null
+        active?.let { it.release(); it.player.release() }
+    }
+    override fun onDestroy() {
+        closePlayback()
         super.onDestroy()
     }
 }
