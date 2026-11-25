@@ -81,7 +81,7 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
             }){Text(if(busy)"Preparando mix…" else if(mix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(mix.isNotEmpty()){
-                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()}.withOrigin(PlaybackOrigin("playlist","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
+                Button(enabled=canPlay,onClick={onQueue(mix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
                 OnlineDiscoveryRow(mix,canPlay,onQueue)
             }
         }
