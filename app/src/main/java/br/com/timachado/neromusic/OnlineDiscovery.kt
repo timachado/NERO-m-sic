@@ -21,7 +21,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
-import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -98,9 +97,9 @@ private fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueue
     LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
         items(rows,key={it.id}){hit->
             val now=LocalNeroNowPlaying.current
-            Card(onClick={if(now.matches(hit.reference().id))now.open()else{val (queue,index)=nativeQueue(rows,hit);onQueue(queue,index)}},enabled=canPlay,modifier=Modifier.width(132.dp)){
+            Card(onClick={if(now.matches(hit.reference().id))now.open()else{val (queue,index)=nativeQueue(rows,hit);onQueue(queue,index)}},enabled=canPlay,modifier=Modifier.width(132.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                 Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
-                    AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
+                    NeroArtwork(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));NowTrackStatus(hit.reference().id)
                     Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
