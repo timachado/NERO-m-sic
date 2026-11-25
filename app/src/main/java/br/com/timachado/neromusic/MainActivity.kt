@@ -111,13 +111,22 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     val prefs = remember { context.getSharedPreferences("nero_library", 0) }
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet())?.toSet() ?: emptySet()) }
     fun toggle(id: String) {
-        favorites = if (id in favorites) favorites - id else favorites + id
+        val current=prefs.getStringSet("favorites",emptySet()).orEmpty().toSet()
+        favorites = if (id in current) current - id else current + id
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
     val radioScope=rememberCoroutineScope()
     var radioBusy by remember{mutableStateOf(false)}
     var autoplay by remember{mutableStateOf(NeroAutoplay.enabled(context))}
     var onlineFavorites by remember { mutableStateOf(runCatching{readOnlineFavorites(context)}) }
+    DisposableEffect(prefs){
+        val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->
+            if(key=="favorites")favorites=prefs.getStringSet("favorites",emptySet()).orEmpty().toSet()
+            if(key=="online_favorite_revision")onlineFavorites=runCatching{readOnlineFavorites(context)}
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
+    }
     fun toggleOnline(ref:OnlineRef){
         try{val current=readOnlineFavorites(context);val next=if(current.any{it.id==ref.id})current.filterNot{it.id==ref.id}else listOf(ref)+current
             saveOnlineFavorites(context,next);onlineFavorites=Result.success(next)
