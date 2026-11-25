@@ -321,7 +321,9 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 autoplay=autoplay,onAutoplay={autoplay=!autoplay;NeroAutoplay.set(context,autoplay)},
                 onLibrary={showAccount=false;tab=0;libraryPage=8;librarySelection=null},
                 onDownloads={showAccount=false;tab=4},
-                onHistory={showAccount=false;tab=0;libraryPage=2;librarySelection=null})
+                onHistory={showAccount=false;tab=0;libraryPage=2;librarySelection=null},
+                wifiOnly=offlineState.wifiOnly,onWifiChange=offlineManager::setWifiOnly,
+                economicalDownload=offlineState.economical,onDownloadQuality=offlineManager::setEconomical)
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
