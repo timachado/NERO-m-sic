@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.media3.common.MediaItem
 import androidx.compose.foundation.layout.*
-import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.rememberScrollState
@@ -129,7 +128,7 @@ internal fun ImmersivePlayer(
                     }
                 }
             }
-            else if(remoteCover!=null&&track==null)AsyncImage(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
+            else if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.size(coverSize).clip(RoundedCornerShape(24.dp)))
             else LocalArtwork(track,Modifier.size(coverSize),large=true)
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
