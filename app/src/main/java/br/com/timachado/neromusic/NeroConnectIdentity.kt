@@ -79,5 +79,12 @@ internal class NeroConnectIdentity(context:Context){
         val peer=parseConnectOffer(requireNotNull(peerOffer()))
         return gate.consume(proof,publicKey(),peer,System.currentTimeMillis())
     }
+    fun tlsIdentity():ConnectTlsIdentity{
+        val peer=parseConnectOffer(requireNotNull(peerOffer()))
+        publicKey()
+        val certificate=store.getCertificate(keyAlias) as java.security.cert.X509Certificate
+        val privateKey=store.getKey(keyAlias,null) as java.security.PrivateKey
+        return ConnectTlsIdentity(certificate,privateKey,peer)
+    }
     fun revoke(){check(prefs.edit().remove("peer_public").commit())}
 }
