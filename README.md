@@ -173,3 +173,6 @@ Código NERO aleatório de 128 bits; Firebase Auth Google obrigatório para cria
 
 ## 0.9.22-dev
 - HTTPS App Links, abertura direta com autenticação Google, página de apoio preparada e correção da sintaxe Firestore. Ativação de domínio, Firebase, certificado e regras pendente. Ver docs/https-sharing.md.
+
+## 0.9.23-dev
+- Menu de compartilhamento com prévia visual NERO, copiar link HTTPS, compartilhamento nativo Android, card de Status/Stories e menu de faixa na busca. Reutiliza o link criado enquanto o diálogo permanece aberto. Ao abrir App Link, consulta automaticamente se já houver sessão Google; visitantes precisam autenticar. Lista de faixas exibida somente após leitura protegida do servidor. Compartilhamento privado por link de 7 dias, cópia estática da playlist; sem atualização colaborativa ou link público permanente. Ativação do Firebase/domínio/certificado e teste real ainda pendentes; card estático sem áudio, apps de destino podem descartar legenda.

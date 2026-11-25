@@ -1,6 +1,19 @@
 package br.com.timachado.neromusic
 
 import android.content.Context
+import android.content.ClipboardManager
+import android.content.ClipData
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,9 +67,9 @@ private suspend fun publishShare(context:Context,playlist:SharedPlaylist):String
     check(doc.exists()&&!doc.metadata.hasPendingWrites())
     return ShareLinks.url(code)
 }
-private suspend fun fetchShare(context:Context,input:String):Pair<String,SharedPlaylist>{
+private suspend fun fetchShare(context:Context,input:String,interactive:Boolean=true):Pair<String,SharedPlaylist>{
     val code=ShareLinks.parse(input)?:error("Link inválido")
-    val uid=googleSession(context,true)
+    val uid=googleSession(context,interactive)
     val snap=FirebaseFirestore.getInstance().collection(COLLECTION).document(code).get(Source.SERVER).await()
     check(snap.exists())
     check(googleSession(context,false)==uid)
@@ -68,29 +81,49 @@ private fun shareError(e:Exception):String=when(e){
     else->"Não foi possível concluir. Confira a conexão, o link e a validade do compartilhamento."
 }
 @Composable
-internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()->Unit,send:suspend(String,Boolean)->Unit){
+internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()->Unit,send:suspend(String,Boolean)->Unit,cover:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
-    fun share(card:Boolean){
+    var link by remember{mutableStateOf<String?>(null)}
+    fun share(action:String){
         busy=true;message=null
         scope.launch{
-            try{val code=publishShare(context,playlist);send(code,card);onClose()}
-            catch(e:CancellationException){throw e}catch(e:Exception){message=shareError(e)}
+            try{
+                val url=link?:publishShare(context,playlist).also{link=it}
+                if(action=="copy"){
+                    val clipboard=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",url))
+                    message="Link copiado."
+                }else{send(url,action=="card");onClose()}
+            }catch(e:CancellationException){throw e}catch(e:Exception){message=shareError(e)}
             finally{busy=false}
         }
     }
     AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text(if(single)"Compartilhar música" else "Compartilhar playlist")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(playlist.name+" · "+playlist.songs.size+" faixa(s)")
-            Text("Somente pessoas com o link e uma sessão Google válida podem abrir o conteúdo compartilhado no NERO. Link válido por 7 dias.")
-            Text("Qualquer pessoa com o link pode entrar usando a própria conta Google. Não é um convite restrito a um e-mail específico.",style=MaterialTheme.typography.bodySmall)
-            Button(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share(false)},modifier=Modifier.fillMaxWidth()){Text("Compartilhar link protegido")}
-            if(single)OutlinedButton(enabled=!busy,onClick={share(true)},modifier=Modifier.fillMaxWidth()){Text("Card para Status e Stories")}
-            if(single)Text("A arte mostra título, artista e capa publicamente; só o acesso pelo link exige login. Sem áudio no card.",style=MaterialTheme.typography.bodySmall)
+        Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+            Card(modifier=Modifier.fillMaxWidth()){
+                Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
+                    val thumbnail=cover?:playlist.songs.firstOrNull()?.videoId?.takeIf{Regex("[A-Za-z0-9_-]{11}").matches(it)}?.let{"https://i.ytimg.com/vi/"+it+"/mqdefault.jpg"}
+                    Box(Modifier.size(76.dp),contentAlignment=Alignment.Center){
+                        Icon(if(single)Icons.Default.MusicNote else Icons.Default.QueueMusic,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(40.dp))
+                        thumbnail?.let{AsyncImage(model=it,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)))}
+                    }
+                    Column(Modifier.weight(1f).padding(start=12.dp)){
+                        Text("NERO MUSIC",color=Color(0xFF39FF14),style=MaterialTheme.typography.labelSmall)
+                        Text(playlist.name,style=MaterialTheme.typography.titleMedium,maxLines=2,overflow=TextOverflow.Ellipsis)
+                        Text(if(single)playlist.songs.firstOrNull()?.artist.orEmpty() else playlist.songs.size.toString()+" músicas",maxLines=1,overflow=TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            Button(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("send")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("WhatsApp e redes sociais")}
+            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text("Copiar link")}
+            if(single)OutlinedButton(enabled=!busy,onClick={share("card")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text("Status e Stories")}
+            Text("Acesso com conta Google · link privado válido por 7 dias.",style=MaterialTheme.typography.bodySmall)
+            Text("Qualquer pessoa com o link e uma sessão Google pode acessar. O card público não inclui áudio.",style=MaterialTheme.typography.bodySmall)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-            message?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+            message?.let{Text(it,color=if(it=="Link copiado.")Color(0xFF39FF14)else MaterialTheme.colorScheme.error)}
         }
     },confirmButton={TextButton(enabled=!busy,onClick=onClose){Text("Fechar")}})
 }
@@ -102,14 +135,15 @@ internal fun ReceiveShareDialog(onClose:()->Unit,onImport:(SharedPlaylist)->Unit
     var result by remember{mutableStateOf<Pair<String,SharedPlaylist>?>(null)}
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
-    fun open(){
+    fun open(interactive:Boolean=true){
         busy=true;message=null;result=null
         scope.launch{
-            try{result=fetchShare(context,code)}
-            catch(e:CancellationException){throw e}catch(e:Exception){message=shareError(e)}
+            try{result=fetchShare(context,code,interactive)}
+            catch(e:CancellationException){throw e}catch(e:GoogleRequired){message="Entre com Google para abrir este link."}catch(e:Exception){message=shareError(e)}
             finally{busy=false}
         }
     }
+    LaunchedEffect(initialLink){if(initialLink.isNotBlank()&&ShareLinks.parse(initialLink)!=null)open(false)}
     fun access(action:(SharedPlaylist)->Unit){
         val loaded=result?:return
         busy=true
@@ -125,12 +159,22 @@ internal fun ReceiveShareDialog(onClose:()->Unit,onImport:(SharedPlaylist)->Unit
     }
     AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text("Abrir compartilhamento")},text={
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("Cole o link recebido e entre com sua conta Google.")
+            if(result==null)Text(if(initialLink.isNotBlank())"Entre com Google para abrir este compartilhamento." else "Cole o link recebido.")
             if(initialLink.isBlank())OutlinedTextField(code,{code=it.take(512);result=null},enabled=!busy,singleLine=true,label={Text("Link NERO")})
-            Button(enabled=!busy&&ShareLinks.parse(code)!=null,onClick={open()},modifier=Modifier.fillMaxWidth()){Text("Acessar com Google")}
+            if(result==null)Button(enabled=!busy&&ShareLinks.parse(code)!=null,onClick={open()},modifier=Modifier.fillMaxWidth()){Text("Acessar com Google")}
             result?.second?.let{playlist->
                 Text(playlist.name,style=MaterialTheme.typography.titleMedium)
                 Text(playlist.songs.size.toString()+" faixa(s)")
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max=220.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                    itemsIndexed(playlist.songs){index,song->
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            val thumbnail=song.videoId?.takeIf{Regex("[A-Za-z0-9_-]{11}").matches(it)}?.let{"https://i.ytimg.com/vi/"+it+"/mqdefault.jpg"}
+                            if(thumbnail!=null)AsyncImage(model=thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)))
+                            else Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(44.dp))
+                            Column(Modifier.weight(1f).padding(start=10.dp)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(song.artist,style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)}
+                        }
+                    }
+                }
                 if(onPlay!=null)Button(enabled=!busy,onClick={access(onPlay)},modifier=Modifier.fillMaxWidth()){Text("Ouvir no NERO")}
                 OutlinedButton(enabled=!busy,onClick={access(onImport)},modifier=Modifier.fillMaxWidth()){Text("Salvar cópia na biblioteca")}
                 Text("A cópia salva fica no aparelho; a validade do link não apaga a cópia.",style=MaterialTheme.typography.bodySmall)

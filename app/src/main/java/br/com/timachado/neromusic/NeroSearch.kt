@@ -82,6 +82,8 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var saving by remember{mutableStateOf<Long?>(null)}
     var message by remember{mutableStateOf<String?>(null)}
     var adding by remember{mutableStateOf<OnlineRef?>(null)}
+    var sharing by remember{mutableStateOf<NativeMusicHit?>(null)}
+    sharing?.let{hit->TrackShareDialog(hit.title,hit.artist,hit.reference(),hit.thumbnail,onClose={sharing=null})}
     var addingLocal by remember{mutableStateOf<Track?>(null)}
 
     var youtube by remember{mutableStateOf<YouTubeHit?>(null)}
@@ -207,7 +209,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){playNative(hit)}.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
                         AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text("Música · "+hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)}
-                        IconButton(onClick={adding=hit.reference()}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=searchAccent)}
+                        SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit})
                     }
                 }
                 item{TextButton(onClick={submit(query)}){Text("Ver todos os resultados para "+term)}}
@@ -256,7 +258,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                             }
                             IconButton(onClick={onFavorite(hit.reference())}){Icon(if(hit.reference().id in onlineFavoriteIds)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(hit.reference().id in onlineFavoriteIds)searchAccent else Color.LightGray)}
-                            IconButton(onClick={adding=hit.reference()}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=searchAccent)}
+                            SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit})
                             IconButton(enabled=canPlay&&resolving==null,onClick={playNative(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=searchAccent)}
                         }
                     }
@@ -268,7 +270,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 Column(Modifier.padding(8.dp)){
                                     AsyncImage(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                                    IconButton(onClick={adding=hit.reference()}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=searchAccent)}
+                                    SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit})
                                 }
                             }
                         }}}
@@ -346,6 +348,18 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 }
                 if(term.length<3)item{Text("Digite pelo menos três caracteres para consultar o catálogo online.",fontSize=12.sp,color=Color.LightGray)}
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchTrackActions(onAdd:()->Unit,onShare:()->Unit){
+    var expanded by remember{mutableStateOf(false)}
+    Box{
+        IconButton(onClick={expanded=true}){Icon(Icons.Default.MoreVert,"Mais opções da música",tint=searchAccent)}
+        DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
+            DropdownMenuItem(text={Text("Adicionar à playlist")},onClick={expanded=false;onAdd()},leadingIcon={Icon(Icons.Default.PlaylistAdd,null)})
+            DropdownMenuItem(text={Text("Compartilhar música")},onClick={expanded=false;onShare()},leadingIcon={Icon(Icons.Default.Share,null)})
         }
     }
 }

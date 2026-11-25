@@ -163,7 +163,7 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
 internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:String?,onClose:()->Unit){
     val context=LocalContext.current
     val song=ref?.let(::sharedSong)?:SharedSong(title,artist)
-    ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,
+    ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,cover=cover,
         send={link,card->
             val message="🎧 NERO Music · música compartilhada\n"+link+"\nAbra o link e entre com sua conta Google."
             if(card){val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",message)}
