@@ -58,7 +58,7 @@ internal object NeroWidgetState {
         fun control(action:String,code:Int)=PendingIntent.getBroadcast(context,code,Intent(context,NeroWidget::class.java).setAction(action),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         views.setTextViewText(R.id.widget_title,state.title)
         views.setTextViewText(R.id.widget_artist,state.artist)
-        views.setImageViewResource(R.id.widget_toggle,if(state.playing)android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+        views.setImageViewResource(R.id.widget_toggle,if(state.playing)R.drawable.nero_widget_pause else R.drawable.nero_widget_play)
         views.setContentDescription(R.id.widget_toggle,if(state.playing)"Pausar" else "Reproduzir")
         views.setInt(R.id.widget_previous,"setImageAlpha",if(state.previous)255 else 90)
         views.setInt(R.id.widget_next,"setImageAlpha",if(state.next)255 else 90)
