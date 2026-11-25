@@ -127,6 +127,16 @@ private suspend fun saveAudio(context: Context, t: OpenTrack) = withContext(Disp
 private fun openBrowser(context:Context, uri:Uri): Boolean =
     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW,uri)); true }.getOrDefault(false)
 
+private fun openYouTubeMusic(context: Context, query: String): Boolean {
+    val uri = Uri.parse("https://music.youtube.com/search").buildUpon()
+        .appendQueryParameter("q", query.trim().ifBlank { "música" }).build()
+    val appOpened = runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.youtube.music"))
+        true
+    }.getOrDefault(false)
+    return appOpened || openBrowser(context, uri)
+}
+
 @Composable
 internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
@@ -153,19 +163,22 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, onPlay:(MediaIt
     LazyColumn(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text(if(offline) "Downloads" else "Descubra novos sons",fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text(if(offline) "Áudios salvos no NERO Music." else "Catálogo aberto · Wikimedia Commons", color=Color.LightGray,fontSize=13.sp)
+            Text(if(offline) "Áudios autorizados salvos no NERO Music." else "YouTube Music e catálogo aberto", color=Color.LightGray,fontSize=13.sp)
         }
         if(!offline) {
             item {
                 OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),singleLine=true,placeholder={Text("Música, artista ou gênero")})
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Button(onClick={submitted=query.trim(); generation++},modifier=Modifier.weight(1f)){Text("Buscar áudios")}
-                    OutlinedButton(onClick={
-                        val url=Uri.parse("https://www.youtube.com/results").buildUpon().appendQueryParameter("search_query",query.trim().ifBlank{"música"}).build()
-                        if(!openBrowser(context,url))notice="Nenhum navegador disponível."
-                    },modifier=Modifier.weight(1f)){Text("YouTube")}
+                Button(onClick={
+                    if(!openYouTubeMusic(context,query)) notice="Não foi possível abrir o YouTube Music."
+                },modifier=Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Search,null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Buscar no YouTube Music")
                 }
-                Text("O YouTube abre no player oficial; os downloads abaixo são do catálogo aberto.",fontSize=12.sp,color=Color.LightGray)
+                OutlinedButton(onClick={submitted=query.trim(); generation++},modifier=Modifier.fillMaxWidth()) {
+                    Text("Buscar áudios com licença aberta")
+                }
+                Text("A busca no YouTube Music abre o aplicativo oficial ou o navegador. Downloads do YouTube Music ficam no serviço oficial; o NERO salva os áudios autorizados do catálogo aberto.",fontSize=12.sp,color=Color.LightGray)
             }
             item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }
             items(genres.chunked(2)) { pair ->

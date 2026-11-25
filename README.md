@@ -11,3 +11,9 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 - Downloads do catálogo aberto no armazenamento privado do app, com metadados de licença e reprodução offline.
 - Catálogo comercial, grade de álbuns, busca YouTube interna e playlists próprias ainda pendentes.
 - APK de teste via Actions; a nova versão precisa compilar e ser validada em aparelho real.
+
+## 0.2.1-dev
+- Pesquisa direcionada ao YouTube Music oficial por deep link, com fallback para navegador, sem extração de áudio.
+- Busca do catálogo aberto e downloads autorizados mantidos.
+- Cores explícitas Aurora Neon na navegação inferior.
+- Resultados internos do YouTube Music e downloads desse serviço não implementados; downloads oficiais são gerenciados pelo próprio YouTube Music.
