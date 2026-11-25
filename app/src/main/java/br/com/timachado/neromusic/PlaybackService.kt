@@ -6,6 +6,11 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +28,28 @@ class PlaybackService : MediaSessionService() {
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this).build().apply {
+        // Resolve online references on the playback loader, never on the UI thread.
+        // Only short-lived resolved addresses are cached in memory.
+        val resolved=object:LinkedHashMap<String,Pair<android.net.Uri,Long>>(16,0.75f,true){
+            override fun removeEldestEntry(eldest:MutableMap.MutableEntry<String,Pair<android.net.Uri,Long>>?)=size>16
+        }
+        val dataSource=ResolvingDataSource.Factory(DefaultDataSource.Factory(this)){spec->
+            val uri=spec.uri
+            if(uri.scheme!="nero-music")spec else{
+                val id=uri.lastPathSegment.orEmpty()
+                if(!NativeMusicCatalog.enabled||uri.host!="track"||!Regex("[A-Za-z0-9_-]{11}").matches(id))throw IOException("Fonte musical indisponível")
+                val cached=synchronized(resolved){resolved[id]}
+                val now=android.os.SystemClock.elapsedRealtime()
+                val address=if(cached!=null&&now-cached.second in 0L..300000L)cached.first else try{
+                    val item=runBlocking{NativeMusicCatalog.resolve(NativeMusicHit(id,"","",0L))}
+                    val direct=item.localConfiguration?.uri?:throw IOException("Áudio indisponível")
+                    synchronized(resolved){resolved[id]=direct to android.os.SystemClock.elapsedRealtime()}
+                    direct
+                }catch(e:Exception){throw IOException("Não foi possível carregar a faixa",e)}
+                spec.withUri(address)
+            }
+        }
+        val player = ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)

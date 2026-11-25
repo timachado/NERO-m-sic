@@ -179,8 +179,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
         catch(e: Exception) { tracks = emptyList(); notice = "Não foi possível consultar o catálogo. Tente novamente." }
         finally { busy = false }
     }
-    val genres = listOf("Rock" to "rock","Pop" to "pop","Jazz" to "jazz","Clássica" to "classical",
-        "Gospel" to "gospel","Samba" to "samba","Sertanejo" to "sertanejo","Eletrônica" to "electronic")
+
     LazyColumn(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Text(if(offline) "Downloads" else if(searchOnly) "Buscar músicas" else "Descubra novos sons",fontSize=25.sp,fontWeight=FontWeight.Bold)
@@ -197,6 +196,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 Text("Músicas, artistas e álbuns em um só lugar.",fontSize=12.sp,color=Color.LightGray)
             }
             if (!searchOnly) item {
+                PremiumDiscovery(onSearch=onSearch)
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }
@@ -214,18 +214,8 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 DynamicReleaseShelf(onOpen={showReleases=true},onSearch={onSearch(it)})
                 CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true })
             }
-            item { Text("Estilos e gêneros",fontSize=19.sp,fontWeight=FontWeight.Bold) }
-            items(genres.chunked(2)) { pair ->
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    pair.forEach { (name,term) ->
-                        Button(onClick={onSearch(name)},modifier=Modifier.weight(1f).height(56.dp),shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF102B23),contentColor=aqua)){
-                            Icon(Icons.Default.MusicNote,null,modifier=Modifier.size(18.dp))
-                            Spacer(Modifier.width(5.dp))
-                            Text(name)
-                        }
-                    }
-                }
-            }
+            item { PremiumGenres(onSearch=onSearch) }
+
         }
         if(busy && !offline) item { CircularProgressIndicator() }
         notice?.let { msg -> item { Text(msg,color=aqua) } }

@@ -105,7 +105,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             val media=if(audio!=null){
                 val copy=saved.firstOrNull{it==audio}
                 audio.item(if(copy!=null)Uri.fromFile(audioFile(context,copy))else Uri.parse(audio.url))
-            }else local?.mediaItem()
+            }else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)musicHitFromRef(s)?.queueItem() else local?.mediaItem()
             media?.let{s.id to it}
         }.orEmpty()
     }
@@ -161,10 +161,6 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 }
                 val position=available.indexOfFirst{it.first==s.id}
                 if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
-                else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)IconButton(enabled=canPlay&&resolving==null,onClick={
-                    val hit=musicHitFromRef(s)?:return@IconButton
-                    resolving=s.id;scope.launch{try{onPlay(listOf(NativeMusicCatalog.resolve(hit)),0,false)}catch(e:CancellationException){throw e}catch(_:Exception){notice="Faixa indisponível."}finally{resolving=null}}
-                }){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
                 else IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar externamente no YouTube Music")}
                 IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
             }

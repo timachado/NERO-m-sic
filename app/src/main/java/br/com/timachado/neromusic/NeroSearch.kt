@@ -38,7 +38,7 @@ private val colors=listOf(0xFF664828,0xFF17634B,0xFF164A66,0xFF405E3B,0xFF214B83
 private enum class SearchTab(val label:String){ALL("Tudo"),SONG("Músicas"),ARTIST("Artistas"),ALBUM("Álbuns"),LOCAL("No aparelho"),OPEN("Áudio livre"),YOUTUBE("YouTube")}
 
 @Composable
-internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onPauseAudio:()->Unit={}){
+internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,onOpenPlay:(MediaItem)->Unit,initialQuery:String="",onPauseAudio:()->Unit={},onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
@@ -105,13 +105,9 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         finally{nativeBusy=false}
     }
     fun playNative(hit:NativeMusicHit){
-        if(resolving!=null||!canPlay)return
-        resolving=hit.id;message=null
-        scope.launch{
-            try{onOpenPlay(NativeMusicCatalog.resolve(hit))}
-            catch(e:CancellationException){throw e}catch(_:Exception){message="Não foi possível reproduzir esta faixa. Tente outra."}
-            finally{resolving=null}
-        }
+        if(!canPlay)return
+        val (queue,index)=nativeQueue(nativeResults,hit)
+        onNativeQueue(queue,index)
     }
     val browserQuery=youtubeBrowser
     BackHandler(browserQuery!=null){youtubeBrowser=null}
@@ -153,7 +149,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 }
             }else{
                 if(NativeMusicCatalog.enabled&&tab in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.YOUTUBE)){
-                    item{Text("YouTube Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text("Catálogo experimental · uso pessoal",fontSize=11.sp,color=Color.LightGray)}
+                    item{Text("NERO Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text("Músicas · fonte YouTube Music",fontSize=11.sp,color=Color.LightGray)}
                     if(nativeError)item{TextButton(onClick={revision++}){Text("Falha na busca. Tentar novamente")}}
                     if(!nativeBusy&&!nativeError&&nativeResults.isEmpty()&&term.length>=3)item{Text("Nenhuma faixa encontrada.",color=Color.LightGray)}
                     items(if(tab==SearchTab.ALL)nativeResults.take(8)else nativeResults,key={"native:"+it.id}){hit->
@@ -167,7 +163,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                             IconButton(enabled=canPlay&&resolving==null,onClick={playNative(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=searchAccent)}
                         }
                     }
-                    if(tab==SearchTab.ALL&&nativeResults.size>8)item{TextButton(onClick={tab=SearchTab.YOUTUBE}){Text("Ver mais músicas do YouTube Music")}}
+                    if(tab==SearchTab.ALL&&nativeResults.size>8)item{TextButton(onClick={tab=SearchTab.YOUTUBE}){Text("Ver todas as músicas")}}
                 }
                 if(tab==SearchTab.ALL||tab==SearchTab.LOCAL){
                     item{Text("No aparelho",fontWeight=FontWeight.Bold,fontSize=19.sp)}
