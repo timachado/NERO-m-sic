@@ -94,7 +94,7 @@ internal class NeroReplaySampler(private val context:Context,private val player:
                 val now=SystemClock.elapsedRealtime()
                 val current=player.currentMediaItem
                 val previous=id
-                if(previous!=null&&current?.mediaId==previous&&player.isPlaying){
+                if(previous!=null&&current!=null&&current.mediaId==previous&&player.isPlaying){
                     val title=player.mediaMetadata.title?.toString().orEmpty().ifBlank{current.mediaMetadata.title?.toString().orEmpty()}
                     val artist=player.mediaMetadata.artist?.toString().orEmpty().ifBlank{current.mediaMetadata.artist?.toString().orEmpty()}
                     NeroReplay.add(context,previous,title,artist,now-since)
