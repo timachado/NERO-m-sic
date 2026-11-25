@@ -176,17 +176,19 @@ internal object NativeMusicCatalog{
             }.distinctBy{it.id}
         }
     }
-    suspend fun resolve(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){
+    suspend fun resolve(hit:NativeMusicHit,economical:Boolean=false):MediaItem = withContext(Dispatchers.IO){
         lock.withLock{
             initialize()
             require(Regex("[A-Za-z0-9_-]{11}").matches(hit.id))
             val info=StreamInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/watch?v="+hit.id)
             require(info.duration>0){"Faixa indisponível"}
-            val stream=info.audioStreams.filter{stream->
+            val candidates=info.audioStreams.filter{stream->
                 val uri=Uri.parse(stream.content)
                 stream.isUrl&&stream.deliveryMethod==DeliveryMethod.PROGRESSIVE_HTTP&&uri.scheme=="https"&&
                     (uri.host=="googlevideo.com"||uri.host?.endsWith(".googlevideo.com")==true)
-            }.maxByOrNull{it.averageBitrate}?:error("Áudio indisponível nesta faixa")
+            }
+            val known=candidates.filter{it.averageBitrate>0}
+            val stream=(if(economical)known.minByOrNull{it.averageBitrate}?:candidates.firstOrNull() else candidates.maxByOrNull{it.averageBitrate})?:error("Áudio indisponível nesta faixa")
             MediaItem.Builder().setMediaId("youtube:"+hit.id).setUri(stream.content)
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(info.name.ifBlank{hit.title})
                     .setArtist(info.uploaderName.orEmpty().ifBlank{hit.artist})
