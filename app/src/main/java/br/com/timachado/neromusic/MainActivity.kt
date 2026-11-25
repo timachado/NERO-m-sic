@@ -289,14 +289,23 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         return
     }
     addLocal?.let { SaveLocalTrackDialog(it,onClose={addLocal=null}) }
-    addOnline?.let { SaveOnlineDialog(listOf(it),onClose={addOnline=null}) }
+    addOnline?.let { key(accountUid,accountReady){SaveOnlineDialog(listOf(it),onClose={addOnline=null})} }
     incomingShare?.let{link->
-        key(shareRevision,link){
+        key(shareRevision,link,accountUid,accountReady){
             ReceiveShareDialog(initialLink=link,onClose=onShareClosed,onImport={incoming->
-                val next=onlineLists(context)+OnlineList(java.util.UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
-                saveOnlineLists(context,next)
-                fullPlayer=false;showAccount=false;showEq=false;showLyrics=false;showQueue=false
-                tab=0;libraryPage=7;librarySelection=next.last().id;onShareClosed()
+                val owner=accountUid
+                radioScope.launch{
+                    try{
+                        val current=scopedOnlineLists(context,owner)
+                        val next=current+OnlineList(java.util.UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+                        saveScopedOnlineLists(context,owner,current,next)
+                        if(NeroSupabase.activeUid.value==owner){
+                            fullPlayer=false;showAccount=false;showEq=false;showLyrics=false;showQueue=false
+                            tab=0;libraryPage=7;librarySelection=next.last().id;onShareClosed()
+                        }
+                    }catch(e:kotlinx.coroutines.CancellationException){throw e}
+                    catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível importar para esta biblioteca.",android.widget.Toast.LENGTH_SHORT).show()}
+                }
             },onPlay=if(controller!=null){incoming:SharedPlaylist->
                 val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem()else null}
                 if(queue.isNotEmpty()){controller?.let{player->player.shuffleModeEnabled=false;player.repeatMode=Player.REPEAT_MODE_OFF;player.setMediaItems(queue,0,0L);player.prepare();player.play()};fullPlayer=true}
