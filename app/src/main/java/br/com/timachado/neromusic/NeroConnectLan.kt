@@ -61,7 +61,7 @@ internal class NeroConnectLanReceiver(private val context:Context){
         runCatching{active?.close()}
         runCatching{server?.close()}
     }
-    suspend fun listen(onReady:(String)->Unit,onCommand:(ConnectAction)->Boolean)=withContext(Dispatchers.IO){
+    suspend fun listen(onReady:(String)->Unit,onCommand:(ConnectAction)->Boolean,onSnapshot:(()->TogetherSnapshot?)?=null)=withContext(Dispatchers.IO){
         val identity=NeroConnectIdentity(context).tlsIdentity()
         val wifi=connectWifi(context)
         val tls=connectTlsContext(identity)
@@ -95,14 +95,19 @@ internal class NeroConnectLanReceiver(private val context:Context){
                         val parts=received.split(':')
                         val action=parts.getOrNull(1)?.let{raw->ConnectAction.entries.firstOrNull{it.name==raw}}
                         val now=SystemClock.elapsedRealtime()
-                        val valid=received.length<=80&&parts.size==2&&parts[0]==nonce&&action in lanActions&&
+                        val valid=received.length<=80&&parts.size==2&&parts[0]==nonce&&
+                            (if(onSnapshot!=null)parts.getOrNull(1)=="SNAPSHOT" else action in lanActions)&&
                             now<deadline&&now-lastCommand>=500&&!closed&&connectWifi(context)==wifi&&
                             NeroConnectIdentity(context).peerOffer()==connectPublicOffer(identity.peer)
-                        val accepted=if(valid&&action!=null){
+                        val response=if(valid){
                             lastCommand=now
-                            withContext(Dispatchers.Main){if(!closed&&SystemClock.elapsedRealtime()<deadline)onCommand(action)else false}
-                        }else false
-                        out.writeUTF(if(accepted)"OK" else "REJECTED");out.flush()
+                            withContext(Dispatchers.Main){
+                                if(closed||SystemClock.elapsedRealtime()>=deadline)"REJECTED"
+                                else if(onSnapshot!=null)onSnapshot()?.let(::togetherWire)?:"REJECTED"
+                                else if(action!=null&&onCommand(action))"OK" else "REJECTED"
+                            }
+                        }else "REJECTED"
+                        out.writeUTF(response);out.flush()
                     }
                 }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){/* Reject connection; never run unverified commands. */}
                 finally{active=null}
@@ -110,8 +115,16 @@ internal class NeroConnectLanReceiver(private val context:Context){
         }finally{close();server=null}
     }
 }
-internal suspend fun sendConnectLan(context:Context,endpoint:String,action:ConnectAction):Boolean=withContext(Dispatchers.IO){
-    require(action in lanActions&&endpoint.length<=25)
+internal suspend fun sendConnectLan(context:Context,endpoint:String,action:ConnectAction):Boolean{
+    require(action in lanActions)
+    return exchangeConnectLan(context,endpoint,action.name).first=="OK"
+}
+internal suspend fun readTogetherLan(context:Context,endpoint:String):Pair<TogetherSnapshot,Long>{
+    val (response,rtt)=exchangeConnectLan(context,endpoint,"SNAPSHOT")
+    return parseTogetherWire(response) to rtt
+}
+private suspend fun exchangeConnectLan(context:Context,endpoint:String,request:String):Pair<String,Long> = withContext(Dispatchers.IO){
+    require(endpoint.length<=25&&(request=="SNAPSHOT"||lanActions.any{it.name==request}))
     val parts=endpoint.trim().split(':')
     require(parts.size==2)
     val address=requireNotNull(connectPrivateIpv4(parts[0]))
@@ -134,8 +147,11 @@ internal suspend fun sendConnectLan(context:Context,endpoint:String,action:Conne
             require(greeting.matches(Regex("NERO-LAN1:[A-Za-z0-9_-]{43}")))
             currentCoroutineContext().ensureActive()
             require(NeroConnectIdentity(context).peerOffer()==connectPublicOffer(identity.peer)&&connectWifi(context)==wifi)
-            out.writeUTF(greeting.substringAfter(':')+":"+action.name);out.flush()
-            input.readUTF()=="OK"
+            val started=SystemClock.elapsedRealtime()
+            out.writeUTF(greeting.substringAfter(':')+":"+request);out.flush()
+            val response=input.readUTF()
+            require(response.length<=160)
+            response to (SystemClock.elapsedRealtime()-started)
         }
     }
 }
