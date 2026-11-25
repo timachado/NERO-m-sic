@@ -140,3 +140,6 @@ Aplicativo Android da T.I. Machado. Identidade Aurora Neon.
 
 ## 0.9.11-dev
 - Pesquisa e playlists online entregam fila Media3 completa de referências; resolução do áudio no loader do serviço no momento de reprodução, sem aguardar resolver todas as músicas. Cache de endereços em memória de 5 min. Busca parte da faixa selecionada e continua pela ordem dos resultados. Sem autoplay infinito ao fim da fila; falhas individuais ainda exigem ação. Mini-player com capa online. Home com hero, cards de gêneros em gradiente e sugestões de pesquisa; ainda não é parada oficial nem contém fotos nos cards. Fonte do catálogo identificada. Compilação e teste físico pendentes.
+
+## 0.9.12-dev
+- Pesquisa com resultado principal, artistas encontrados nas faixas, carrossel de músicas adicionais do primeiro artista quando disponível e navegação por toque. Gêneros da home e busca ganham miniaturas reais de faixas representativas do catálogo, com gradiente e fallback. Cache de busca de 15 minutos (até 32 consultas) reduz requisições. As sugestões são derivadas de resultados, não rankings oficiais nem artistas similares confirmados. Não substitui o provedor de metadados MusicBrainz por Spotify; ainda requer avaliação de integração. Compilação e testes físicos pendentes.

@@ -20,6 +20,8 @@ internal object NativeMusicCatalog{
     val enabled=true
     private val lock=Mutex()
     private var initialized=false
+    private data class CachedSearch(val at:Long,val hits:List<NativeMusicHit>)
+    private val searchCache=LinkedHashMap<String,CachedSearch>(32,0.75f,true)
     private fun initialize(){
         if(!initialized){NewPipe.init(NeroExtractorDownloader());initialized=true}
     }
@@ -33,14 +35,21 @@ internal object NativeMusicCatalog{
         lock.withLock{
             initialize()
             val term=query.trim().take(100);require(term.length>=3)
+            val cacheKey=term.lowercase(java.util.Locale.ROOT)
+            val cached=searchCache[cacheKey]
+            val now=android.os.SystemClock.elapsedRealtime()
+            if(cached!=null&&now-cached.at in 0L..900000L)return@withLock cached.hits
             val service=ServiceList.YouTube
             val handler=service.searchQHFactory.fromQuery(term,listOf(YoutubeSearchQueryHandlerFactory.MUSIC_SONGS),"")
             val info=SearchInfo.getInfo(service,handler)
-            info.relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
+            val hits=info.relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
                 val id=idFromUrl(item.url)?:return@mapNotNull null
                 val title=item.name.takeIf{it.isNotBlank()}?:return@mapNotNull null
                 NativeMusicHit(id,title,item.uploaderName.orEmpty(),item.duration.coerceAtLeast(0))
             }.distinctBy{it.id}.take(30)
+            searchCache[cacheKey]=CachedSearch(android.os.SystemClock.elapsedRealtime(),hits)
+            if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
+            hits
         }
     }
     suspend fun resolve(hit:NativeMusicHit):MediaItem = withContext(Dispatchers.IO){
