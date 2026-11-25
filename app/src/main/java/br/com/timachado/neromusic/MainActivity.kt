@@ -233,7 +233,7 @@ private fun NeroApp() {
                 }
             }
             if(tab == 0 && libraryPage == 7) {
-                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,onPlay={queue,index,random->controller?.let{p->
+                OnlineListsScreen(tracks=tracks,canPlay=controller!=null,onSearch={term->searchSeed=term;searchAutoFocus=false;tab=1},onPlay={queue,index,random->controller?.let{p->
                     if(queue.isNotEmpty()){p.shuffleModeEnabled=random;p.setMediaItems(queue,index.coerceIn(0,queue.lastIndex),0L);p.prepare();p.play()}
                 }})
             } else if(tab == 0 && libraryPage == 6) {
@@ -263,7 +263,9 @@ private fun NeroApp() {
                     onOpenPlay={item->controller?.let{p->p.setMediaItem(item);p.prepare();p.play()}})
             } else if (tab == 3 || tab == 4) {
                 key(tab) {
-                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onSearch = { term -> searchSeed=term;searchAutoFocus=false;tab=1 }, onSearchFocus={searchSeed="";searchAutoFocus=true;tab=1}, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
+                DiscoveryScreen(offline = tab == 4, canPlay = controller != null, searchOnly = tab == 1, localTracks = tracks, favoriteIds = favorites, onSearch = { term -> searchSeed=term;searchAutoFocus=false;tab=1 }, onSearchFocus={searchSeed="";searchAutoFocus=true;tab=1}, onNativeQueue={queue,index->controller?.let{p->
+                    if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}
+                }}, onRadio = { queue -> startRadio(queue) }, onPlay = { item ->
                     controller?.let { p -> p.setMediaItem(item); p.prepare(); p.play() }
                 })
                 }

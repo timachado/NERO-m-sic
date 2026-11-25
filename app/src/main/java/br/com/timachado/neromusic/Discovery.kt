@@ -145,20 +145,19 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
-    var showCatalog by remember { mutableStateOf(false) }
     var showReleases by remember { mutableStateOf(false) }
-    var catalogQuery by remember { mutableStateOf("") }
-    var catalogKind by remember { mutableStateOf(CatalogKind.SONG) }
-    androidx.activity.compose.BackHandler(enabled = showCatalog && !offline) { showCatalog = false }
-    androidx.activity.compose.BackHandler(enabled=showReleases&&!offline){showReleases=false}
-    if(showReleases&&!offline){
-        RecentReleasesScreen(onBack={showReleases=false},onSearch=onSearch)
+    var selectedAlbum by remember { mutableStateOf<NativeCollection?>(null) }
+    androidx.activity.compose.BackHandler(enabled=(showReleases||selectedAlbum!=null)&&!offline){
+        if(selectedAlbum!=null)selectedAlbum=null else showReleases=false
+    }
+    selectedAlbum?.let{album->
+        key(album.url){NativeAlbumScreen(album,canPlay,onBack={selectedAlbum=null},onQueue=onNativeQueue)}
         return
     }
-    if (showCatalog && !offline) {
-        CatalogScreen(onBack = { showCatalog = false }, initialQuery = catalogQuery, initialKind = catalogKind,onSearch=onSearch)
+    if(showReleases&&!offline){
+        NativeReleasesScreen(onBack={showReleases=false},onAlbum={selectedAlbum=it})
         return
     }
     val scope = rememberCoroutineScope()
@@ -199,20 +198,19 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }
-            if (BuildConfig.DEBUG && !searchOnly) item {
+            if (NativeMusicCatalog.enabled && !searchOnly) item {
                 Card(onClick={showReleases=true},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
                         Icon(Icons.Default.NewReleases,null,tint=aqua,modifier=Modifier.size(32.dp))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                             Text("Lançamentos",fontWeight=FontWeight.Bold,fontSize=19.sp)
-                            Text("Álbuns, EPs e singles por data e gênero",fontSize=12.sp,color=Color.LightGray)
+                            Text("Descubra novidades por gênero",fontSize=12.sp,color=Color.LightGray)
                         }
                         Icon(Icons.Default.KeyboardArrowRight,"Explorar lançamentos")
                     }
                 }
-                DynamicReleaseShelf(onOpen={showReleases=true},onSearch={onSearch(it)})
-                if(NativeMusicCatalog.enabled)NativeAlbumsShelf(onSearch=onSearch)
-                else CatalogHomeShelf(onExplore = { term, kind -> catalogQuery = term; catalogKind = kind; showCatalog = true },onSearch=onSearch)
+                NativeReleaseShelf(onOpen={showReleases=true},onAlbum={selectedAlbum=it})
+                NativeAlbumsShelf(onSearch=onSearch,onAlbum={selectedAlbum=it})
             }
             item { PremiumGenres(onSearch=onSearch) }
 

@@ -70,9 +70,9 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var albumPage by remember{mutableStateOf<NativeCollection?>(null)}
     var tab by remember{mutableStateOf(SearchTab.ALL)}
     var revision by remember{mutableIntStateOf(0)}
-    var results by remember{mutableStateOf<Map<CatalogKind,List<CatalogEntry>>>(emptyMap())}
+
     var busy by remember{mutableStateOf(false)}
-    var errors by remember{mutableStateOf<Set<CatalogKind>>(emptySet())}
+
     var openResults by remember{mutableStateOf(emptyList<OpenTrack>())}
     var saved by remember{mutableStateOf(emptyList<OpenTrack>())}
     var openBusy by remember{mutableStateOf(false)}
@@ -81,7 +81,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var message by remember{mutableStateOf<String?>(null)}
     var adding by remember{mutableStateOf<OnlineRef?>(null)}
     var addingLocal by remember{mutableStateOf<Track?>(null)}
-    var detail by remember{mutableStateOf<List<CatalogEntry>>(emptyList())}
+
     var youtube by remember{mutableStateOf<YouTubeHit?>(null)}
     var youtubeBrowser by remember{mutableStateOf<String?>(null)}
     var youtubeResults by remember{mutableStateOf(emptyList<YouTubeHit>())}
@@ -98,17 +98,9 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     val local=remember(tracks,term){if(term.isBlank())emptyList()else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
     LaunchedEffect(Unit){saved=downloaded(context)}
     LaunchedEffect(term,tab,revision,editing){
-        results=emptyMap();errors=emptySet();openResults=emptyList();openError=false;busy=false;openBusy=false;message=null
+        openResults=emptyList();openError=false;busy=false;openBusy=false;message=null
         if(term.length<3||editing)return@LaunchedEffect
         delay(650)
-        val kinds=when(tab){SearchTab.ALL->listOf(CatalogKind.SONG,CatalogKind.ARTIST,CatalogKind.ALBUM);SearchTab.SONG->listOf(CatalogKind.SONG);SearchTab.ARTIST->listOf(CatalogKind.ARTIST);SearchTab.ALBUM->listOf(CatalogKind.ALBUM);else->emptyList()}
-        if(BuildConfig.DEBUG&&!NativeMusicCatalog.enabled&&kinds.isNotEmpty()){
-            busy=true
-            try{for(kind in kinds){
-                try{results=results+(kind to DevCatalog.search(term,kind))}
-                catch(e:CancellationException){throw e}catch(_:Exception){errors=errors+kind}
-            }}finally{busy=false}
-        }
         if(tab==SearchTab.OPEN||(!NativeMusicCatalog.enabled&&tab==SearchTab.ALL)){
             openBusy=true
             try{openResults=searchOpen(term)}
@@ -192,12 +184,6 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     }
     addingLocal?.let{SaveLocalTrackDialog(it,onClose={addingLocal=null})}
     adding?.let{SaveOnlineDialog(listOf(it),onClose={adding=null})}
-    val entry=detail.lastOrNull()
-    BackHandler(entry!=null){detail=detail.dropLast(1)}
-    if(entry!=null){
-        key(entry.id){CatalogDetailsScreen(entry,onBack={detail=detail.dropLast(1)},onAlbum={detail=detail+it},onSearch={term->detail=emptyList();query=term;tab=SearchTab.ALL})}
-        return
-    }
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick={focusManager.clearFocus();keyboard?.hide();onExit()}){Icon(Icons.Default.ArrowBack,"Voltar")}
@@ -314,35 +300,6 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                             }
                         }
                     }
-                }
-                if(BuildConfig.DEBUG&&!NativeMusicCatalog.enabled&&tab !in setOf(SearchTab.LOCAL,SearchTab.OPEN,SearchTab.YOUTUBE)){
-                    item{Text("Mais resultados do catálogo",fontSize=16.sp,fontWeight=FontWeight.Bold);Text("Metadados: MusicBrainz · referências para pesquisa",fontSize=11.sp,color=Color.LightGray)}
-                    for(kind in CatalogKind.entries){
-                        val all=results[kind]?:continue
-                        item{Text(kind.label,fontSize=19.sp,fontWeight=FontWeight.Bold)}
-                        if(all.isEmpty())item{Text("Nenhum resultado.",fontSize=12.sp,color=Color.LightGray)}
-                        items(if(tab==SearchTab.ALL)all.take(5)else all,key={kind.name+it.id}){song->
-                            Row(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically){
-                                Box(Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
-                                    Icon(if(kind==CatalogKind.ARTIST)Icons.Default.Person else Icons.Default.MusicNote,null,tint=searchAqua)
-                                    song.coverUrl?.let{AsyncImage(model=it,contentDescription="Capa de "+song.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
-                                }
-                                Column(Modifier.weight(1f).padding(horizontal=8.dp)){
-                                    Text(song.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                                    if(song.credit.isNotBlank())Text(song.credit,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                }
-                                if(kind==CatalogKind.SONG){
-                                    IconButton(onClick={adding=OnlineRef(song.id,song.title,song.credit,song.artworkReleaseId)}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist online",tint=searchAccent)}
-                                    val matching=tracks.filter{it.title.trim().equals(song.title.trim(),true)&&it.artist.trim().equals(song.credit.trim(),true)}.singleOrNull()
-                                    if(matching!=null)IconButton(enabled=canPlay,onClick={onPlay(matching)}){Icon(Icons.Default.PlayArrow,"Reproduzir arquivo correspondente no NERO",tint=searchAccent)}
-                                    else IconButton(onClick={query=song.searchText;tab=SearchTab.SONG}){Icon(Icons.Default.Search,"Pesquisar faixa no NERO")}
-                                }else IconButton(onClick={detail=listOf(song)}){Icon(Icons.Default.KeyboardArrowRight,"Abrir detalhes")}
-                            }
-                        }
-                        if(tab==SearchTab.ALL&&all.size>5)item{TextButton(onClick={tab=when(kind){CatalogKind.SONG->SearchTab.SONG;CatalogKind.ARTIST->SearchTab.ARTIST;CatalogKind.ALBUM->SearchTab.ALBUM}}){Text("Ver mais: "+kind.label)}}
-                    }
-                    if(errors.isNotEmpty())item{Text("Algumas consultas falharam.",color=Color.LightGray);TextButton(onClick={revision++}){Text("Tentar novamente")}}
-                    item{TextButton(onClick={onPauseAudio();youtubeBrowser=term}){Text("Pesquisar no YouTube dentro do NERO")}}
                 }
                 if(tab==SearchTab.OPEN||(!NativeMusicCatalog.enabled&&tab==SearchTab.ALL)){
                     item{Text("Áudio com licença aberta",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Fonte: Wikimedia Commons",fontSize=12.sp,color=Color.LightGray)}

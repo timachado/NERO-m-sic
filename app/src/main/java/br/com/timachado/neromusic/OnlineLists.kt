@@ -86,7 +86,7 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
         dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
 }
 @Composable
-internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit){
+internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={})
     val context=LocalContext.current
     var lists by remember{mutableStateOf(runCatching{onlineLists(context)})}
     var selected by remember{mutableStateOf<String?>(null)}
@@ -161,7 +161,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 }
                 val position=available.indexOfFirst{it.first==s.id}
                 if(position>=0)IconButton(enabled=canPlay,onClick={onPlay(queue,position,false)}){Icon(Icons.Default.PlayArrow,"Reproduzir no NERO",tint=Color(0xFF39FF14))}
-                else IconButton(onClick={if(!openYouTubeMusic(context,s.title+" "+s.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.OpenInNew,"Buscar externamente no YouTube Music")}
+                else IconButton(onClick={onSearch(s.title+" "+s.artist)}){Icon(Icons.Default.Search,"Encontrar faixa no NERO")}
                 IconButton(onClick={remove=s}){Icon(Icons.Default.RemoveCircleOutline,"Retirar referência")}
             }
         }
