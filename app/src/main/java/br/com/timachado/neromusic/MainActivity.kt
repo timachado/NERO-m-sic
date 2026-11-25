@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -254,7 +253,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         Box(Modifier.fillMaxSize().background(Color.Black),contentAlignment=Alignment.Center){
             val p=controller
             if(p!=null&&videoMode)NativeVideoSurface(p,Modifier.fillMaxSize())
-            else if(nowOpenRef?.coverUrl!=null)AsyncImage(model=nowOpenRef?.coverUrl,contentDescription=null,modifier=Modifier.fillMaxHeight().aspectRatio(1f))
+            else if(nowOpenRef?.coverUrl!=null)NeroArtwork(model=nowOpenRef?.coverUrl,contentDescription=null,modifier=Modifier.fillMaxHeight().aspectRatio(1f))
             else Icon(Icons.Default.MusicNote,null,tint=Cyan)
         }
         return
@@ -282,7 +281,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         if (playerAlbum==null && playerArtist==null && !fullPlayer && !showAccount && !showEq && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val cover=nowOpenRef?.coverUrl
-                if(cover!=null)AsyncImage(model=cover,contentDescription="Capa atual",modifier=Modifier.size(48.dp),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
+                if(cover!=null)NeroArtwork(model=cover,contentDescription="Capa atual",modifier=Modifier.size(48.dp),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
                 else LocalArtwork(tracks.firstOrNull{it.id.toString()==nowId},Modifier.size(48.dp))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
