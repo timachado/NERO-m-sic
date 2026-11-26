@@ -18,14 +18,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null,val wifiOnly:Boolean=true,val removing:Boolean=false,val economical:Boolean=false)
+internal data class OfflineState(val saved:List<OpenTrack> = emptyList(),val active:OpenTrack?=null,val progress:Float=0f,val notice:String?=null,val batchTotal:Int=0,val batchDone:Int=0,val nativeSaved:List<NativeOfflineTrack> = emptyList(),val nativeActive:NativeMusicHit?=null,val wifiOnly:Boolean=true,val removing:Boolean=false,val economical:Boolean=false,val cancelling:Boolean=false)
 internal class OfflineManager(private val context:Context){
     private val _state=MutableStateFlow(OfflineState(wifiOnly=wifiOnlyDownloads(context),economical=economicalDownloads(context)))
     val state=_state.asStateFlow()
+    private var downloadJob:Job?=null
+    fun cancelDownload(){
+        val job=downloadJob?:return
+        if(!job.isActive)return
+        _state.update{it.copy(cancelling=true)}
+        job.cancel(CancellationException("Download cancelado"))
+    }
+    private suspend fun runDownload(action:suspend ()->Unit){
+        if(downloadJob!=null||_state.value.removing)return
+        val job=currentCoroutineContext()[Job]?:return
+        downloadJob=job
+        try{action()}
+        finally{
+            if(downloadJob===job){
+                downloadJob=null
+                _state.update{state->state.copy(cancelling=false,notice=if(state.cancelling)"Download interrompido. Músicas já salvas foram preservadas." else state.notice)}
+            }
+        }
+    }
     fun setWifiOnly(value:Boolean){
         setWifiOnlyDownloads(context,value)
         _state.update{it.copy(wifiOnly=value,notice=null)}
@@ -56,24 +78,28 @@ internal class OfflineManager(private val context:Context){
     }
     suspend fun save(track:OpenTrack){
         if(_state.value.batchTotal>0||_state.value.nativeActive!=null||_state.value.removing)return
-        saveOne(track)
+        runDownload{saveOne(track)}
     }
     suspend fun savePlaylist(tracks:List<OpenTrack>){
         if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
         val rows=tracks.filter(::allowed).distinctBy{it.id}
         if(rows.isEmpty())return
+        runDownload{
         _state.update{it.copy(batchTotal=rows.size,batchDone=0,notice=null)}
         try{
             for(track in rows){
+                currentCoroutineContext().ensureActive()
                 if(_state.value.saved.none{it==track})saveOne(track)
                 _state.update{it.copy(batchDone=it.batchDone+1)}
             }
             val count=rows.count{track->_state.value.saved.any{it==track}}
             _state.update{it.copy(notice="$count de "+rows.size+" faixas disponíveis offline.")}
         }finally{_state.update{it.copy(batchTotal=0,batchDone=0)}}
+        }
     }
     suspend fun saveNative(hit:NativeMusicHit){
         if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
+        runDownload{
         _state.update{it.copy(nativeActive=hit,progress=0f,notice=null)}
         try{
             saveNativeAudio(context,hit){fraction->_state.update{it.copy(progress=fraction)}}
@@ -84,6 +110,7 @@ internal class OfflineManager(private val context:Context){
         catch(_:WifiDownloadRequired){notify("Conecte-se ao Wi-Fi ou altere a preferência em Downloads.")}
         catch(_:Exception){_state.update{it.copy(notice="Não foi possível baixar esta música. Verifique a conexão e tente novamente.")}}
         finally{_state.update{it.copy(nativeActive=null,progress=0f)}}
+        }
     }
     private suspend fun saveOne(track:OpenTrack){
         if(!allowed(track)||_state.value.active!=null)return
@@ -126,7 +153,7 @@ internal fun NativeDownloadIcon(hit:NativeMusicHit,state:OfflineState,onSave:(Na
     }
 }
 @Composable
-internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={},onQualityChange:(Boolean)->Unit={}){
+internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={},onQualityChange:(Boolean)->Unit={},onCancelDownload:()->Unit={}){
     val context=androidx.compose.ui.platform.LocalContext.current
     val rows=state.saved
     var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
@@ -186,6 +213,13 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                 }else Text("Nenhum download corresponde à busca.",color=Color.LightGray,fontSize=13.sp)
             }
             if(state.batchTotal>0)Text("Playlist: "+state.batchDone+" de "+state.batchTotal+" verificadas",color=Color.LightGray)
+            if(state.active!=null||state.nativeActive!=null||state.batchTotal>0||state.cancelling){
+                OutlinedButton(enabled=!state.cancelling,onClick=onCancelDownload,modifier=Modifier.fillMaxWidth()){
+                    Icon(Icons.Default.Close,null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if(state.cancelling)"Cancelando…" else "Cancelar download")
+                }
+            }
             state.nativeActive?.let{hit->
                 Text("Baixando "+hit.title,maxLines=2)
                 LinearProgressIndicator(progress={state.progress},modifier=Modifier.fillMaxWidth())
