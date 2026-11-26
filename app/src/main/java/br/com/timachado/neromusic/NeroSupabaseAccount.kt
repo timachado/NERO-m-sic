@@ -58,7 +58,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                     notice="A autenticação Google ainda precisa ser ativada pela equipe do NERO Music."
                 }else{busy=true;notice=null;scope.launch{
                 try{user=NeroSupabase.session(context,true)}
-                catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível entrar. Confira a configuração Google e a conexão."}
+                catch(e:CancellationException){throw e}catch(e:Exception){notice=neroGoogleLoginMessage(e)}
                 finally{busy=false}
                 }}
             }

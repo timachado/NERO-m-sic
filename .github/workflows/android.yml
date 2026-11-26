@@ -52,6 +52,23 @@ jobs:
             fi
             echo "$name configured"
           done
+      - name: Restore stable Android test signing key (if authorized)
+        env:
+          TEST_KEYSTORE: ${{ secrets.NERO_TEST_KEYSTORE_B64 }}
+          TEST_CERT_SHA1: ${{ vars.NERO_TEST_CERT_SHA1 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TEST_KEYSTORE" ]; then
+            echo "::warning::No stable test signing key configured. Debug APK is not guaranteed to support Google login or update a previous install."
+            exit 0
+          fi
+          expected="$(printf '%s' "$TEST_CERT_SHA1" | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          [[ "$expected" =~ ^[a-f0-9]{40}$ ]] || { echo "::error::Missing approved NERO_TEST_CERT_SHA1"; exit 1; }
+          umask 077
+          mkdir -p "$HOME/.android"
+          printf '%s' "$TEST_KEYSTORE" | base64 --decode > "$HOME/.android/debug.keystore"
+          actual="$(LC_ALL=C keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | sed -n 's/^[[:space:]]*SHA1: //p' | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          [[ "$actual" == "$expected" ]] || { echo "::error::Test signing certificate mismatch"; exit 1; }
       - run: gradle :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon
         env:
           NERO_SUPABASE_URL: ${{ vars.NERO_SUPABASE_URL }}
@@ -60,16 +77,28 @@ jobs:
           NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
           NERO_YOUTUBE_ENDPOINT: ${{ vars.NERO_YOUTUBE_ENDPOINT }}
       - name: Prepare APK and checksum
+        env:
+          TEST_CERT_SHA1: ${{ vars.NERO_TEST_CERT_SHA1 }}
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk dist/NERO-Music-debug.apk
           cd dist
           sha256sum NERO-Music-debug.apk > SHA256SUMS.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs NERO-Music-debug.apk > SIGNING-CERTIFICATE.txt
           cat SIGNING-CERTIFICATE.txt
-          if ! grep -qi '6f4fa4dfcb9fd7e32461a27600a49ff290ff7d91' SIGNING-CERTIFICATE.txt; then
-            echo "::warning::APK signing certificate differs from the registered 0.9.52.1 test certificate. Verify Android OAuth SHA-1 before login testing."
+          expected="$(printf '%s' "$TEST_CERT_SHA1" | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          actual="$(sed -n 's/^Signer #1 certificate SHA-1 digest: //p' SIGNING-CERTIFICATE.txt | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          if [ -n "$expected" ]; then
+            [[ "$expected" =~ ^[a-f0-9]{40}$ && "$actual" == "$expected" ]] || { echo "::error::APK does not match approved test certificate"; exit 1; }
+            echo "Approved test certificate matched; Google login still requires device verification." > AUTH-TEST-STATUS.txt
+          else
+            echo "::warning::Unverified debug signing certificate; not an OAuth acceptance APK."
+            echo "Unverified test certificate. Do not uninstall an existing app to force installation." > AUTH-TEST-STATUS.txt
           fi
+      - name: Remove restored signing key
+        if: always()
+        run: rm -f "$HOME/.android/debug.keystore"
       - uses: actions/upload-artifact@v4
         with:
           name: nero-music-debug

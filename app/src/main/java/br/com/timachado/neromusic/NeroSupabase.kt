@@ -29,6 +29,17 @@ import javax.crypto.spec.GCMParameterSpec
 internal class GoogleRequired:Exception()
 internal class ShareNotConfigured:Exception()
 private class NeroHttpException(val status:Int):Exception("Request failed")
+internal fun neroGoogleLoginMessage(error:Exception):String=when(error){
+    is androidx.credentials.exceptions.GetCredentialCancellationException->"Entrada cancelada."
+    is androidx.credentials.exceptions.NoCredentialException->"Nenhuma conta Google disponível para entrar. Confira sua conta no Android."
+    is androidx.credentials.exceptions.GetCredentialException->"O Android não conseguiu autenticar com Google (G01). Confira a assinatura do APK e a configuração OAuth."
+    is NeroHttpException->when(error.status){
+        400,401,403->"O servidor recusou a autenticação Google (G02). A configuração da conta precisa ser verificada."
+        else->"Serviço de autenticação indisponível (G03). Tente novamente."
+    }
+    is java.io.IOException->"Falha de conexão com o serviço de autenticação (G04). Confira sua internet."
+    else->"Não foi possível concluir a entrada (G05)."
+}
 internal data class NeroSession(val uid:String,val email:String,val access:String,val refresh:String,val expiresAt:Long,val displayName:String="",val avatar:String?=null)
 internal object NeroSupabase{
     val configured get()=BuildConfig.SUPABASE_URL.isNotBlank()&&BuildConfig.SUPABASE_KEY.isNotBlank()&&BuildConfig.GOOGLE_CLIENT.isNotBlank()
