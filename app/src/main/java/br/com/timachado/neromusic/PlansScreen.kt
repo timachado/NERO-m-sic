@@ -28,6 +28,7 @@ private val panel=Color(0xFF10171C)
 internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     var siteError by remember{mutableStateOf(false)}
+    var preparingCheckout by remember{mutableStateOf(false)}
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
     val scope=rememberCoroutineScope()
@@ -126,7 +127,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Text("Escolha seu plano",fontWeight=FontWeight.Bold)
             NeroPlans.offers.forEach{offer->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                    RadioButton(selected=selectedPlan==offer.id,onClick={selectedPlan=offer.id})
+                    RadioButton(selected=selectedPlan==offer.id,enabled=!preparingCheckout,onClick={selectedPlan=offer.id})
                     Column(Modifier.weight(1f)){
                         Text(offer.label,fontWeight=FontWeight.Bold)
                         if(offer.savingsPercent>0)Text("Economia de aproximadamente "+offer.savingsPercent+"%",fontSize=12.sp,color=premiumCyan)
@@ -140,14 +141,21 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Button(enabled=ready&&uid!=null&&!checking&&!activating&&subscription?.phase==NeroSubscriptionPhase.FREE,onClick={confirmTrial=true},modifier=Modifier.fillMaxWidth()){Text(if(activating)"Ativando…" else if(premium)"Premium ativo" else "Experimentar 7 dias grátis")}
             OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating,onClick={refreshRequest++},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
-            Button(onClick={
-                val url=neroCheckoutUrl(selection.id)
-                siteError=url==null||!openBrowser(context,android.net.Uri.parse(url))
-            },modifier=Modifier.fillMaxWidth()){Text("Conhecer Premium NERO Music · "+selection.label)}
-            Text("O plano selecionado segue para o checkout oficial quando disponível. Ao retornar, a assinatura será consultada automaticamente.",fontSize=12.sp,color=Color.LightGray)
+            Button(enabled=ready&&!preparingCheckout&&!activating,onClick={
+                val plan=selection.id
+                preparingCheckout=true;siteError=false
+                scope.launch {
+                    try {
+                        val url=NeroSupabase.checkoutHandoff(context,plan)
+                        siteError=!openBrowser(context,android.net.Uri.parse(url))
+                    }catch(e:CancellationException){throw e}catch(_:Exception){siteError=true}
+                    finally{preparingCheckout=false}
+                }
+            },modifier=Modifier.fillMaxWidth()){Text(if(preparingCheckout)"Abrindo pagamento…" else "Assinar Premium · "+selection.label)}
+            Text("Você irá direto para o checkout oficial com a conta do NERO. Ao retornar, a assinatura será consultada automaticamente.",fontSize=12.sp,color=Color.LightGray)
             Text("${NeroPlans.TRIAL_DAYS} dias de experiência, quando o serviço estiver habilitado, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
             Text("O site confirma os valores, disponibilidade e pagamentos.",color=Color.LightGray,fontSize=13.sp)
-            if(siteError)Text("Não foi possível abrir o site.",color=Color.LightGray,fontSize=12.sp)
+            if(siteError)Text("Não foi possível abrir o pagamento. Verifique sua conexão e tente novamente.",color=Color.LightGray,fontSize=12.sp)
         }
         Text("O Premium NERO Music é uma assinatura independente. Downloads sujeitos à disponibilidade e às permissões de cada faixa.",fontSize=12.sp,color=Color.LightGray)
         OutlinedButton(onClick=onBack,modifier=Modifier.fillMaxWidth()){Text("Voltar")}
