@@ -32,6 +32,9 @@ Login Google via Supabase, UID autenticado estável como NERO ID interno; visita
 - RPC nero_plan_read_v1 legado retorna somente status. O contrato estendido proposto em supabase/setup/nero_account_plan_details_draft.sql fornece fase, plano, vencimento e recorrência apenas se disponíveis. A tela aceita respostas legadas. Nenhum SQL aplicado. A experiência e a carência são apenas estados consultáveis; o escritor transacional, o controle de uso único da experiência e os webhooks ainda precisam de implementação e homologação.
 - Não liberar benefício a partir de retorno, comprovante, status pendente ou preço informado pelo cliente. Testes de isolamento, idempotência e ciclo de vida em sandbox antes de produção.
 
+## Commerce Connect
+- Contrato e referência de vínculo de pedido em docs/commerce-connect.md e commerce/reference. Seletor de plano no Android é apenas prévia; checkout, adaptadores e processamento de pagamento ainda não estão ativos.
+
 ## Portões de lançamento
 1. Implementar e testar benefícios próprios do NERO.
 2. Homologar fonte comercial autorizada do catálogo e downloads.

@@ -26,6 +26,7 @@ private val panel=Color(0xFF10171C)
 internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     var siteError by remember{mutableStateOf(false)}
+    var selectedPlan by remember{mutableStateOf(NeroPlans.annual.id)}
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
@@ -57,8 +58,10 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
                 }
             }
             HorizontalDivider(color=Color(0xFF33434A))
+            Text("Escolha seu plano",fontWeight=FontWeight.Bold)
             NeroPlans.offers.forEach{offer->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    RadioButton(selected=selectedPlan==offer.id,onClick={selectedPlan=offer.id})
                     Column(Modifier.weight(1f)){
                         Text(offer.label,fontWeight=FontWeight.Bold)
                         if(offer.savingsPercent>0)Text("Economia de aproximadamente "+offer.savingsPercent+"%",fontSize=12.sp,color=premiumCyan)
@@ -67,6 +70,10 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
                 }
                 HorizontalDivider(color=Color(0xFF33434A))
             }
+            val selection=NeroPlans.offers.first{it.id==selectedPlan}
+            Text("Selecionado: "+selection.label+" · "+selection.price,fontWeight=FontWeight.Medium,color=premiumGreen)
+            Button(enabled=false,onClick={},modifier=Modifier.fillMaxWidth()){Text("Contratação em homologação")}
+            Text("A seleção é apenas uma prévia; não gera pedido nem envia dados ao site.",fontSize=12.sp,color=Color.LightGray)
             Text("${NeroPlans.TRIAL_DAYS} dias de experiência previstos, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
             Text("Contratação pelo site da T.I. Machado. Pix e cartão conforme disponibilidade. Renovação automática depende de homologação.",color=Color.LightGray,fontSize=13.sp)
             Text("Os benefícios exclusivos ainda estão em desenvolvimento. Nenhuma cobrança está habilitada.",color=Color.LightGray,fontSize=12.sp)
