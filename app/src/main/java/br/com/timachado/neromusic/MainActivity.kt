@@ -396,20 +396,18 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 videoPlayer=controller,videoMode=videoMode,pipSupported=pipSupported,onPip={if(!onPip())android.widget.Toast.makeText(context,"Janela flutuante indisponível. Confira a permissão no Android.",android.widget.Toast.LENGTH_SHORT).show()},canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
                 videoQuality=videoQuality,onVideoQuality={quality->controller?.let{p->
                     val item=p.currentMediaItem
-                    val index=p.currentMediaItemIndex
-                    val replacement=item?.takeIf{it.isNeroVideo()}?.withVideoMode(true,quality)
-                    if(replacement!=null&&index>=0&&quality!=item?.videoQuality()&&p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)){
-                        val at=p.currentPosition.coerceAtLeast(0L);val resume=p.playWhenReady
-                        p.replaceMediaItem(index,replacement);p.seekTo(index,at);p.prepare();p.playWhenReady=resume
+                    if(item!=null&&item.isNeroVideo()&&quality!=item.videoQuality()){
+                        p.sendCustomCommand(NeroMediaActions.switchVideo,Bundle().apply{
+                            putString("mediaId",item.mediaId);putBoolean("video",true);putInt("quality",quality)
+                        })
                     }
                 }},
                 onVideoToggle={controller?.let{p->
                     val item=p.currentMediaItem
-                    val index=p.currentMediaItemIndex
-                    val replacement=item?.withVideoMode(item.isNeroVideo().not())
-                    if(replacement!=null&&index>=0&&p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)){
-                        val at=p.currentPosition.coerceAtLeast(0L);val resume=p.playWhenReady
-                        p.replaceMediaItem(index,replacement);p.seekTo(index,at);p.prepare();p.playWhenReady=resume
+                    if(item!=null){
+                        p.sendCustomCommand(NeroMediaActions.switchVideo,Bundle().apply{
+                            putString("mediaId",item.mediaId);putBoolean("video",!item.isNeroVideo());putInt("quality",0)
+                        })
                     }
                 }},
                 onOriginClick={origin->when(origin.kind){
