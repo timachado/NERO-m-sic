@@ -64,7 +64,7 @@ internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
             Text("Lançamentos",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={reload++}){Icon(Icons.Default.Refresh,"Atualizar lançamentos")}
         }
-        Text("Datas de primeira publicação registradas no MusicBrainz. Prévia não comercial; não é ranking de popularidade.",fontSize=12.sp,color=Color.LightGray)
+        Text("Datas de primeira publicação registradas no MusicBrainz. A disponibilidade pode variar; não é ranking de popularidade.",fontSize=12.sp,color=Color.LightGray)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
             listOf(7,30,90).forEach{period->FilterChip(selected=days==period,onClick={days=period},label={Text("$period dias")})}
         }

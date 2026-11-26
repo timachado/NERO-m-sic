@@ -49,7 +49,7 @@ internal fun DynamicReleaseShelf(onOpen:()->Unit,onSearch:(String)->Unit){
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(5.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-            Text("Novidades musicais",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Lançamentos recentes",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar novidades")}
             TextButton(onClick=onOpen){Text("Ver tudo")}
         }

@@ -167,12 +167,23 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onlineFavorites:List<OnlineRef> = emptyList(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit) {
     val context = LocalContext.current
     var showReleases by remember { mutableStateOf(false) }
+    var showDatedReleases by remember { mutableStateOf(false) }
+    var showAlbums by remember { mutableStateOf(false) }
+    var albumGenre by remember { mutableStateOf("Todos") }
     var selectedAlbum by remember { mutableStateOf<NativeCollection?>(null) }
-    androidx.activity.compose.BackHandler(enabled=(showReleases||selectedAlbum!=null)&&!offline){
-        if(selectedAlbum!=null)selectedAlbum=null else showReleases=false
+    androidx.activity.compose.BackHandler(enabled=(showReleases||showDatedReleases||showAlbums||selectedAlbum!=null)&&!offline){
+        if(selectedAlbum!=null)selectedAlbum=null else if(showAlbums)showAlbums=false else if(showDatedReleases)showDatedReleases=false else showReleases=false
     }
     selectedAlbum?.let{album->
         key(album.url){NativeAlbumScreen(album,canPlay,onBack={selectedAlbum=null},onQueue=onNativeQueue)}
+        return
+    }
+    if(showAlbums&&!offline){
+        NativeAlbumsShelf(onlineFavorites,albumGenre,{albumGenre=it},{selectedAlbum=it},fullScreen=true,onBack={showAlbums=false})
+        return
+    }
+    if(showDatedReleases&&!offline){
+        RecentReleasesScreen(onBack={showDatedReleases=false},onSearch=onSearch)
         return
     }
     if(showReleases&&!offline){
@@ -222,18 +233,19 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                 RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }
             if (NativeMusicCatalog.enabled && !searchOnly) item {
-                Card(onClick={showReleases=true},modifier=Modifier.fillMaxWidth()){
+                Card(onClick={showDatedReleases=true},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
                         Icon(Icons.Default.NewReleases,null,tint=aqua,modifier=Modifier.size(32.dp))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                             Text("Lançamentos",fontWeight=FontWeight.Bold,fontSize=19.sp)
-                            Text("Descubra novidades por gênero",fontSize=12.sp,color=Color.LightGray)
+                            Text("Novidades por data registrada e gênero",fontSize=12.sp,color=Color.LightGray)
                         }
                         Icon(Icons.Default.KeyboardArrowRight,"Explorar lançamentos")
                     }
                 }
+                DynamicReleaseShelf(onOpen={showDatedReleases=true},onSearch=onSearch)
                 NativeReleaseShelf(onOpen={showReleases=true},onAlbum={selectedAlbum=it})
-                NativeAlbumsShelf(onSearch=onSearch,onAlbum={selectedAlbum=it})
+                NativeAlbumsShelf(onlineFavorites,albumGenre,{albumGenre=it},{selectedAlbum=it},onOpen={showAlbums=true})
             }
             item { PremiumGenres(onSearch=onSearch) }
 

@@ -97,11 +97,11 @@ internal fun NativeReleaseShelf(onOpen:()->Unit,onAlbum:(NativeCollection)->Unit
     val state=releaseState("Todos",revision)
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
-            Text("Descubra lançamentos",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Álbuns em destaque",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
             TextButton(onClick=onOpen){Text("Ver tudo")}
         }
-        Text("Novidades · catálogo NERO Music",fontSize=12.sp,color=Color.LightGray)
+        Text("Resultados da busca · datas de lançamento não verificadas",fontSize=12.sp,color=Color.LightGray)
         ReleaseStatus(state)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
             items(state.rows.take(12),key={it.url}){entry->ReleaseAlbumCard(entry,Modifier.width(138.dp),onAlbum)}
@@ -111,17 +111,17 @@ internal fun NativeReleaseShelf(onOpen:()->Unit,onAlbum:(NativeCollection)->Unit
 
 @Composable
 internal fun NativeReleasesScreen(onBack:()->Unit,onAlbum:(NativeCollection)->Unit){
-    val genres=listOf("Todos","Sertanejo","Pagode","Gospel","Pop","Rock","MPB","Samba","Forró","Eletrônica","Hip-hop")
+    val genres=listOf("Todos")+neroGenreLabels
     var genre by remember{mutableStateOf("Todos")}
     var revision by remember{mutableIntStateOf(0)}
     val state=releaseState(genre,revision)
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("Lançamentos",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Álbuns em destaque",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
         }
-        Text("Novidades do catálogo NERO Music. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
+        Text("Sugestões do catálogo. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(genres){label->FilterChip(selected=genre==label,onClick={genre=label},label={Text(label)})}
         }

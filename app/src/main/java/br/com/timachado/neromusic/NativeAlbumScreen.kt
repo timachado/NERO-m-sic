@@ -82,26 +82,3 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         }
     }
 }
-@Composable
-internal fun NativeAlbumsShelf(onSearch:(String)->Unit,onAlbum:(NativeCollection)->Unit){
-    var rows by remember{mutableStateOf(emptyList<NativeCollection>())}
-    LaunchedEffect(Unit){
-        try{rows=NativeMusicCatalog.collections("sertanejo",NativeCollectionKind.ALBUM).take(10)}
-        catch(e:CancellationException){throw e}catch(_:Exception){}
-    }
-    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text("Explore álbuns",fontSize=21.sp,fontWeight=FontWeight.Bold)
-        Text("Seleção de sertanejo · catálogo NERO Music",fontSize=12.sp,color=Color.LightGray)
-        LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
-            items(rows,key={it.url}){entry->
-                Card(onClick={onAlbum(entry)},modifier=Modifier.width(140.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
-                    Column(Modifier.padding(8.dp)){
-                        NeroArtwork(model=entry.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
-                        Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold)
-                        Text(displayArtistName(entry.credit),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                    }
-                }
-            }
-        }
-    }
-}
