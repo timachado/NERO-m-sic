@@ -41,12 +41,15 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
     if(!NativeMusicCatalog.enabled)return
     val context=LocalContext.current
     val prefs=remember(context){context.getSharedPreferences("nero_personal",0)}
-    var heard by remember{mutableStateOf(history(context))}
+    val historyUid by NeroSupabase.activeUid.collectAsState()
+    val historyReady by NeroSupabase.identityReady.collectAsState()
+    val historyChanges by NeroAccountSync.changes.collectAsState()
+    var heard by remember(historyUid,historyReady,historyChanges){mutableStateOf(history(context))}
     val scope=rememberCoroutineScope()
     var mix by remember{mutableStateOf(emptyList<NativeMusicHit>())}
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf<String?>(null)}
-    DisposableEffect(prefs){
+    DisposableEffect(prefs,historyUid,historyReady){
         val listener=SharedPreferences.OnSharedPreferenceChangeListener{_,key->if(key=="history"||key==null)heard=history(context)}
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
