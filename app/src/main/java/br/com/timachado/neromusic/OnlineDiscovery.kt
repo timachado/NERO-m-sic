@@ -37,15 +37,15 @@ internal suspend fun onlineRadio(seed:NativeMusicHit,excluded:Set<String>):List<
     return rows.filter{it.id!=seed.id&&it.id !in excluded}.distinctBy{it.id}.take(20)
 }
 @Composable
-internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
+internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit,onSearch:(String)->Unit={},onAlbum:(NativeCollection)->Unit={}){
     if(!NativeMusicCatalog.enabled)return
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
     if(!ready)return
-    key(uid,ready){OnlineDiscoveryContent(favorites,canPlay,onQueue,uid)}
+    key(uid,ready){OnlineDiscoveryContent(favorites,canPlay,onQueue,uid,onSearch,onAlbum)}
 }
 @Composable
-private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit,historyUid:String?){
+private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit,historyUid:String?,onSearch:(String)->Unit,onAlbum:(NativeCollection)->Unit){
     val context=LocalContext.current
     val prefs=remember(context){context.getSharedPreferences("nero_personal",0)}
     val historyReady=true
@@ -163,6 +163,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                 }
                 OnlineDiscoveryRow(collection.tracks,canPlay,onQueue)
             }
+            NeroPersonalDiscovery(artists,followed+liked.map{it.artist}+heard.map{it.artist},visibleMix+dailyVisible.flatMap{it.tracks},hidden,historyUid,onSearch,onAlbum)
         }else{
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
             Text("Curta músicas ou siga artistas para descobrir novas faixas do seu gosto.",fontSize=12.sp,color=Color.LightGray)
