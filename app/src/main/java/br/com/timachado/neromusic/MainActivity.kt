@@ -90,6 +90,7 @@ private fun timestamp(ms: Long): String {
 @Composable
 private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit,pipMode:Boolean,pipSupported:Boolean,onPip:()->Boolean) {
     val context = LocalContext.current
+    NeroUpdateNotice()
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) }
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }

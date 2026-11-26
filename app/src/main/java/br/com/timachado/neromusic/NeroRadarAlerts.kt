@@ -27,7 +27,7 @@ internal object NeroRadarAlerts{
         (Build.VERSION.SDK_INT<33||ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)&&NotificationManagerCompat.from(context).areNotificationsEnabled()
     fun configure(context:Context,owner:String?,enabled:Boolean,artists:List<String>,genres:List<String>){
         val prefs=preferences(context,owner)
-        val active=enabled&&permitted(context)
+        val active=enabled
         prefs.edit().putStringSet("alertArtists",artists.take(6).toSet()).putStringSet("alertGenres",genres.take(2).toSet()).apply()
         val manager=WorkManager.getInstance(context)
         if(!active){manager.cancelUniqueWork(work);NotificationManagerCompat.from(context).cancel(7819);return}
@@ -64,7 +64,7 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
         val owner=inputData.getString("owner")?.let{if(it=="guest")null else it}
         if(!NeroSupabase.matchesStoredRadarOwner(context,owner))return Result.success()
         val prefs=NeroRadarAlerts.preferences(context,owner)
-        fun allowed()=prefs.getBoolean("enabled",false)&&prefs.getBoolean("alerts",false)&&NeroRadarAlerts.permitted(context)
+        fun allowed()=prefs.getBoolean("enabled",false)
         if(!allowed())return Result.success()
         val artists=prefs.getStringSet("alertArtists",emptySet()).orEmpty().take(6)
         val genres=prefs.getStringSet("alertGenres",emptySet()).orEmpty().take(2)
@@ -90,7 +90,19 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
             val seen=prefs.getStringSet("alertSeen",emptySet()).orEmpty()
             val ids=newRadarIds(fresh.map{it.id},seen,prefs.getBoolean("alertInitialized",false)).toSet()
             val unseen=fresh.filter{it.id in ids}
-            if(unseen.isNotEmpty())NeroRadarAlerts.publish(context,unseen)
+            if(unseen.isNotEmpty()){
+                val previous=runCatching{org.json.JSONArray(prefs.getString("inbox","[]"))}.getOrDefault(org.json.JSONArray())
+                val inbox=org.json.JSONArray()
+                unseen.take(30).forEach{row->inbox.put(org.json.JSONObject().put("id",row.id).put("title",row.title.take(200)).put("credit",displayArtistName(row.credit).take(200)).put("search",row.searchText.take(300)))}
+                val keys=unseen.map{it.id}.toSet()
+                for(i in 0 until previous.length()){
+                    val item=previous.optJSONObject(i)?:continue
+                    if(inbox.length()>=30)break
+                    if(item.optString("id") !in keys)inbox.put(item)
+                }
+                prefs.edit().putString("inbox",inbox.toString()).apply()
+                if(prefs.getBoolean("alerts",false))NeroRadarAlerts.publish(context,unseen)
+            }
             prefs.edit().putBoolean("alertInitialized",true).putStringSet("alertSeen",(fresh.map{it.id}+seen).distinct().take(512).toSet()).apply()
             return Result.success()
         }catch(e:CancellationException){throw e}catch(_:Exception){return Result.retry()}

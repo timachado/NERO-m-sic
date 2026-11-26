@@ -64,7 +64,15 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
     }
     LaunchedEffect(uid,enabled,alerts,artists,genres){
         if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
-            NeroRadarAlerts.configure(context,uid,enabled&&alerts,artists,genres)
+            NeroRadarAlerts.configure(context,uid,enabled,artists,genres)
+    }
+    var inbox by remember(uid){mutableStateOf(prefs.getString("inbox","[]").orEmpty())}
+    DisposableEffect(prefs){
+        val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->
+            if(key=="inbox")inbox=prefs.getString("inbox","[]").orEmpty()
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
     }
     var revision by remember(uid){mutableIntStateOf(0)}
     var busy by remember(uid){mutableStateOf(false)}
@@ -107,7 +115,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
             Row(verticalAlignment=Alignment.CenterVertically){
                 Text("Alertas de lançamentos",modifier=Modifier.weight(1f))
                 Switch(checked=alerts&&NeroRadarAlerts.permitted(context),onCheckedChange={value->
-                    if(!value){alerts=false;prefs.edit().putBoolean("alerts",false).apply();NeroRadarAlerts.stop(context)}
+                    if(!value){alerts=false;prefs.edit().putBoolean("alerts",false).apply();androidx.core.app.NotificationManagerCompat.from(context).cancel(7819)}
                     else if(Build.VERSION.SDK_INT>=33&&!NeroRadarAlerts.permitted(context))requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     else{
                         alerts=NeroRadarAlerts.permitted(context);prefs.edit().putBoolean("alerts",alerts).apply()
@@ -120,6 +128,20 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
             OutlinedButton(enabled=!busy,onClick={revision++},modifier=Modifier.fillMaxWidth()){Text("Atualizar Radar")}
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+            val news=remember(inbox){runCatching{org.json.JSONArray(inbox)}.getOrDefault(org.json.JSONArray())}
+            if(news.length()>0){
+                Text("Novidades para você",fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+                for(i in 0 until minOf(news.length(),10)){
+                    val item=news.optJSONObject(i)?:continue
+                    Card(onClick={onSearch(item.optString("search"))},modifier=Modifier.fillMaxWidth()){
+                        Column(Modifier.padding(12.dp)){
+                            Text(item.optString("title"),fontWeight=FontWeight.Bold,maxLines=2)
+                            Text(item.optString("credit"),fontSize=12.sp,color=Color.LightGray)
+                        }
+                    }
+                }
+                TextButton(onClick={prefs.edit().remove("inbox").apply()}){Text("Limpar novidades")}
+            }
             Text("Dos seus artistas",fontWeight=FontWeight.Bold)
             if(personal.isEmpty()&&!busy)Text(if(artists.isEmpty())"Siga artistas ou ouça músicas para personalizar." else "Nenhum lançamento recente encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
             RadarRows(personal,onSearch)
