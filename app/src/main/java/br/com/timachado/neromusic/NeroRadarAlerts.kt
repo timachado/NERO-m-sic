@@ -44,9 +44,9 @@ internal object NeroRadarAlerts{
     fun publish(context:Context,rows:List<CatalogEntry>){
         if(rows.isEmpty()||!permitted(context))return
         val manager=context.getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(channel,"NERO Radar",NotificationManager.IMPORTANCE_DEFAULT).apply{description="Lançamentos dos seus artistas e gêneros favoritos"})
+        manager.createNotificationChannel(NotificationChannel(channel,"NERO Radar",NotificationManager.IMPORTANCE_DEFAULT).apply{description="Descobertas dos seus artistas e gêneros favoritos"})
         val first=rows.first()
-        val message=if(rows.size==1)first.title+" · "+displayArtistName(first.credit) else "${rows.size} lançamentos no seu Radar. Confira "+displayArtistName(first.credit)+" e mais."
+        val message=if(rows.size==1)first.title+" · "+displayArtistName(first.credit) else "${rows.size} descobertas no seu Radar. Confira "+displayArtistName(first.credit)+" e mais."
         val intent=Intent(context,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val pending=PendingIntent.getActivity(context,7819,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification=NotificationCompat.Builder(context,channel).setSmallIcon(R.drawable.ic_nero_notification)
@@ -73,7 +73,7 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
         try{
             for(artist in artists){
                 if(!allowed()||!NeroSupabase.matchesStoredRadarOwner(context,owner))return Result.success()
-                try{rows+=radarWeekly(DevCatalog.releaseSnapshot(7,null,artist=artist).entries,LocalDate.now(),listOf(artist));completed++}
+                try{rows+=radarDiscoveries(DevCatalog.releaseSnapshot(7,null,artist=artist).entries,listOf(artist));completed++}
                 catch(e:CancellationException){throw e}catch(_:Exception){}
             }
             for(genre in genres){
@@ -86,12 +86,14 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
             if(completed<artists.size+genres.size)return Result.retry()
             if(completed==0)return Result.success()
             if(!allowed()||!NeroSupabase.matchesStoredRadarOwner(context,owner))return Result.success()
-            val fresh=radarWeekly(rows,LocalDate.now())
-            val seen=prefs.getStringSet("alertSeen",emptySet()).orEmpty()
-            val ids=newRadarIds(fresh.map{it.id},seen,prefs.getBoolean("alertInitialized",false)).toSet()
+            val fresh=radarDiscoveries(rows)
+            val scopeKey=artists.sorted().joinToString("|")+"::"+genres.sorted().joinToString("|")
+            val sameScope=prefs.getString("nativeAlertScope",null)==scopeKey
+            val seen=if(sameScope)prefs.getStringSet("nativeAlertSeen",emptySet()).orEmpty() else emptySet()
+            val ids=newRadarIds(fresh.map{it.id},seen,sameScope&&prefs.getBoolean("nativeAlertInitialized",false)).toSet()
             val unseen=fresh.filter{it.id in ids}
             if(unseen.isNotEmpty()){
-                val previous=runCatching{org.json.JSONArray(prefs.getString("inbox","[]"))}.getOrDefault(org.json.JSONArray())
+                val previous=runCatching{org.json.JSONArray(prefs.getString("nativeInbox","[]"))}.getOrDefault(org.json.JSONArray())
                 val inbox=org.json.JSONArray()
                 unseen.take(30).forEach{row->inbox.put(org.json.JSONObject().put("id",row.id).put("title",row.title.take(200)).put("credit",displayArtistName(row.credit).take(200)).put("search",row.searchText.take(300)))}
                 val keys=unseen.map{it.id}.toSet()
@@ -100,10 +102,10 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
                     if(inbox.length()>=30)break
                     if(item.optString("id") !in keys)inbox.put(item)
                 }
-                prefs.edit().putString("inbox",inbox.toString()).apply()
+                prefs.edit().putString("nativeInbox",inbox.toString()).apply()
                 if(prefs.getBoolean("alerts",false))NeroRadarAlerts.publish(context,unseen)
             }
-            prefs.edit().putBoolean("alertInitialized",true).putStringSet("alertSeen",(fresh.map{it.id}+seen).distinct().take(512).toSet()).apply()
+            prefs.edit().putString("nativeAlertScope",scopeKey).putBoolean("nativeAlertInitialized",true).putStringSet("nativeAlertSeen",(fresh.map{it.id}+seen).distinct().take(512).toSet()).apply()
             return Result.success()
         }catch(e:CancellationException){throw e}catch(_:Exception){return Result.retry()}
     }

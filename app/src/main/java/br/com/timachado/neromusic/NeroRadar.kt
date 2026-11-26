@@ -22,13 +22,11 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.CancellationException
 import java.time.LocalDate
 
-internal fun radarWeekly(rows:List<CatalogEntry>,today:LocalDate,artists:List<String> = emptyList()):List<CatalogEntry>{
+internal fun radarDiscoveries(rows:List<CatalogEntry>,artists:List<String> = emptyList()):List<CatalogEntry>{
     val keys=artists.flatMap(::artistCreditParts).map(::genreKey).filter{it.isNotBlank()}.toSet()
-    return rows.filter{row->
-        val date=runCatching{LocalDate.parse(row.releaseDate)}.getOrNull()
-        date!=null&&!date.isBefore(today.minusDays(6))&&!date.isAfter(today)&&
-            (keys.isEmpty()||genreKey(row.credit) in keys||artistCreditParts(row.credit).any{genreKey(it) in keys})
-    }.distinctBy{it.id}.sortedByDescending{it.releaseDate}
+    return rows.filter{row->row.kind==CatalogKind.ALBUM&&row.id.startsWith("album:")&&
+        (keys.isEmpty()||genreKey(row.credit) in keys||artistCreditParts(row.credit).any{genreKey(it) in keys})
+    }.distinctBy{it.id}
 }
 internal fun radarGenres(artists:List<String>):List<String>{
     return neroGenres.mapNotNull{genre->
@@ -65,10 +63,10 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
         if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
             NeroRadarAlerts.configure(context,uid,enabled,artists,genres)
     }
-    var inbox by remember(uid){mutableStateOf(prefs.getString("inbox","[]").orEmpty())}
+    var inbox by remember(uid){mutableStateOf(prefs.getString("nativeInbox","[]").orEmpty())}
     DisposableEffect(prefs){
         val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->
-            if(key=="inbox")inbox=prefs.getString("inbox","[]").orEmpty()
+            if(key=="nativeInbox")inbox=prefs.getString("nativeInbox","[]").orEmpty()
         }
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
@@ -88,7 +86,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
             var errors=0
             for(artist in artists){
                 if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@LaunchedEffect
-                try{matches+=DevCatalog.releaseSnapshot(7,null,revision>0,artist).entries.let{radarWeekly(it,LocalDate.now(),listOf(artist))}}
+                try{matches+=DevCatalog.releaseSnapshot(7,null,revision>0,artist).entries.let{radarDiscoveries(it,listOf(artist))}}
                 catch(e:CancellationException){throw e}catch(_:Exception){errors++}
             }
             for(genre in genres.ifEmpty{listOf(null)}){
@@ -97,14 +95,14 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
                 catch(e:CancellationException){throw e}catch(_:Exception){errors++}
             }
             if(NeroSupabase.activeUid.value!=owner||!NeroSupabase.identityReady.value)return@LaunchedEffect
-            personal=radarWeekly(matches,LocalDate.now()).take(30)
-            weekly=radarWeekly(other,LocalDate.now()).filterNot{row->personal.any{it.id==row.id}}.take(30)
+            personal=radarDiscoveries(matches).take(30)
+            weekly=radarDiscoveries(other).filterNot{row->personal.any{it.id==row.id}}.take(30)
             if(errors>0)notice="Algumas consultas ficaram indisponíveis."
         }finally{busy=false}
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Text("NERO Radar",fontSize=22.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
-        Text("Lançamentos dos últimos 7 dias · gratuito",fontSize=13.sp,color=Color.LightGray)
+        Text("Descobertas do catálogo · gratuito",fontSize=13.sp,color=Color.LightGray)
         Row(verticalAlignment=Alignment.CenterVertically){
             Text("Personalizar meu Radar",modifier=Modifier.weight(1f))
             Switch(checked=enabled,onCheckedChange={enabled=it;prefs.edit().putBoolean("enabled",it).apply()})
@@ -112,7 +110,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
         if(!enabled)Text("Ative para consultar novidades pelos nomes dos artistas seguidos, favoritos e ouvidos recentemente. Você pode desativar quando quiser.",fontSize=12.sp,color=Color.LightGray)
         else{
             Row(verticalAlignment=Alignment.CenterVertically){
-                Text("Alertas de lançamentos",modifier=Modifier.weight(1f))
+                Text("Alertas de descobertas",modifier=Modifier.weight(1f))
                 Switch(checked=alerts&&NeroRadarAlerts.permitted(context),onCheckedChange={value->
                     if(!value){alerts=false;prefs.edit().putBoolean("alerts",false).apply();androidx.core.app.NotificationManagerCompat.from(context).cancel(7819)}
                     else if(Build.VERSION.SDK_INT>=33&&!NeroRadarAlerts.permitted(context))requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -122,7 +120,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
                     }
                 })
             }
-            Text("Consulta diária em segundo plano quando o Android permitir. O primeiro levantamento cria uma referência; somente novidades posteriores geram alertas.",fontSize=11.sp,color=Color.LightGray)
+            Text("Consulta diária em segundo plano quando o Android permitir. O primeiro levantamento cria uma referência; somente resultados ainda não vistos geram alertas.",fontSize=11.sp,color=Color.LightGray)
             alertNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             OutlinedButton(enabled=!busy,onClick={revision++},modifier=Modifier.fillMaxWidth()){Text("Atualizar Radar")}
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -139,14 +137,14 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
                         }
                     }
                 }
-                TextButton(onClick={prefs.edit().remove("inbox").apply()}){Text("Limpar novidades")}
+                TextButton(onClick={prefs.edit().remove("nativeInbox").apply()}){Text("Limpar novidades")}
             }
             Text("Dos seus artistas",fontWeight=FontWeight.Bold)
-            if(personal.isEmpty()&&!busy)Text(if(artists.isEmpty())"Siga artistas ou ouça músicas para personalizar." else "Nenhum lançamento recente encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
+            if(personal.isEmpty()&&!busy)Text(if(artists.isEmpty())"Siga artistas ou ouça músicas para personalizar." else "Nenhum álbum encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
             RadarRows(personal,onSearch)
-            Text(if(genres.isEmpty())"Novidades da semana" else "Radar dos seus gêneros",fontWeight=FontWeight.Bold)
+            Text(if(genres.isEmpty())"Descobertas para explorar" else "Radar dos seus gêneros",fontWeight=FontWeight.Bold)
             RadarRows(weekly,onSearch)
-            Text("Datas de primeira publicação registradas no MusicBrainz. Toque em um lançamento para pesquisar no NERO Music.",fontSize=11.sp,color=Color.LightGray)
+            Text("Descobertas da fonte musical atual. A data de lançamento não é verificada. Toque para pesquisar no NERO Music.",fontSize=11.sp,color=Color.LightGray)
         }
     }
 }
@@ -159,7 +157,7 @@ private fun RadarRows(rows:List<CatalogEntry>,onSearch:(String)->Unit){
                     AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,modifier=Modifier.fillMaxWidth().aspectRatio(1f),contentScale=ContentScale.Crop)
                     Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                     Text(displayArtistName(entry.credit),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp)
-                    Text(entry.releaseDate,fontSize=11.sp,color=Color(0xFF00E5FF))
+                    
                 }
             }
         }

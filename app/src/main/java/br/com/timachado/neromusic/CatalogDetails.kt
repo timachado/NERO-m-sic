@@ -39,7 +39,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
     var reload by remember{mutableIntStateOf(0)}
     var adding by remember{mutableStateOf<List<OnlineRef>?>(null)}
     val editionId=selected?.id
-    fun reference(song:AlbumSong):OnlineRef?=song.recordingId?.let{id->OnlineRef(id,song.title,song.artist.ifBlank{entry.credit},editionId)}
+    fun reference(song:AlbumSong):OnlineRef?=song.recordingId?.let{id->OnlineRef(id,song.title,song.artist.ifBlank{entry.credit})}
     adding?.let{SaveOnlineDialog(it,onClose={adding=null})}
     LaunchedEffect(entry.id,reload){
         busy=true;message=null
@@ -71,7 +71,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             }
             Text(entry.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             if(entry.credit.isNotBlank())Text(entry.credit,color=Color.LightGray)
-            Text("MusicBrainz · metadados de avaliação",fontSize=12.sp,color=Color.LightGray)
+            Text("Catálogo integrado NERO Music",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(onClick={onSearch(entry.searchText)},modifier=Modifier.fillMaxWidth()){Text("Encontrar músicas no NERO Music")}
         }
         if(busy||trackBusy)item{LinearProgressIndicator(Modifier.fillMaxWidth())}
@@ -106,7 +106,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
                 }
             }
         }else{
-            item{Text("Discografia · álbuns, EPs e singles",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Até 50 resultados nesta prévia.",fontSize=12.sp,color=Color.LightGray)}
+            item{Text("Discografia · álbuns, EPs e singles",fontSize=19.sp,fontWeight=FontWeight.Bold);Text("Resultados disponíveis no catálogo.",fontSize=12.sp,color=Color.LightGray)}
             if(!busy&&albums.isEmpty())item{Text("Nenhum lançamento encontrado.",color=Color.LightGray)}
             items(albums,key={it.id}){album->
                 Card(onClick={onAlbum(album)},modifier=Modifier.fillMaxWidth()){

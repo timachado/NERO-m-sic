@@ -49,11 +49,11 @@ internal fun DynamicReleaseShelf(onOpen:()->Unit,onSearch:(String)->Unit){
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(5.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-            Text("Lançamentos recentes",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Descobertas musicais",fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar novidades")}
             TextButton(onClick=onOpen){Text("Ver tudo")}
         }
-        Text("Últimos 30 dias · catálogo MusicBrainz",fontSize=12.sp,color=Color.LightGray)
+        Text("Sugestões do catálogo NERO Music · datas não verificadas",fontSize=12.sp,color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(error)Text(if(rows.isEmpty())"Consulta temporariamente indisponível." else "Mostrando a última consulta.",fontSize=12.sp,color=Color.LightGray)
         if(!busy&&!error&&rows.isEmpty())Text("Nenhuma novidade encontrada.",fontSize=12.sp,color=Color.LightGray)
@@ -67,7 +67,7 @@ internal fun DynamicReleaseShelf(onOpen:()->Unit,onSearch:(String)->Unit){
                         }
                         Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                         Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                        Text(entry.releaseDate,fontSize=11.sp,color=Color(0xFF00E5FF))
+                        
                         Text("Pesquisar faixa/álbum",fontSize=11.sp,color=Color(0xFF39FF14))
                     }
                 }

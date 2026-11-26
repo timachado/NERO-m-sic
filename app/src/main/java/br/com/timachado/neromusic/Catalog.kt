@@ -41,167 +41,72 @@ internal enum class CatalogKind(val label:String,val resource:String,val resultK
     ARTIST("Artistas","artist","artists")
 }
 internal data class CatalogEntry(val id:String,val title:String,val credit:String,val kind:CatalogKind,val releaseDate:String="",val artworkReleaseId:String?=null) {
-    val coverUrl: String? get() = if(kind == CatalogKind.ALBUM) "https://coverartarchive.org/release-group/$id/front-250" else artworkReleaseId?.let{"https://coverartarchive.org/release/$it/front-250"}
+    val coverUrl: String? get() = artworkReleaseId
     val searchText: String get() = listOf(title,credit).filter { it.isNotBlank() }.joinToString(" ")
 }
-private val idPattern = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+// Compatibility model for existing screens. All musical results use NativeMusicCatalog.
 internal object DevCatalog {
-    private val lock = Mutex()
-    private var lastRequest = 0L
-    private val cache = LinkedHashMap<String,List<CatalogEntry>>()
-    suspend fun search(query:String,kind:CatalogKind):List<CatalogEntry> = withContext(Dispatchers.IO) {
-        check(BuildConfig.FULL_FEATURES)
-        val term = query.trim().take(100)
-        require(term.isNotBlank())
-        lock.withLock {
-            val key = kind.name+":"+term.lowercase()
-            cache[key]?.let { return@withLock it }
-            val remaining = 1100 - (SystemClock.elapsedRealtime()-lastRequest)
-            if(remaining>0) delay(remaining)
-            val phrase = term.replace("\\"," ").replace("\""," ")
-            val expression = when(kind) {
-                CatalogKind.SONG -> "recording:\"$phrase\" OR artist:\"$phrase\""
-                CatalogKind.ALBUM -> "(releasegroup:\"$phrase\" OR artist:\"$phrase\") AND primarytype:album"
-                CatalogKind.ARTIST -> "artist:\"$phrase\""
-            }
-            val uri = Uri.parse("https://musicbrainz.org/ws/2/"+kind.resource).buildUpon()
-                .appendQueryParameter("query",expression).appendQueryParameter("fmt","json")
-                .appendQueryParameter("limit","24").build()
-            val connection = URL(uri.toString()).openConnection() as HttpURLConnection
-            connection.connectTimeout=15000; connection.readTimeout=20000
-            connection.setRequestProperty("User-Agent","NeroMusic/0.3-dev (https://github.com/timachado/NERO-m-sic)")
-            connection.setRequestProperty("Accept","application/json")
-            connection.instanceFollowRedirects=false
-            lastRequest=SystemClock.elapsedRealtime()
-            try {
-                check(connection.responseCode==200)
-                val root=JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                val results=root.optJSONArray(kind.resultKey) ?: return@withLock emptyList<CatalogEntry>()
-                val entries=(0 until results.length()).mapNotNull { i ->
-                    val obj=results.optJSONObject(i) ?: return@mapNotNull null
-                    val id=obj.optString("id")
-                    val title=obj.optString(if(kind==CatalogKind.ARTIST)"name" else "title")
-                    if(!idPattern.matches(id)||title.isBlank()) return@mapNotNull null
-                    val creditArray=obj.optJSONArray("artist-credit")
-                    val credit=if(kind==CatalogKind.ARTIST) "" else if(creditArray==null) "" else
-                        (0 until creditArray.length()).joinToString("") { idx ->
-                            val part=creditArray.optJSONObject(idx)
-                            if(part==null) "" else part.optString("name")+part.optString("joinphrase")
-                        }.trim()
-                    val releaseId=if(kind==CatalogKind.SONG)obj.optJSONArray("releases")?.optJSONObject(0)?.optString("id")?.takeIf{idPattern.matches(it)} else null
-                    CatalogEntry(id,title,credit,kind,artworkReleaseId=releaseId)
-                }.distinctBy { it.id }
-                if(cache.size>=32) cache.remove(cache.keys.first())
-                cache[key]=entries
-                entries
-            } finally { connection.disconnect() }
+    private val lock=Mutex()
+    private val entries=LinkedHashMap<String,NativeCollection>()
+    private fun collectionEntry(row:NativeCollection):CatalogEntry {
+        val id=if(row.kind==NativeCollectionKind.ALBUM) "album:"+(savedAlbumKey(row.url)?:row.url) else "artist:"+row.url
+        return CatalogEntry(id,row.title,row.credit,if(row.kind==NativeCollectionKind.ALBUM)CatalogKind.ALBUM else CatalogKind.ARTIST,artworkReleaseId=row.artwork)
+    }
+    private suspend fun mapped(rows:List<NativeCollection>):List<CatalogEntry> = lock.withLock{
+        rows.map{row->collectionEntry(row).also{entries[it.id]=row}}.distinctBy{it.id}.also{
+            while(entries.size>256)entries.remove(entries.keys.first())
         }
     }
-    private suspend fun fetchDetails(path:String, params:Map<String,String>):JSONObject = withContext(Dispatchers.IO) {
-        check(BuildConfig.FULL_FEATURES)
-        lock.withLock {
-            val remaining=1100-(SystemClock.elapsedRealtime()-lastRequest)
-            if(remaining>0)delay(remaining)
-            val u=Uri.parse("https://musicbrainz.org/ws/2/"+path).buildUpon().appendQueryParameter("fmt","json")
-            params.forEach{(key,value)->u.appendQueryParameter(key,value)}
-            val connection=URL(u.build().toString()).openConnection() as HttpURLConnection
-            connection.connectTimeout=15000;connection.readTimeout=20000
-            connection.instanceFollowRedirects=false
-            connection.setRequestProperty("User-Agent","NeroMusic/0.8-dev (https://github.com/timachado/NERO-m-sic)")
-            connection.setRequestProperty("Accept","application/json")
-            lastRequest=SystemClock.elapsedRealtime()
-            try {
-                check(connection.responseCode==200)
-                JSONObject(connection.inputStream.bufferedReader().use{it.readText()})
-            }finally{connection.disconnect()}
+    suspend fun search(query:String,kind:CatalogKind):List<CatalogEntry> {
+        val term=query.trim().take(100)
+        require(term.length>=3)
+        return when(kind){
+            CatalogKind.SONG->NativeMusicCatalog.search(term).map{CatalogEntry("youtube:"+it.id,it.title,it.artist,kind,artworkReleaseId=it.thumbnail)}
+            CatalogKind.ALBUM->mapped(NativeMusicCatalog.collections(term,NativeCollectionKind.ALBUM))
+            CatalogKind.ARTIST->mapped(NativeMusicCatalog.collections(term,NativeCollectionKind.ARTIST))
         }
     }
-
     internal data class ReleaseSnapshot(val entries:List<CatalogEntry>,val fetchedAt:Long,val day:java.time.LocalDate)
     private val releaseLock=Mutex()
-    private val releaseCache=LinkedHashMap<Triple<Int,String?,String?>,ReleaseSnapshot>()
+    private val releaseCache=LinkedHashMap<Pair<String?,String?>,ReleaseSnapshot>()
+    // No release-date field is available from this source; these are discovery candidates, not verified recent releases.
     suspend fun releaseSnapshot(days:Int,genre:String?,force:Boolean=false,artist:String?=null):ReleaseSnapshot=releaseLock.withLock{
-        val key=Triple(days,genre,artist)
-        val previous=releaseCache[key]
+        require(days in setOf(7,30,90))
+        val key=genre to artist
         val today=java.time.LocalDate.now()
+        val previous=releaseCache[key]
         if(!force&&previous!=null&&previous.day==today&&System.currentTimeMillis()-previous.fetchedAt in 0L..900000L)return@withLock previous
-        val fresh=ReleaseSnapshot(releases(days,genre,artist),System.currentTimeMillis(),today)
+        val rows=if(artist!=null){
+            val name=genreKey(artist)
+            NativeMusicCatalog.collections(artist,NativeCollectionKind.ALBUM).filter{genreKey(it.credit)==name||artistCreditParts(it.credit).any{part->genreKey(part)==name}}
+        }else{
+            val plans=if(genre==null)albumExploreGenres(today.toEpochDay(),0,emptyList()).take(4)
+                else listOfNotNull(genreForQuery(genre)?:neroGenres.firstOrNull{it.releaseTag==genre})
+            val groups=mutableListOf<List<NativeCollection>>()
+            for(plan in plans){
+                val seed=albumExploreSeeds(plan,today.toEpochDay(),0,1).firstOrNull()?:continue
+                groups+=genreCollections(plan,NativeMusicCatalog.collections(seed,NativeCollectionKind.ALBUM),NativeCollectionKind.ALBUM)
+            }
+            diverseAlbumRows(groups)
+        }
+        val fresh=ReleaseSnapshot(mapped(rows.filter{savedAlbumKey(it.url)!=null}).take(30),System.currentTimeMillis(),today)
         if(releaseCache.size>=24)releaseCache.remove(releaseCache.keys.first())
         releaseCache[key]=fresh
         fresh
     }
-    private suspend fun releases(days:Int,genre:String?,artist:String?):List<CatalogEntry>{
-        require(days in setOf(7,30,90))
-        require(genre==null || genre in setOf("pop","rock","jazz","gospel","samba","sertanejo","pagode","electronic","hip hop","mpb"))
-        val today=java.time.LocalDate.now()
-        val from=today.minusDays((days-1).toLong())
-        val tags=genre?.let{" AND tag:\"$it\""} ?: ""
-        val performer=artist?.let{ " AND artist:\""+it.take(100).replace(Regex("[^\\p{L}\\p{N} ]")," ")+"\"" }.orEmpty()
-        val query="firstreleasedate:[$from TO $today] AND (primarytype:album OR primarytype:single OR primarytype:ep) AND status:official"+tags+performer
-        val data=fetchDetails("release-group",mapOf("query" to query,"limit" to "50"))
-        val rows=data.optJSONArray("release-groups")?:return emptyList()
-        return (0 until rows.length()).mapNotNull { i ->
-            val o=rows.optJSONObject(i)?:return@mapNotNull null
-            val id=o.optString("id");val title=o.optString("title");val date=o.optString("first-release-date")
-            val parsed=runCatching{java.time.LocalDate.parse(date)}.getOrNull()?:return@mapNotNull null
-            if(!idPattern.matches(id)||title.isBlank()||parsed.isBefore(from)||parsed.isAfter(today))return@mapNotNull null
-            val arr=o.optJSONArray("artist-credit")
-            val artist=if(arr==null)"" else (0 until arr.length()).joinToString(""){j->
-                arr.optJSONObject(j)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
-            }.trim()
-            CatalogEntry(id,title,artist,CatalogKind.ALBUM,date)
-        }.distinctBy{it.id}.sortedWith(compareByDescending<CatalogEntry>{it.releaseDate}.thenBy{it.title})
+    suspend fun discography(id:String):List<CatalogEntry>{
+        val row=lock.withLock{entries[id]}?:return emptyList()
+        if(row.kind!=NativeCollectionKind.ARTIST)return emptyList()
+        return mapped(NativeMusicCatalog.collections(row.title,NativeCollectionKind.ALBUM).filter{genreKey(it.credit)==genreKey(row.title)})
     }
-    suspend fun discography(id:String):List<CatalogEntry> {
-        require(idPattern.matches(id))
-        val data=fetchDetails("release-group",mapOf("artist" to id,"type" to "album|ep|single","inc" to "artist-credits","limit" to "50"))
-        val list=data.optJSONArray("release-groups") ?: return emptyList()
-        return (0 until list.length()).mapNotNull { index ->
-            val row=list.optJSONObject(index)?:return@mapNotNull null
-            val rid=row.optString("id");val title=row.optString("title")
-            if(!idPattern.matches(rid)||title.isBlank())return@mapNotNull null
-            val credits=row.optJSONArray("artist-credit")
-            val artist=if(credits==null)"" else (0 until credits.length()).joinToString(""){i->
-                credits.optJSONObject(i)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
-            }
-            CatalogEntry(rid,title,artist,CatalogKind.ALBUM)
-        }.distinctBy{it.id}
+    suspend fun editions(id:String):List<AlbumEdition>{
+        val row=lock.withLock{entries[id]}?:return emptyList()
+        return if(row.kind==NativeCollectionKind.ALBUM)listOf(AlbumEdition(id,row.title,"","","")) else emptyList()
     }
-    suspend fun editions(id:String):List<AlbumEdition> {
-        require(idPattern.matches(id))
-        val data=fetchDetails("release",mapOf("release-group" to id,"status" to "official","limit" to "25"))
-        val list=data.optJSONArray("releases")?:return emptyList()
-        return (0 until list.length()).mapNotNull { i ->
-            val o=list.optJSONObject(i)?:return@mapNotNull null
-            val rid=o.optString("id")
-            if(!idPattern.matches(rid))return@mapNotNull null
-            AlbumEdition(rid,o.optString("title"),o.optString("date"),o.optString("country"),o.optString("disambiguation"))
-        }.distinctBy{it.id}.sortedWith(compareBy<AlbumEdition>{it.date.ifBlank{"9999"}}.thenBy{it.title})
+    suspend fun albumTracks(id:String):List<AlbumSong>{
+        val row=lock.withLock{entries[id]}?:return emptyList()
+        return NativeMusicCatalog.albumTracks(row).mapIndexed{index,hit->AlbumSong(1,(index+1).toString(),hit.title,hit.duration*1000,"youtube:"+hit.id,hit.artist)}
     }
-    suspend fun albumTracks(id:String):List<AlbumSong> {
-        require(idPattern.matches(id))
-        val data=fetchDetails("release/"+id,mapOf("inc" to "recordings+artist-credits"))
-        val media=data.optJSONArray("media")?:return emptyList()
-        val result=mutableListOf<AlbumSong>()
-        for(i in 0 until media.length()){
-            val disc=media.optJSONObject(i)?:continue
-            val tracks=disc.optJSONArray("tracks")?:continue
-            for(j in 0 until tracks.length()){
-                val track=tracks.optJSONObject(j)?:continue
-                val recording=track.optJSONObject("recording")
-                val title=track.optString("title").ifBlank{recording?.optString("title").orEmpty()}
-                if(title.isBlank())continue
-                val recordingId=recording?.optString("id")?.takeIf{idPattern.matches(it)}
-                val credits=track.optJSONArray("artist-credit")?:recording?.optJSONArray("artist-credit")
-                val artist=if(credits==null)"" else (0 until credits.length()).joinToString(""){k->
-                    credits.optJSONObject(k)?.let{it.optString("name")+it.optString("joinphrase")} ?: ""
-                }.trim()
-                result.add(AlbumSong(i+1,track.optString("number").ifBlank{(j+1).toString()},title,track.optLong("length",recording?.optLong("length",0L)?:0L),recordingId,artist))
-            }
-        }
-        return result
-    }
-
 }
 
 @Composable
@@ -235,7 +140,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
             IconButton(onClick=onBack) { Icon(Icons.Default.ArrowBack,"Voltar") }
             Text("Explorar catálogo",fontSize=23.sp,fontWeight=FontWeight.Bold)
         }
-        Text("MusicBrainz · prévia de desenvolvimento não comercial",color=Color.LightGray,fontSize=12.sp)
+        Text("Catálogo integrado NERO Music",color=Color.LightGray,fontSize=12.sp)
         OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().padding(top=8.dp),singleLine=true,placeholder={Text("Música, álbum ou artista")},leadingIcon={Icon(Icons.Default.Search,null)})
         Button(onClick={submitted=query.trim();reload++},enabled=query.isNotBlank(),modifier=Modifier.fillMaxWidth().padding(top=4.dp)){Text("Pesquisar")}
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -243,7 +148,7 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
                 FilterChip(selected=kind==k,onClick={kind=k},label={Text(k.label)},modifier=Modifier.weight(1f))
             }
         }
-        Text("Os resultados são metadados; ouvir abre o YouTube Music oficial.",color=Color.LightGray,fontSize=12.sp)
+        Text("Explore os resultados no NERO Music.",color=Color.LightGray,fontSize=12.sp)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(vertical=10.dp)) {
             if(busy) item { CircularProgressIndicator() }
             message?.let { msg -> item { Text(msg,color=cyan) } }
@@ -302,7 +207,7 @@ internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit,onSearch:(Str
             Text("Explore álbuns",fontWeight=FontWeight.Bold,fontSize=20.sp,modifier=Modifier.weight(1f))
             TextButton(onClick={onExplore(selected,CatalogKind.ALBUM)}) { Text("Ver mais",color=green) }
         }
-        Text("Seleção editorial · prévia MusicBrainz",fontSize=12.sp,color=Color.LightGray)
+        Text("Seleção de álbuns · NERO Music",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             items(picks) { pick -> FilterChip(selected=pick==selected,onClick={selected=pick},label={Text(pick)}) }
         }

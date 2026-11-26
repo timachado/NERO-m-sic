@@ -237,13 +237,12 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
                         Icon(Icons.Default.NewReleases,null,tint=aqua,modifier=Modifier.size(32.dp))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                            Text("Lançamentos",fontWeight=FontWeight.Bold,fontSize=19.sp)
-                            Text("Novidades por data registrada e gênero",fontSize=12.sp,color=Color.LightGray)
+                            Text("Descobrir álbuns",fontWeight=FontWeight.Bold,fontSize=19.sp)
+                            Text("Explore sugestões por gênero",fontSize=12.sp,color=Color.LightGray)
                         }
                         Icon(Icons.Default.KeyboardArrowRight,"Explorar lançamentos")
                     }
                 }
-                DynamicReleaseShelf(onOpen={showDatedReleases=true},onSearch=onSearch)
                 NativeReleaseShelf(onOpen={showReleases=true},onAlbum={selectedAlbum=it})
                 NativeAlbumsShelf(onlineFavorites,albumGenre,{albumGenre=it},{selectedAlbum=it},onOpen={showAlbums=true})
             }

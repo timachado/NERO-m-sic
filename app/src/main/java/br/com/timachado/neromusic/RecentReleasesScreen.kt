@@ -31,7 +31,7 @@ import androidx.lifecycle.repeatOnLifecycle
 @Composable
 internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
     val genres=neroReleaseGenreOptions
-    var days by remember{mutableIntStateOf(30)}
+    val days=30
     var genre by remember{mutableStateOf<String?>(null)}
     var reload by remember{mutableIntStateOf(0)}
     var busy by remember{mutableStateOf(true)}
@@ -61,13 +61,10 @@ internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("Lançamentos",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Descobrir álbuns",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={reload++}){Icon(Icons.Default.Refresh,"Atualizar lançamentos")}
         }
-        Text("Datas de primeira publicação registradas no MusicBrainz. A disponibilidade pode variar; não é ranking de popularidade.",fontSize=12.sp,color=Color.LightGray)
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            listOf(7,30,90).forEach{period->FilterChip(selected=days==period,onClick={days=period},label={Text("$period dias")})}
-        }
+        Text("Sugestões do catálogo musical. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(genres){(label,tag)->FilterChip(selected=genre==tag,onClick={genre=tag},label={Text(label)})}
         }
@@ -77,7 +74,7 @@ internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
             Text(if(results.isEmpty())"Não foi possível consultar os lançamentos." else "Não foi possível atualizar. Exibindo a última consulta.",color=Color.LightGray)
             TextButton(onClick={reload++}){Text("Tentar novamente")}
         }else if(!busy&&results.isEmpty())Text("Nenhum lançamento encontrado com esses filtros.",color=Color.LightGray)
-        else if(!busy)Text("${results.size} resultados da amostra (até 50), ordenados por data.",fontSize=12.sp,color=Color.LightGray)
+        else if(!busy)Text("${results.size} resultados da amostra (até 30), ",fontSize=12.sp,color=Color.LightGray)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
             items(results.chunked(2)){pair->
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -90,7 +87,7 @@ internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
                                 }
                                 Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                                 Text(entry.credit,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
-                                Text(entry.releaseDate,fontSize=11.sp,color=Color(0xFF00E5FF))
+                                
                             }
                         }
                     }
