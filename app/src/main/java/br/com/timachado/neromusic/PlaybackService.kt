@@ -77,6 +77,12 @@ class PlaybackService : MediaLibraryService() {
             eq = SessionEqualizer(applicationContext)
             player.addListener(object : Player.Listener {
                 override fun onAudioSessionIdChanged(audioSessionId: Int) { eq?.attach(audioSessionId) }
+                override fun onPlaybackStateChanged(playbackState:Int) {
+                    if(playbackState==Player.STATE_READY) eq?.attach(player.audioSessionId)
+                }
+                override fun onIsPlayingChanged(isPlaying:Boolean) {
+                    if(isPlaying) eq?.attach(player.audioSessionId)
+                }
             })
             eq?.attach(player.audioSessionId)
         }
