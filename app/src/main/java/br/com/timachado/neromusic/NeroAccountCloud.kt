@@ -25,7 +25,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
     var plan by remember(user.uid){mutableStateOf("Não verificado")}
     var busy by remember(user.uid){mutableStateOf(false)}
     var notice by remember(user.uid){mutableStateOf<String?>(null)}
-    var confirm by remember(user.uid){mutableStateOf(false)}
+    var confirm by remember(user.uid){mutableStateOf<String?>(null)}
     LaunchedEffect(user.uid,changes){
         cached=withContext(Dispatchers.IO){runCatching{NeroAccountLibraryStore.read(context,user.uid)}.getOrNull()}
     }
@@ -50,10 +50,11 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
                 "ready"->if(pending)"Alterações aguardando envio" else "Última consulta sincronizada"
                 else->"Nuvem indisponível ou ainda não configurada"
             },color=if(state=="ready"&&!pending)MaterialTheme.colorScheme.primary else Color.LightGray,fontSize=13.sp)
-            cached?.let{Text("${it.pending.favorites.size} favoritos da conta",fontSize=13.sp)}
+            cached?.let{Text("${it.pending.favorites.size} favoritos · ${it.pending.playlists.size} playlists da conta",fontSize=13.sp)}
             Text("Playlists online também pertencem à conta. Álbuns, artistas, histórico e arquivos offline ainda não integram a sincronização.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(enabled=enabled&&!busy&&state!="loading",onClick={scope.launch{NeroAccountSync.pull(context,user.uid)}},modifier=Modifier.fillMaxWidth()){Text("Sincronizar agora")}
-            TextButton(enabled=enabled&&!busy,onClick={confirm=true}){Text("Importar favoritos anteriores do aparelho")}
+            TextButton(enabled=enabled&&!busy,onClick={confirm="favorites"}){Text("Importar favoritos anteriores do aparelho")}
+            TextButton(enabled=enabled&&!busy,onClick={confirm="playlists"}){Text("Importar playlists anteriores do aparelho")}
             if(state=="loading"||busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
         }
@@ -66,11 +67,17 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
             TextButton(enabled=enabled&&!busy,onClick={scope.launch{refreshPlan()}}){Text("Consultar situação do plano")}
         }
     }
-    if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Importar favoritos anteriores?")},
-        text={Text("As referências online da biblioteca de visitante serão copiadas para esta conta Google. Confirme somente se esses dados pertencem a você. Os favoritos anteriores não serão apagados.")},
-        confirmButton={TextButton(onClick={confirm=false;busy=true;scope.launch{
-            try{NeroAccountSync.importGuestFavorites(context,user.uid);notice="Favoritos copiados para a conta neste aparelho."}
-            catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível importar os favoritos."}
-            finally{busy=false}
-        }}){Text("Importar")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancelar")}})
+    confirm?.let{kind->
+        val playlists=kind=="playlists"
+        AlertDialog(onDismissRequest={confirm=null},title={Text(if(playlists)"Importar playlists anteriores?" else "Importar favoritos anteriores?")},
+            text={Text("As referências online compatíveis serão copiadas para esta conta Google. Confirme somente se esses dados pertencem a você. As coleções anteriores não serão apagadas; arquivos locais não serão enviados.")},
+            confirmButton={TextButton(enabled=enabled&&!busy,onClick={confirm=null;busy=true;scope.launch{
+                try{
+                    if(playlists)NeroAccountSync.importGuestPlaylists(context,user.uid)else NeroAccountSync.importGuestFavorites(context,user.uid)
+                    notice="Coleções copiadas para a conta neste aparelho."
+                }
+                catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível importar as coleções."}
+                finally{busy=false}
+            }}){Text("Importar")}},dismissButton={TextButton(onClick={confirm=null}){Text("Cancelar")}})
+    }
 }
