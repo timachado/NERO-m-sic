@@ -139,7 +139,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             IconButton(enabled=!busy&&!loading&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))}){Icon(Icons.Default.FileOpen,"Importar LRC ou TXT")}
         }
         Text(title,fontSize=21.sp,fontWeight=FontWeight.Bold)
-        Text(artist,color=Color.LightGray)
+        Text(displayArtistName(artist),color=Color.LightGray)
         Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=Color(0xFF00E5FF),fontSize=12.sp)
         source?.let{Text(it,color=Color.LightGray,fontSize=11.sp)}
         onlineNotice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}

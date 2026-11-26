@@ -174,7 +174,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                     Icon(Icons.Default.History,null,tint=accent)
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
                         Text(h.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(h.id));NowTrackStatus(h.id)
-                        Text(h.artist, fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Text(displayArtistName(h.artist), fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                         Text(DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(h.at)),fontSize=11.sp,color=Color.LightGray)
                     }
                     if(track!=null) NowTrackAction(h.id,canPlay){onPlay(listOf(track),0,null)}
@@ -241,7 +241,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                         NowTrackAction(t.id.toString(),canPlay){onPlay(queue,queue.indexOf(t),PlaybackOrigin("local_playlist",selected.name,selected.id))}
                         Column(Modifier.weight(1f)) {
                             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis,color=nowTrackColor(t.id.toString()));NowTrackStatus(t.id.toString())
-                            Text(t.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text(displayArtistName(t.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
                         IconButton(onClick={update(selected.copy(ids=selected.ids.filterNot { it==t.id }))}){Icon(Icons.Default.RemoveCircleOutline,"Retirar da playlist")}
                     }
@@ -256,7 +256,7 @@ private fun TrackLine(t:Track,icon:androidx.compose.ui.graphics.vector.ImageVect
         LocalArtwork(t,Modifier.size(44.dp))
         Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis)
-            Text(t.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(displayArtistName(t.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
         }
         IconButton(onClick=onClick){Icon(icon,label,tint=accent)}
     }

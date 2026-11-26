@@ -78,7 +78,7 @@ internal fun NeroSmartMixPremium(uid:String,seeds:List<String>,known:List<String
                     FilterChip(selected=artist in selected,enabled=!busy&&(artist in selected||selected.size<6),onClick={
                         selected=if(artist in selected)selected-artist else selected+artist
                         invalidate()
-                    },label={Text(artist)})
+                    },label={Text(displayArtistName(artist))})
                 }
             }
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){

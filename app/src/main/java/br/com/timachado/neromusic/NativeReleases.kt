@@ -78,7 +78,7 @@ private fun ReleaseAlbumCard(entry:NativeCollection,modifier:Modifier,onAlbum:(N
                 entry.artwork?.let{AsyncImage(model=it,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
             }
             Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-            Text(entry.credit,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(displayArtistName(entry.credit),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
             Text("Abrir álbum",fontSize=11.sp,color=Color(0xFF39FF14))
         }
     }

@@ -66,7 +66,7 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
                 Text("Outros artistas encontrados no seu mix",fontWeight=FontWeight.Medium)
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     items(suggestions,key={nativeArtistKey(it.artist)}){hit->
-                        DiscoveryTile(hit.artist,"Pesquisar artista",hit.thumbnail,"Capa de faixa de "+hit.artist){if(active())onSearch(hit.artist)}
+                        DiscoveryTile(displayArtistName(hit.artist),"Pesquisar artista",hit.thumbnail,"Capa de faixa de "+hit.artist){if(active())onSearch(hit.artist)}
                     }
                 }
             }
@@ -95,10 +95,10 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
                 if(albums.isEmpty()&&!busy){
                     if(!albumError)Text("Nenhum álbum compatível encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
                     Text("Explore os artistas diretamente na busca do NERO:",fontSize=12.sp,color=Color.LightGray)
-                    seeds.forEach{artist->OutlinedButton(onClick={if(active())onSearch(artist)},modifier=Modifier.fillMaxWidth()){Text(artist,maxLines=2,overflow=TextOverflow.Ellipsis)}}
+                    seeds.forEach{artist->OutlinedButton(onClick={if(active())onSearch(artist)},modifier=Modifier.fillMaxWidth()){Text(displayArtistName(artist),maxLines=2,overflow=TextOverflow.Ellipsis)}}
                 }
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    items(albums,key={it.url}){album->DiscoveryTile(album.title,album.credit,album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
+                    items(albums,key={it.url}){album->DiscoveryTile(album.title,displayArtistName(album.credit),album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
                 }
             }
             Text("Explorar lançamentos",fontWeight=FontWeight.Medium)

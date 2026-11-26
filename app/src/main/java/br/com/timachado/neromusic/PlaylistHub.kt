@@ -111,7 +111,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                 items(followed.filter{it.contains(term,true)},key={"artist:"+nativeArtistKey(it)}){artist->
                     Row(Modifier.fillMaxWidth().clickable{onArtist(artist)}.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
                         Box(Modifier.size(66.dp).clip(RoundedCornerShape(50)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){Icon(Icons.Default.Person,null,tint=Color(0xFF39FF14),modifier=Modifier.size(30.dp))}
-                        Column(Modifier.weight(1f).padding(start=12.dp)){Text(artist,fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Artista · Seguindo",fontSize=12.sp,color=Color.LightGray)}
+                        Column(Modifier.weight(1f).padding(start=12.dp)){Text(displayArtistName(artist),fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Artista · Seguindo",fontSize=12.sp,color=Color.LightGray)}
                     }
                 }
             }

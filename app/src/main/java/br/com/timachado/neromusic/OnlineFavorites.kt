@@ -80,7 +80,7 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                 }
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(row.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor(row.item?.mediaId));NowTrackStatus(row.item?.mediaId)
-                    Text(row.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(displayArtistName(row.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 row.online?.let{ref->
                     val hit=musicHitFromRef(ref)

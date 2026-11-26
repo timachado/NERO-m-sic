@@ -88,7 +88,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                     Column(Modifier.weight(1f)){
                         Text(outputs.expected.joinToString(" + "){it.name}.ifBlank{"Saída do Android"},fontSize=21.sp,fontWeight=FontWeight.Bold,color=green)
                         Text(if(outputs.expected.isEmpty())"Saída gerenciada pelo sistema" else "Saída indicada pelo Android",fontSize=12.sp,color=Color.LightGray)
-                        if(title.isNotBlank())Text((if(playing)"Tocando: " else "Faixa: ")+title+" · "+artist,color=green,maxLines=2,overflow=TextOverflow.Ellipsis)
+                        if(title.isNotBlank())Text((if(playing)"Tocando: " else "Faixa: ")+title+" · "+displayArtistName(artist),color=green,maxLines=2,overflow=TextOverflow.Ellipsis)
                     }
                     Icon(Icons.Default.Speaker,null,tint=green,modifier=Modifier.size(36.dp))
                 }

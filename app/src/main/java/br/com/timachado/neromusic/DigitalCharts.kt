@@ -101,7 +101,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
                                 Text("#"+song.rank,modifier=Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha=.8f),RoundedCornerShape(bottomEnd=8.dp)).padding(7.dp),fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
                             }
                             Text(song.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-                            Text(song.artist,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
+                            Text(displayArtistName(song.artist),fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                         }
                     }
                 }
@@ -111,7 +111,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
                 Card(onClick={playSong(song)},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
                         Text(song.rank.toString(),modifier=Modifier.width(36.dp),color=Color(0xFF39FF14),fontWeight=FontWeight.Bold)
-                        Column(Modifier.weight(1f)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(song.artist,fontSize=12.sp,color=Color.LightGray)}
+                        Column(Modifier.weight(1f)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(displayArtistName(song.artist),fontSize=12.sp,color=Color.LightGray)}
                     }
                 }
             }

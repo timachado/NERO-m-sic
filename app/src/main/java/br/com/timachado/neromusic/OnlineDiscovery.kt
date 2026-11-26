@@ -99,7 +99,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
             Text(if(historyUid!=null)"Sugestões dos artistas seguidos, favoritos e músicas recentes da sua conta." else "Sugestões dos artistas seguidos, favoritos e histórico deste aparelho.",fontSize=12.sp,color=Color.LightGray)
-            Text("Inspirado em: "+artists.take(3).joinToString(" · "),fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
+            Text("Inspirado em: "+artists.take(3).joinToString(" · "){displayArtistName(it)},fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
             Text("Ao gerar, somente os nomes dos artistas são consultados na fonte musical.",fontSize=11.sp,color=Color.LightGray)
             val generateMixes:()->Unit={
                 val owner=historyUid
@@ -192,7 +192,7 @@ internal fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueu
                 Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
                     NeroArtwork(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));NowTrackStatus(hit.reference().id)
-                    Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
             }
         }

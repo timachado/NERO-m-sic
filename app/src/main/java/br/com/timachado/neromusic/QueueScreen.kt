@@ -118,7 +118,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                         Text("Tocando agora",fontSize=12.sp,color=Color(0xFF39FF14))
                         Text(name.ifBlank{"Faixa atual"},fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
-                        Text(artist,fontSize=12.sp,color=Color.LightGray)
+                        Text(displayArtistName(artist),fontSize=12.sp,color=Color.LightGray)
                     }
                     Icon(Icons.Default.KeyboardArrowRight,"Abrir player")
                 }
@@ -145,7 +145,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                     else LocalArtwork(byId[item.mediaId],Modifier.size(46.dp))
                     Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                         Text(title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(current)Color(0xFF39FF14)else Color.White)
-                        Text(artist,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
+                        Text(displayArtistName(artist),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                         Text(if(current)"Tocando agora" else if(upcoming)"Na sequência" else "Antes da faixa atual",fontSize=11.sp,color=if(current)Color(0xFF39FF14)else Color.LightGray)
                     }
                     IconButton(enabled=queue.canSeek,onClick={if(current)onBack()else act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(if(current)Icons.Default.Equalizer else Icons.Default.PlayArrow,if(current)"Abrir player" else "Reproduzir "+title,tint=if(current)Color(0xFF39FF14)else Color.LightGray)}

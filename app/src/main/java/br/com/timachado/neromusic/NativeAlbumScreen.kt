@@ -51,7 +51,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             NeroArtwork(model=album.artwork,contentDescription="Capa do álbum",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxWidth().aspectRatio(1f).heightIn(max=340.dp).clip(RoundedCornerShape(16.dp)))
             Text(album.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
-            Text(album.credit,color=Color.LightGray)
+            Text(displayArtistName(album.credit),color=Color.LightGray)
             OutlinedButton(enabled=savedKey!=null,onClick={
                 val owner=accountUid
                 if(accountReady)accountScope.launch{
@@ -75,7 +75,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
         items(songs,key={it.id}){hit->
             Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
                 NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
-                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(hit.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
+                Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
                 IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
                 NowTrackAction(hit.reference().id,canPlay){play(hit)}
             }
@@ -98,7 +98,7 @@ internal fun NativeAlbumsShelf(onSearch:(String)->Unit,onAlbum:(NativeCollection
                     Column(Modifier.padding(8.dp)){
                         NeroArtwork(model=entry.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)))
                         Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold)
-                        Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
+                        Text(displayArtistName(entry.credit),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                     }
                 }
             }

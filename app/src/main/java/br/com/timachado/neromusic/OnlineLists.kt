@@ -81,7 +81,7 @@ internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
     }
     AlertDialog(onDismissRequest=onClose,title={Text("Adicionar à playlist")},
         text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(if(incoming.size==1)incoming.first().title+" · "+incoming.first().artist else "${incoming.size} gravações para adicionar",color=Color.LightGray)
+            Text(if(incoming.size==1)incoming.first().title+" · "+displayArtistName(incoming.first().artist) else "${incoming.size} gravações para adicionar",color=Color.LightGray)
             Text("Salva as referências musicais, não o áudio. Gravações já existentes não serão duplicadas.",fontSize=12.sp,color=Color.LightGray)
             if(loaded.isFailure)Text("Não foi possível carregar suas playlists.")
             else{
@@ -237,7 +237,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                     s.coverUrl?.let{NeroArtwork(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
-                    Text(s.title,fontWeight=FontWeight.Medium,color=nowTrackColor(byId[s.id]?.mediaId));Text(s.artist,fontSize=12.sp,color=Color.LightGray);NowTrackStatus(byId[s.id]?.mediaId)
+                    Text(s.title,fontWeight=FontWeight.Medium,color=nowTrackColor(byId[s.id]?.mediaId));Text(displayArtistName(s.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(byId[s.id]?.mediaId)
                     Text(if(s.id in byId)"Disponível no NERO" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"NERO Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
                     s.openAudio?.takeIf{allowed(it)}?.let{audio->
                         Text(audio.license,fontSize=11.sp,color=Color.LightGray)
@@ -264,7 +264,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             items(visibleSuggestions,key={"suggestion:"+it.id}){hit->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                     NeroArtwork(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)))
-                    Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title);Text(hit.artist,fontSize=12.sp,color=Color.LightGray)}
+                    Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title);Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray)}
                     IconButton(onClick={
                         val owner=uid;scope.launch{try{
                             val current=scopedOnlineLists(context,owner)

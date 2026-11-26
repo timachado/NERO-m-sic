@@ -114,7 +114,7 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
             IconButton(onClick=onClose){Icon(Icons.Default.FullscreenExit,"Sair da tela cheia")}
             Column(Modifier.weight(1f)){
                 Text(title,maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,style=MaterialTheme.typography.bodySmall)
+                Text(displayArtistName(artist),maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,style=MaterialTheme.typography.bodySmall)
             }
             ClipQualityMenu(quality,{keepControls();onQuality(it)},onExpandedChange={qualityOpen=it;keepControls()})
             IconButton(enabled=canFavorite,onClick={keepControls();onFavorite()}){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,if(favorite)"Descurtir música" else "Curtir música",tint=if(favorite)Color(0xFF39FF14)else Color.White)}

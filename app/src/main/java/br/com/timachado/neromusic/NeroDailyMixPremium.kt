@@ -79,7 +79,7 @@ internal fun NeroDailyMixPremium(uid:String,artists:List<String>,day:Long,exclud
                 items(DailyMoment.entries){item->FilterChip(selected=moment==item,enabled=!busy,onClick={moment=item;notice=null},label={Text(item.label)})}
             }
             Text(moment.description,fontSize=12.sp,color=if(moment==DailyMoment.CAFE)Color(0xFFE8BB87)else Color.LightGray)
-            Text("Artistas do dia: "+seeds.joinToString(" · "),fontSize=12.sp,color=Color.LightGray)
+            Text("Artistas do dia: "+seeds.joinToString(" · "){displayArtistName(it)},fontSize=12.sp,color=Color.LightGray)
             Text("Ao gerar, os nomes dos artistas e o tema escolhido são enviados à busca musical. O tema é uma sugestão de pesquisa, não uma classificação verificada das faixas.",fontSize=11.sp,color=Color.LightGray)
             OutlinedButton(enabled=!busy&&seeds.isNotEmpty(),onClick={
                 val requested=moment
