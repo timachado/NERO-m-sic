@@ -92,7 +92,11 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
             if(queried||albums.isNotEmpty()){
                 Text("Álbuns para explorar",fontWeight=FontWeight.Medium)
                 if(albumError)Text("Algumas consultas de álbuns ficaram indisponíveis.",fontSize=12.sp,color=Color.LightGray)
-                if(albums.isEmpty()&&!busy&&!albumError)Text("Nenhum álbum novo para você nesta consulta.",fontSize=12.sp,color=Color.LightGray)
+                if(albums.isEmpty()&&!busy){
+                    if(!albumError)Text("Nenhum álbum compatível encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
+                    Text("Explore os artistas diretamente na busca do NERO:",fontSize=12.sp,color=Color.LightGray)
+                    seeds.forEach{artist->OutlinedButton(onClick={if(active())onSearch(artist)},modifier=Modifier.fillMaxWidth()){Text(artist,maxLines=2,overflow=TextOverflow.Ellipsis)}}
+                }
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     items(albums,key={it.url}){album->DiscoveryTile(album.title,album.credit,album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
                 }
@@ -120,7 +124,10 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
             }){Text(if(releaseBusy)"Consultando…" else if(releaseQueried)"Atualizar busca de lançamentos" else "Buscar lançamentos dos meus artistas")}
             if(releaseBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
             if(releaseError)Text("Algumas consultas ficaram indisponíveis.",fontSize=12.sp,color=Color.LightGray)
-            if(releaseQueried&&releases.isEmpty()&&!releaseBusy&&!releaseError)Text("Nenhum resultado adicional encontrado nesta busca.",fontSize=12.sp,color=Color.LightGray)
+            if(releaseQueried&&releases.isEmpty()&&!releaseBusy&&!releaseError){
+                Text("Nenhum resultado adicional encontrado nesta busca.",fontSize=12.sp,color=Color.LightGray)
+                TextButton(onClick={if(active())seeds.firstOrNull()?.let(onSearch)},enabled=seeds.isNotEmpty()){Text("Explorar músicas do artista")}
+            }
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 items(releases,key={it.url}){album->DiscoveryTile(album.title,album.credit,album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
             }

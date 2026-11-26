@@ -45,8 +45,15 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
             }
         }
     }
-    if(open)AlertDialog(onDismissRequest={open=false},title={Text("NERO Replay")},text={
-        Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+    if(open)androidx.compose.ui.window.Dialog(onDismissRequest={open=false},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)){
+        Surface(modifier=Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
+            Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp)){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    Text("NERO Replay",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                    TextButton(onClick={open=false}){Text("Fechar")}
+                }
+                HorizontalDivider()
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
                 Text("Estatísticas locais",modifier=Modifier.weight(1f))
                 Switch(checked=enabled,onCheckedChange={enabled=it;NeroReplay.setEnabled(context,it)})
@@ -75,7 +82,9 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
             TextButton(enabled=entries.isNotEmpty(),onClick={confirm=true}){Text("Limpar estatísticas")}
             HorizontalDivider()
             NeroReplayPremium(days)
+                }
+            }
         }
-    },confirmButton={TextButton(onClick={open=false}){Text("Fechar")}})
+    }
     if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Limpar estatísticas do Replay?")},text={Text("O tempo ouvido e os rankings locais serão apagados. Favoritos, playlists e downloads permanecem.")},confirmButton={TextButton(onClick={NeroReplay.clear(context);entries=emptyList();confirm=false}){Text("Limpar")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancelar")}})
 }

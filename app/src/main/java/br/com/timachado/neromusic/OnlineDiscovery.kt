@@ -102,7 +102,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
             Text(if(historyUid!=null)"Sugestões dos artistas seguidos, favoritos e histórico online da sua conta, se disponível." else "Sugestões dos artistas seguidos, favoritos e histórico deste aparelho.",fontSize=12.sp,color=Color.LightGray)
             Text("Inspirado em: "+artists.take(3).joinToString(" · "),fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
             Text("Ao gerar, somente os nomes dos artistas são consultados na fonte musical.",fontSize=11.sp,color=Color.LightGray)
-            OutlinedButton(enabled=!busy&&historyReady,onClick={
+            val generateMixes:()->Unit={
                 val owner=historyUid
                 val generatedDay=dailyDay
                 busy=true;notice=null
@@ -141,7 +141,9 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                     }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
                     finally{busy=false}
                 }
-            }){Text(if(busy)"Preparando mix…" else if(visibleMix.isEmpty()&&dailyVisible.isEmpty())"Gerar meus mixes" else "Atualizar meus mixes")}
+            }
+            OutlinedButton(enabled=!busy&&historyReady,onClick=generateMixes){Text(if(busy)"Preparando mix…" else if(visibleMix.isEmpty()&&dailyVisible.isEmpty())"Gerar meus mixes" else "Atualizar meus mixes")}
+            if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(visibleMix.isNotEmpty()){
                 Button(enabled=canPlay,onClick={onQueue(visibleMix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
@@ -149,7 +151,12 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
             }
             Text("NERO Daily Mix",fontSize=21.sp,fontWeight=FontWeight.Bold)
             Text("Coleções do dia inspiradas nos artistas que combinam com seu gosto. Atualize quando quiser; nenhuma consulta automática.",fontSize=12.sp,color=Color.LightGray)
-            if(dailyVisible.isEmpty())Text("Gere seus mixes para descobrir novas faixas hoje.",fontSize=12.sp,color=Color.LightGray)
+            if(dailyVisible.isEmpty()){
+                Text("Gere suas coleções de hoje com base nos artistas acima.",fontSize=12.sp,color=Color.LightGray)
+                OutlinedButton(enabled=!busy&&historyReady,onClick=generateMixes){Text(if(busy)"Preparando coleções…" else "Gerar Daily Mix")}
+                if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
+                else notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+            }
             dailyVisible.forEach{collection->
                 val name="Daily Mix • "+collection.artist
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){

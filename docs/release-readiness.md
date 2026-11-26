@@ -52,3 +52,6 @@ Execução #299 (commit 708fc9a21e069280aa965eba8be1c7ac6b331c31): assembleDebug
 - [ ] Aprovação explícita antes de publicar ou mesclar a branch.
 
 Não habilitar extração experimental em release para contornar licenciamento. Não distribuir APK debug como versão comercial.
+
+## 0.9.68-dev — revisão visual de gravação do Android
+Replay em tela cheia rolável, com Fechar sempre visível; botão direto de Daily Mix reutiliza a consulta manual existente, com feedback de progresso; Discovery oferece busca pelos artistas quando a consulta não encontra álbuns; rádio local explica a ausência de arquivos e orienta uso da rádio online experimental quando disponível. Não altera o catálogo, não habilita fonte experimental no release, não altera dados ou assinatura. Validação visual em aparelho e compilação desta versão ainda pendentes.

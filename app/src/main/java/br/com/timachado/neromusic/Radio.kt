@@ -78,12 +78,16 @@ internal fun RadioShelf(tracks:List<Track>,favorites:Set<String>,canPlay:Boolean
                 Icon(Icons.Default.Radio,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(32.dp))
                 Text("NERO Radio",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(start=8.dp))
             }
-            Text("Rádio personalizada · biblioteca local",fontSize=12.sp,color=Color.LightGray)
-            Text(if(queue.isEmpty())"Ouça ou favorite músicas para criar uma seleção relacionada." else "${queue.size} faixas selecionadas por artistas e gêneros do seu histórico e favoritos.",fontSize=13.sp)
+            Text("Rádio de arquivos do aparelho",fontSize=12.sp,color=Color.LightGray)
+            Text(when{
+                tracks.isEmpty()->"Nenhuma música local na biblioteca. Esta rádio não usa o histórico online."
+                queue.isEmpty()->"Ouça ou favorite músicas do aparelho para criar uma seleção relacionada."
+                else->"${queue.size} faixas selecionadas por artistas e gêneros do seu histórico e favoritos."
+            },fontSize=13.sp)
             Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onRadio(queue)},modifier=Modifier.fillMaxWidth()){
                 Icon(Icons.Default.PlayArrow,null);Text("Iniciar rádio")
             }
-            Text("Fila finita de arquivos do aparelho, sem transmissão de rádio online.",fontSize=11.sp,color=Color.LightGray)
+            Text(if(NativeMusicCatalog.enabled)"Para uma rádio a partir de música online, abra o player da faixa e use a opção de rádio." else "Fila de arquivos do aparelho, sem transmissão de rádio online.",fontSize=11.sp,color=Color.LightGray)
         }
     }
 }
