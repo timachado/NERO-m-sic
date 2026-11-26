@@ -96,6 +96,20 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    suspend fun importGuestPlaylists(context:Context,uid:String)=mutex.withLock{
+        require(NeroSupabase.activeUid.value==uid)
+        val app=context.applicationContext
+        withContext(Dispatchers.IO){
+            require(NeroSupabase.activeUid.value==uid)
+            val empty=CloudLibrarySnapshot(emptyList(),emptyList())
+            val current=NeroAccountLibraryStore.read(app,uid)?:NeroAccountLibraryState(0,empty,empty)
+            val imported=localCloudLibrary(app).playlists
+            val next=importPortablePlaylists(current.pending.playlists,imported)
+            NeroAccountLibraryStore.write(app,uid,current.copy(pending=current.pending.copy(playlists=next)))
+        }
+        changesState.value++
+        editsState.value++
+    }
     private val pullState=kotlinx.coroutines.flow.MutableStateFlow<NeroAccountPullStatus?>(null)
     val status:kotlinx.coroutines.flow.StateFlow<NeroAccountPullStatus?> = pullState
 
