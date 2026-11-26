@@ -95,7 +95,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
                 details.dateLabel()?.let{Text("Acesso até: "+it,fontSize=13.sp)}
                 details.autoRenew?.let{Text(if(it)"Renovação automática informada pelo servidor" else "Sem renovação automática",fontSize=12.sp,color=Color.LightGray)}
             }
-            Text("Experiência prevista: 7 dias. Carência de até 48 horas somente para falha de renovação elegível. A ativação depende do servidor.",fontSize=12.sp,color=Color.LightGray)
+            Text("Experiência Premium de 7 dias para contas elegíveis. Carência de até 48 horas somente para falha de renovação elegível. A disponibilidade é confirmada pelo servidor.",fontSize=12.sp,color=Color.LightGray)
             Text("Assinaturas vinculadas à sua conta e gerenciadas pelo servidor. Contratação futura pelo site oficial, sem cobrança nesta versão.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(onClick=onPlans,modifier=Modifier.fillMaxWidth()){Text("Conhecer NERO Premium")}
             TextButton(enabled=enabled&&!planBusy,onClick={refreshRequest++}){Text("Consultar / restaurar assinatura")}

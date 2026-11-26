@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -71,6 +73,7 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
         var open by remember{mutableStateOf(false)}
         var room by remember{mutableStateOf<TogetherRoom?>(null)}
         var busy by remember{mutableStateOf(false)}
+        var roomFresh by remember{mutableStateOf(false)}
         var title by remember{mutableStateOf("")}
         var code by remember{mutableStateOf(bookmark.orEmpty())}
         var resumeCode by remember{mutableStateOf(bookmark)}
@@ -88,10 +91,11 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                     val updated=togetherCommand(context,owner,action,id,name,video,artist)
                     if(active()){
                         room=updated
+                        roomFresh=updated!=null
                         resumeCode=updated?.id
                         TogetherBookmark.update(owner,resumeCode)
                     }
-                }catch(e:CancellationException){throw e}catch(_:Exception){notice="Sala ou serviço indisponível. Confira o código e tente novamente."}
+                }catch(e:CancellationException){throw e}catch(_:Exception){roomFresh=false;notice="Sala ou serviço indisponível. Confira o código e tente novamente."}
                 finally{busy=false}
             }
         }
@@ -104,9 +108,9 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                     busy=true
                     try{
                         val updated=togetherCommand(context,owner,"read",id)
-                        if(active()){room=updated;resumeCode=updated?.id;TogetherBookmark.update(owner,resumeCode);notice=null}
+                        if(active()){room=updated;roomFresh=updated!=null;resumeCode=updated?.id;TogetherBookmark.update(owner,resumeCode);notice=null}
                     }
-                    catch(e:CancellationException){throw e}catch(_:Exception){notice="Atualização da sala indisponível."}
+                    catch(e:CancellationException){throw e}catch(_:Exception){roomFresh=false;notice="Atualização da sala indisponível. Tente atualizar antes de reproduzir."}
                     finally{busy=false}
                 }
             }
@@ -116,7 +120,7 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
             if(open&&room==null&&resumeCode!=null&&active())resumeCode?.let{command("read",it)}
         }
         if(open)AlertDialog(onDismissRequest={if(!busy)open=false},title={Text("NERO Together")},text={
-            Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
                 if(uid==null)Text("Entre com Google para participar de salas privadas.")
                 else if(room==null){
                     Text("Crie uma sala com Premium. Amigos com conta NERO podem entrar gratuitamente pelo código.",fontSize=12.sp)
@@ -160,8 +164,8 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                         }
                     }
                     Text("A fila é compartilhada; a reprodução é individual.",fontSize=11.sp,color=Color.LightGray)
-                    Button(enabled=canPlay&&current.songs.isNotEmpty()&&!busy,onClick={
-                        onQueue(current.songs.map{it.hit.queueItem()}.withOrigin(PlaybackOrigin("mix","NERO Together","")),0);open=false
+                    Button(enabled=canPlay&&roomFresh&&current.songs.isNotEmpty()&&!busy,onClick={
+                        if(active()&&roomFresh){onQueue(current.songs.map{it.hit.queueItem()}.withOrigin(PlaybackOrigin("mix","NERO Together","")),0);open=false}
                     }){Text("Reproduzir fila")}
                     Row{
                         TextButton(enabled=!busy,onClick={command("read",current.id)}){Text("Atualizar")}
