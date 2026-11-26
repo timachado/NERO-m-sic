@@ -53,6 +53,11 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
     var heard by remember(historyUid,historyReady,historyChanges){mutableStateOf(history(context))}
     val scope=rememberCoroutineScope()
     var mix by remember(historyUid,historyReady){mutableStateOf(emptyList<NativeMusicHit>())}
+    var dailyDay by remember{mutableLongStateOf(NeroReplay.today())}
+    var daily by remember(historyUid,dailyDay){mutableStateOf(runCatching{NeroDailyCache.read(context,historyUid,dailyDay)}.getOrDefault(emptyList()))}
+    LaunchedEffect(Unit){
+        while(true){dailyDay=NeroReplay.today();kotlinx.coroutines.delay(30000L)}
+    }
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf<String?>(null)}
     DisposableEffect(prefs,historyUid,historyReady){
@@ -80,6 +85,12 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
         (heard.map{it.id}+liked.map{it.id}+scopedPlayed.map{it.id}).mapNotNull(::recommendationId).toSet()
     }
     val visibleMix=remember(mix,hidden,excluded){filterRecommendedSongs(mix,hidden).filterNot{it.id in excluded}.take(24)}
+    val dailyVisible=remember(daily,artists,hidden,excluded){
+        val keys=artists.map(::nativeArtistKey).toSet()
+        daily.filter{nativeArtistKey(it.artist) in keys}.map{collection->
+            collection.copy(tracks=filterRecommendedSongs(collection.tracks,hidden).filterNot{it.id in excluded})
+        }.filter{it.tracks.isNotEmpty()}
+    }
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         if(recent.isNotEmpty()){
             Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -93,20 +104,34 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
             Text("Ao gerar, somente os nomes dos artistas são consultados na fonte musical.",fontSize=11.sp,color=Color.LightGray)
             OutlinedButton(enabled=!busy&&historyReady,onClick={
                 val owner=historyUid
+                val generatedDay=dailyDay
                 busy=true;notice=null
                 scope.launch{
                     try{
                         val groups=mutableListOf<List<NativeMusicHit>>()
+                        val dailyGroups=mutableListOf<Pair<String,List<NativeMusicHit>>>()
                         var failures=0
                         for(artist in artists){
                             if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
-                            try{groups+=NativeMusicCatalog.search(artist).take(20)}
+                            try{
+                                val results=NativeMusicCatalog.search(artist).take(20)
+                                groups+=results
+                                dailyGroups+=artist to results
+                            }
                             catch(e:CancellationException){throw e}catch(_:Exception){failures++}
                         }
                         if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
                         val candidates=interleaveNeroMix(groups,excluded,emptySet(),limit=60)
                         val available=filterRecommendedSongs(candidates,scopedHiddenSongs(context,owner))
                         if(available.isNotEmpty())mix=candidates
+                        if(generatedDay==dailyDay&&generatedDay==NeroReplay.today()){
+                            val collections=buildNeroDailyMixes(dailyGroups,generatedDay,excluded,emptySet())
+                            if(collections.isNotEmpty()){
+                                daily=collections
+                                try{kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){NeroDailyCache.write(context,owner,generatedDay,collections)}}
+                                catch(e:CancellationException){throw e}catch(_:Exception){}
+                            }
+                        }
                         notice=when{
                             failures==artists.size->"Não foi possível consultar os artistas. Tente novamente."
                             available.isEmpty()->"Nenhuma nova faixa encontrada. Tente atualizar depois."
@@ -116,11 +141,27 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                     }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
                     finally{busy=false}
                 }
-            }){Text(if(busy)"Preparando mix…" else if(visibleMix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
+            }){Text(if(busy)"Preparando mix…" else if(visibleMix.isEmpty()&&dailyVisible.isEmpty())"Gerar meus mixes" else "Atualizar meus mixes")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(visibleMix.isNotEmpty()){
                 Button(enabled=canPlay,onClick={onQueue(visibleMix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
                 OnlineDiscoveryRow(visibleMix,canPlay,onQueue)
+            }
+            Text("NERO Daily Mix",fontSize=21.sp,fontWeight=FontWeight.Bold)
+            Text("Coleções do dia inspiradas nos artistas que combinam com seu gosto. Atualize quando quiser; nenhuma consulta automática.",fontSize=12.sp,color=Color.LightGray)
+            if(dailyVisible.isEmpty())Text("Gere seus mixes para descobrir novas faixas hoje.",fontSize=12.sp,color=Color.LightGray)
+            dailyVisible.forEach{collection->
+                val name="Daily Mix • "+collection.artist
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    Column(Modifier.weight(1f)){
+                        Text(name,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Text("${collection.tracks.size} faixas sugeridas",fontSize=12.sp,color=Color.LightGray)
+                    }
+                    FilledTonalIconButton(enabled=canPlay,onClick={onQueue(collection.tracks.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix",name,"")),0)}){
+                        Icon(Icons.Default.PlayArrow,"Reproduzir "+name)
+                    }
+                }
+                OnlineDiscoveryRow(collection.tracks,canPlay,onQueue)
             }
         }else{
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
