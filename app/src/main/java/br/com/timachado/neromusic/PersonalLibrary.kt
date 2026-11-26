@@ -19,6 +19,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -42,15 +44,20 @@ internal fun saveMixes(context:Context, list:List<Mix>) {
     list.forEach { m -> data.put(JSONObject().put("id",m.id).put("name",m.name).put("tracks",JSONArray(m.ids))) }
     prefs(context).edit().putString("mixes",data.toString()).apply()
 }
-internal fun history(context:Context):List<Heard> = runCatching {
+internal fun guestHistory(context:Context):List<Heard> = runCatching {
     val array=JSONArray(prefs(context).getString("history","[]") ?: "[]")
     (0 until array.length()).map { i ->
         val o=array.getJSONObject(i)
         Heard(o.getString("id"),o.getString("title"),o.optString("artist"),o.getLong("at"))
     }
 }.getOrDefault(emptyList())
+internal fun history(context:Context):List<Heard>{
+    if(!NeroSupabase.identityReady.value)return emptyList()
+    val uid=NeroSupabase.activeUid.value?:return guestHistory(context)
+    return runCatching{NeroAccountLibraryStore.read(context,uid)?.pending?.history.orEmpty().map{Heard(it.ref.id,it.ref.title,it.ref.artist,it.at)}}.getOrDefault(emptyList())
+}
 internal fun recordListening(context:Context,id:String,title:String,artist:String) {
-    val records=(listOf(Heard(id,title,artist,System.currentTimeMillis()))+history(context).filterNot { it.id==id }).take(100)
+    val records=(listOf(Heard(id,title,artist,System.currentTimeMillis()))+guestHistory(context).filterNot { it.id==id }).take(100)
     val data=JSONArray()
     records.forEach { h -> data.put(JSONObject().put("id",h.id).put("title",h.title).put("artist",h.artist).put("at",h.at)) }
     prefs(context).edit().putString("history",data.toString()).apply()
@@ -61,7 +68,11 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
     onPermission:()->Unit, onPlay:(List<Track>,Int,PlaybackOrigin?)->Unit, onShuffle:(List<Track>,PlaybackOrigin?)->Unit,initialSelection:String?=null) {
     val context=LocalContext.current
     var playlists by remember { mutableStateOf(mixes(context)) }
-    var recent by remember { mutableStateOf(history(context)) }
+    val historyUid by NeroSupabase.activeUid.collectAsState()
+    val historyReady by NeroSupabase.identityReady.collectAsState()
+    val historyChanges by NeroAccountSync.changes.collectAsState()
+    val historyScope=rememberCoroutineScope()
+    var recent by remember(historyUid,historyReady) { mutableStateOf(history(context)) }
     var selectedId by remember(initialSelection) { mutableStateOf(initialSelection) }
     var showEditor by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf("") }
@@ -77,7 +88,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
     val trackMap=remember(tracks) { tracks.associateBy { it.id } }
     fun persist(list:List<Mix>) { playlists=list;saveMixes(context,list) }
     fun update(mix:Mix) { persist(playlists.map { if(it.id==mix.id)mix else it }) }
-    LaunchedEffect(historyMode) {
+    LaunchedEffect(historyMode,historyUid,historyReady,historyChanges) {
         if(historyMode) while(true) { recent=history(context);delay(1500) }
     }
     androidx.activity.compose.BackHandler(enabled=!historyMode && selected!=null) {
@@ -98,8 +109,16 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
             persist(playlists.filterNot { it.id==selected.id });selectedId=null;adding=false;deleteConfirm=false
         }){Text("Excluir")}},dismissButton={TextButton(onClick={deleteConfirm=false}){Text("Cancelar")}})
     if(clearConfirm) AlertDialog(onDismissRequest={clearConfirm=false},title={Text("Limpar histórico?")},
-        text={Text("O histórico e as estatísticas Replay serão limpos. As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
-            NeroReplay.clear(context);prefs(context).edit().remove("history").apply();recent=emptyList();clearConfirm=false
+        text={Text(if(historyUid!=null)"O histórico da conta será limpo e a alteração será enviada quando a nuvem estiver disponível. O Replay local não será alterado." else "O histórico de visitante e as estatísticas Replay serão limpos. As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
+            val owner=historyUid
+            clearConfirm=false
+            if(historyReady&&NeroSupabase.activeUid.value==owner){
+                if(owner==null){NeroReplay.clear(context);prefs(context).edit().remove("history").apply();recent=emptyList()}
+                else historyScope.launch{
+                    try{NeroAccountSync.clearHistory(context,owner);recent=history(context)}
+                    catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível limpar o histórico.",android.widget.Toast.LENGTH_SHORT).show()}
+                }
+            }
         }){Text("Limpar")}},dismissButton={TextButton(onClick={clearConfirm=false}){Text("Cancelar")}})
 
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=12.dp)) {
@@ -109,7 +128,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                     Text("Ouvidas recentemente",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                     TextButton(enabled=recent.isNotEmpty(),onClick={clearConfirm=true}){Text("Limpar")}
                 }
-                Text("Histórico local das últimas 100 faixas distintas.",fontSize=12.sp,color=Color.LightGray)
+                Text(if(historyUid!=null)"Até 100 faixas online da conta. Ative novos registros em NERO Cloud." else "Histórico local de visitante das últimas 100 faixas distintas.",fontSize=12.sp,color=Color.LightGray)
             }
             if(recent.isEmpty()) item { Text("As músicas reproduzidas no NERO aparecerão aqui.",color=Color.LightGray) }
             if(!granted) item { TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")} }
