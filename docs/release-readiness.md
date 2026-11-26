@@ -103,3 +103,6 @@ Corrige o bloqueio do diálogo: WhatsApp/redes sociais compartilham metadados; S
 
 ## 0.9.84-dev — compartilhamento normal
 Remove a criação e os botões de links protegidos. Compartilhar música usa o seletor Android, título, artista e link público real da fonte quando disponível. Copiar link ou texto local, card de Stories sem áudio, playlist completa como arquivo JSON importável no NERO. Sem exigência de login para enviar; importação usa a biblioteca ativa, guest ou conta. Mantém leitura de links antigos apenas por compatibilidade com links já emitidos, sem criar novos. Não inventa domínio NERO nem modifica servidor ou credenciais. Compilação e teste em aparelho pendentes.
+
+## 0.9.85-dev — preparação para Premium
+Tela de planos mostra estado da assinatura consultado do servidor, validade, restauração e solicitação de trial (somente conta Free verificada). SQL de staging para ativação única em 168 horas, não aplicado. Contratação paga continua bloqueada; WPVibe não possui site conectado, não foi possível inventariar WooCommerce/Efí. Sem alteração de produção, preços, credenciais ou cobrança. Build e teste em ambiente isolado pendentes.

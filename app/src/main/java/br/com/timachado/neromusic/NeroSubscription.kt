@@ -49,3 +49,14 @@ internal suspend fun readNeroSubscription(context:Context,uid:String):NeroSubscr
     require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
     result
 }
+
+// Only a trusted server can create a trial; the client sends no plan, UID or duration.
+internal suspend fun startNeroTrial(context:Context,uid:String):String=withTimeoutOrNull(12000L){
+    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+    val current=NeroSupabase.session(context,false)
+    require(current.uid==uid)
+    val result=JSONObject(NeroSupabase.rpc("nero_trial_start_v1",JSONObject(),current.access)).getString("result")
+    require(result in setOf("started","ineligible"))
+    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+    result
+}?:error("Trial service timed out")

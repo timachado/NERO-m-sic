@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +28,49 @@ private val panel=Color(0xFF10171C)
 internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     var siteError by remember{mutableStateOf(false)}
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val scope=rememberCoroutineScope()
+    var subscription by remember(uid,ready){mutableStateOf<NeroSubscription?>(null)}
+    var checking by remember(uid,ready){mutableStateOf(false)}
+    var activating by remember(uid,ready){mutableStateOf(false)}
+    var notice by remember(uid,ready){mutableStateOf<String?>(null)}
+    var confirmTrial by remember(uid,ready){mutableStateOf(false)}
+    suspend fun refresh(owner:String){
+        checking=true
+        try{
+            val result=readNeroSubscription(context,owner)
+            if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){
+                subscription=result
+                notice=if(result==null)"Serviço de assinaturas indisponível." else null
+            }
+        }catch(e:CancellationException){throw e}catch(_:Exception){
+            if(NeroSupabase.activeUid.value==owner){subscription=null;notice="Serviço de assinaturas indisponível."}
+        }finally{checking=false}
+    }
+    LaunchedEffect(uid,ready){
+        val owner=uid
+        if(ready&&owner!=null)refresh(owner)
+    }
+    val premium=subscription?.phase?.premium==true
+    if(confirmTrial)AlertDialog(onDismissRequest={confirmTrial=false},title={Text("Experimentar NERO Premium?")},text={Text("Sete dias gratuitos, sem cartão e sem cobrança automática. Apenas uma experiência por conta elegível.")},confirmButton={TextButton(onClick={
+        val owner=uid;confirmTrial=false
+        if(owner!=null&&ready&&NeroSupabase.activeUid.value==owner){
+            activating=true
+            scope.launch{
+                try{
+                    val result=startNeroTrial(context,owner)
+                    if(NeroSupabase.activeUid.value==owner&&NeroSupabase.identityReady.value){
+                        refresh(owner)
+                        if(subscription?.phase==NeroSubscriptionPhase.TRIAL)notice="Experiência Premium ativa."
+                        else if(result=="ineligible")notice="Esta conta não é elegível para uma nova experiência."
+                        else if(subscription?.phase?.premium!=true)notice="Não foi possível confirmar a ativação."
+                    }
+                }catch(e:CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner)notice="Experiência ainda indisponível."}
+                finally{activating=false}
+            }
+        }
+    }){Text("Ativar experiência")}},dismissButton={TextButton(onClick={confirmTrial=false}){Text("Cancelar")}})
     var selectedPlan by remember{mutableStateOf(NeroPlans.annual.id)}
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
@@ -44,9 +89,18 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         }
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
-            Text("Benefícios previstos · contratação indisponível",fontWeight=FontWeight.Medium,color=Color.LightGray)
-            listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","NERO Together · criação de salas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
-            PlanFeature("Smart Mix e Daily Mix avançados",false)
+            Text(when{
+                !ready||checking->"Consultando assinatura…"
+                uid==null->"Entre com Google para consultar seu plano."
+                subscription!=null->subscription!!.phase.label
+                else->"Serviço de assinaturas ainda indisponível"
+            },fontWeight=FontWeight.Medium,color=if(premium)premiumGreen else Color.LightGray)
+            subscription?.dateLabel()?.let{Text("Acesso até: "+it,fontSize=12.sp,color=Color.LightGray)}
+            subscription?.planLabel?.let{Text("Seu plano: "+it,fontSize=13.sp)}
+            if(checking||activating)LinearProgressIndicator(Modifier.fillMaxWidth())
+            listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
+            PlanFeature("NERO Together · integração em homologação",false)
+            PlanFeature("Suporte prioritário · previsto",false)
             HorizontalDivider(color=Color(0xFF33434A))
             Text("Coleção de temas do player",fontWeight=FontWeight.Bold,color=premiumCyan)
             NeroPlayerTheme.entries.forEach{theme->
@@ -75,9 +129,12 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             }
             val selection=NeroPlans.offers.first{it.id==selectedPlan}
             Text("Selecionado: "+selection.label+" · "+selection.price,fontWeight=FontWeight.Medium,color=premiumGreen)
-            Button(enabled=false,onClick={},modifier=Modifier.fillMaxWidth()){Text("Assinatura indisponível")}
+            Button(enabled=ready&&uid!=null&&!checking&&!activating&&subscription?.phase==NeroSubscriptionPhase.FREE,onClick={confirmTrial=true},modifier=Modifier.fillMaxWidth()){Text(if(activating)"Ativando…" else if(premium)"Premium ativo" else "Experimentar 7 dias grátis")}
+            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating,onClick={val owner=uid;if(owner!=null)scope.launch{refresh(owner)}},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
+            notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+            Button(enabled=false,onClick={},modifier=Modifier.fillMaxWidth()){Text("Contratação em preparação")}
             Text("Nenhum pedido ou cobrança será realizado nesta versão.",fontSize=12.sp,color=Color.LightGray)
-            Text("${NeroPlans.TRIAL_DAYS} dias de experiência previstos, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
+            Text("${NeroPlans.TRIAL_DAYS} dias de experiência, quando o serviço estiver habilitado, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
             Text("Contratação prevista pelo site oficial da T.I. Machado, com opções de pagamento sujeitas à disponibilidade.",color=Color.LightGray,fontSize=13.sp)
             OutlinedButton(onClick={siteError=!openBrowser(context,android.net.Uri.parse(NeroPlans.SITE))},modifier=Modifier.fillMaxWidth()){Text("Conhecer o site oficial")}
             if(siteError)Text("Não foi possível abrir o site.",color=Color.LightGray,fontSize=12.sp)

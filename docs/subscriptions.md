@@ -41,3 +41,6 @@ Login Google via Supabase, UID autenticado estável como NERO ID interno; visita
 3. Validar integração isolada da loja, backend de assinatura e segurança.
 4. Validar APK release assinado, termos, privacidade e fluxos de atendimento.
 5. Ativar oferta e publicação somente com autorização específica.
+
+## 0.9.85-dev — trial e estado de assinatura
+A tela de planos consulta a assinatura ativa e permite solicitar trial de sete dias somente para conta Free verificada pelo servidor. RPC de trial em `supabase/setup/nero_trial_start_draft.sql` para staging; ledger único, transação atômica, relógio do servidor e sem cobrança. O cliente reconsulta a assinatura após a solicitação. Ainda não aplicado, não homologado. A integração WooCommerce/Efí exige acesso administrativo autorizado, IDs de produtos NERO, confirmação do ambiente de teste e webhook verificado. Checkout pago continua desabilitado.

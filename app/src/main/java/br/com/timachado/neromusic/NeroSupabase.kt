@@ -154,7 +154,7 @@ internal object NeroSupabase{
         signed
     }
     suspend fun rpc(name:String,body:JSONObject,access:String?=null):String{
-        require(name in setOf("nero_share_preview","nero_share_create","nero_share_read","nero_cloud_read_v1","nero_cloud_write_v1","nero_plan_read_v1","nero_together_v1"))
+        require(name in setOf("nero_share_preview","nero_share_create","nero_share_read","nero_cloud_read_v1","nero_cloud_write_v1","nero_plan_read_v1","nero_together_v1","nero_trial_start_v1"))
         return request("/rest/v1/rpc/"+name,body,access)
     }
     suspend fun signOut(context:Context)=mutex.withLock{
