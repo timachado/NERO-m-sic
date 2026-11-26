@@ -62,8 +62,8 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
-            IconButton(onClick=onAccount){Icon(Icons.Default.AccountCircle,"Minha conta",tint=Color(0xFF00E5FF),modifier=Modifier.size(34.dp))}
-            Text("Sua biblioteca",fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            NeroHeaderProfile(onClick=onAccount)
+            Text("Sua biblioteca",fontSize=22.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f),maxLines=2,overflow=TextOverflow.Ellipsis)
             IconButton(onClick={searching=!searching;if(!searching)term=""}){Icon(Icons.Default.Search,"Buscar playlists")}
             IconButton(onClick=onCreate){Icon(Icons.Default.Add,"Criar playlist")}
         }
