@@ -31,11 +31,10 @@ internal fun radarWeekly(rows:List<CatalogEntry>,today:LocalDate,artists:List<St
     }.distinctBy{it.id}.sortedByDescending{it.releaseDate}
 }
 internal fun radarGenres(artists:List<String>):List<String>{
-    val labels=mapOf("Pagode" to "pagode","Sertanejo" to "sertanejo","Pop Brasil" to "pop","Gospel" to "gospel","Samba" to "samba","Rock" to "rock","MPB" to "mpb","Eletrônica" to "electronic","Hip-hop" to "hip hop","Jazz" to "jazz")
     return neroGenres.mapNotNull{genre->
         val score=artists.sumOf{artist->artistCreditParts(artist).count{genre.matchesArtist(it)}}
-        labels[genre.label]?.takeIf{score>0}?.let{it to score}
-    }.sortedByDescending{it.second}.map{it.first}.take(2)
+        genre.releaseTag.takeIf{score>0}?.let{it to score}
+    }.sortedByDescending{it.second}.map{it.first}.distinct().take(2)
 }
 @Composable
 internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){

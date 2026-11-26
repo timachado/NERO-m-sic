@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 private val djMoods=listOf("Churrasco","Treino","Romântico","Relaxar","Na estrada","Festa")
 internal fun djGenre(prompt:String):NeroGenre?{
     val text=" "+genreKey(prompt)+" "
-    return neroGenres.firstOrNull{(" "+genreKey(it.label)+" ") in text}
+    return neroGenres.mapNotNull{genre->genre.searchKeys().filter{(" "+it+" ") in text}.maxByOrNull{it.length}?.let{genre to it.length}}.maxByOrNull{it.second}?.first
 }
 internal fun djCanCreate(prompt:String,mood:String)=prompt.isNotBlank()||mood in djMoods
 internal fun djToggleMood(current:String,option:String)=if(current==option)"" else option.takeIf{it in djMoods}.orEmpty()

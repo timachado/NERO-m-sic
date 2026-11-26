@@ -30,7 +30,7 @@ import androidx.lifecycle.repeatOnLifecycle
 
 @Composable
 internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
-    val genres=listOf("Todos" to null,"Pop" to "pop","Rock" to "rock","MPB" to "mpb","Gospel" to "gospel","Sertanejo" to "sertanejo","Pagode" to "pagode","Samba" to "samba","Jazz" to "jazz","Eletrônica" to "electronic","Hip-hop" to "hip hop")
+    val genres=neroReleaseGenreOptions
     var days by remember{mutableIntStateOf(30)}
     var genre by remember{mutableStateOf<String?>(null)}
     var reload by remember{mutableIntStateOf(0)}
