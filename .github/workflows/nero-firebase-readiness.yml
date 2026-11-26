@@ -52,5 +52,6 @@ jobs:
               check(False, "FCM validation request failed.")
           check(response.status_code == 200, "FCM validation rejected: HTTP " + str(response.status_code))
           print("FCM validate_only accepted; no message delivered.")
-          print("Automatic release push enabled: " + str(os.environ.get("ENABLED") == "true"))
+          check(os.environ.get("ENABLED") == "true", "NERO_FCM_ENABLED is not true.")
+          print("Automatic release push enabled: True")
           PY
