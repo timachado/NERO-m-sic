@@ -16,3 +16,7 @@ Padroniza o título e o acesso da biblioteca como “Importar do Spotify”, pre
 
 ## Build 169 — homologação privada Firebase
 O proprietário cadastrou o secret NERO_GOOGLE_SERVICES_JSON. O CI assinado agora exige e valida o projeto, pacote e app ID esperados sem imprimir o JSON. Diagnóstico temporário na Conta permite copiar token diretamente para o Console Firebase, testar mensagem direcionada exclusivamente ao aparelho e aceitar payload kind=nero_fcm_test_v1 durante janela local de 15 minutos. Não enviar token ao chat nem ao GitHub. Workflow comercial rejeita qualquer APK cujo código-fonte tenha NERO_FCM_DIAGNOSTIC diferente de false. Nenhum envio foi realizado; após teste desabilitar diagnóstico e recompilar com versionCode superior. Supabase e pagamentos intactos.
+
+## Homologação em aparelho — 26/11/2026
+
+Build 169: CI assinado `45800113436` aprovado; preflight Firebase `45801080073` aprovado em modo validate_only; envio individual de mensagem de diagnóstico `45801925417` aceito pelo FCM. O proprietário confirmou o recebimento real no Android. Build 170 remove painel e tratamento de diagnóstico e define NERO_FCM_DIAGNOSTIC=false. O fluxo de sinal de atualização oficial, consulta do manifesto, fallback e preferências permanece. Homologação comprova entrega individual, não publicação comercial nem entrega coletiva. NERO_FCM_ENABLED permanece desativado até configuração autorizada; não foi alterado neste commit. Nenhuma publicação comercial ou alteração de pagamentos.

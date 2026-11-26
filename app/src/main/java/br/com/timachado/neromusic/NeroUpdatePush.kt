@@ -34,10 +34,6 @@ internal object NeroUpdatePush{
 class NeroUpdateMessagingService:FirebaseMessagingService(){
     override fun onNewToken(token:String){NeroUpdatePush.sync(applicationContext)}
     override fun onMessageReceived(message:RemoteMessage){
-        if(BuildConfig.NERO_FCM_DIAGNOSTIC&&message.data["kind"]=="nero_fcm_test_v1"){
-            NeroFcmDiagnostic.receive(applicationContext)
-            return
-        }
         val code=neroPushVersion(message.data,BuildConfig.VERSION_CODE)?:return
         // Never trust an FCM title, URL or entitlement. Re-read the official stable feed.
         NeroUpdatePush.requestCheck(applicationContext,code)
