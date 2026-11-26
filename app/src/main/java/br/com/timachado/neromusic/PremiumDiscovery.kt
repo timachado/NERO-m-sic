@@ -24,14 +24,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 
 private data class GenreTile(val label:String,val sample:String,val color:Long)
-private val styles=listOf(GenreTile("Sertanejo","Zé Neto e Cristiano",0xFF6D3D17),GenreTile("Pagode","Turma do Pagode",0xFF154E43),GenreTile("Gospel","Fernandinho",0xFF235577),GenreTile("Pop","Anitta",0xFF354D87),GenreTile("Samba","Zeca Pagodinho",0xFF426126),GenreTile("Rock","Queen",0xFF493C43),GenreTile("MPB","Marisa Monte",0xFF36534C),GenreTile("Eletrônica","Alok",0xFF195678),GenreTile("Forró","Nattan",0xFF81512A),GenreTile("Hip-hop","Emicida",0xFF4B4B66),GenreTile("Jazz","Miles Davis",0xFF3B4555),GenreTile("Clássica","Yo-Yo Ma",0xFF514839))
+private val featuredColors=listOf(0xFF6D3D17,0xFF713345,0xFF154E43,0xFF235577,0xFF81512A,0xFF5E472B,0xFF6D384D,0xFF3B416A,0xFF4B4B66,0xFF354D87,0xFF426126,0xFF36534C,0xFF493C43,0xFF195678)
+private val styles=neroGenreLabels.mapIndexedNotNull{index,label->
+    genreForQuery(label)?.artists?.firstOrNull()?.let{GenreTile(label,it,featuredColors[index%featuredColors.size])}
+}
 
 @Composable
 internal fun PremiumGenres(onSearch:(String)->Unit){
     var artwork by remember{mutableStateOf<Map<String,String>>(emptyMap())}
-    LaunchedEffect(Unit){
+    var expanded by remember{mutableStateOf(false)}
+    val visibleStyles=if(expanded)styles else styles.take(neroFeaturedGenreLabels.size)
+    LaunchedEffect(expanded){
         if(NativeMusicCatalog.enabled){
-            for(genre in styles){
+            for(genre in styles.take(neroFeaturedGenreLabels.size)){ 
+                if(artwork.containsKey(genre.label))continue
                 try{
                     val hits=NativeMusicCatalog.search(genre.sample)
                     val first=hits.firstOrNull{genreForQuery(genre.label)?.matchesArtist(it.artist)==true}
@@ -43,7 +49,7 @@ internal fun PremiumGenres(onSearch:(String)->Unit){
     }
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         Text("Explore por gênero",fontSize=21.sp,fontWeight=FontWeight.Bold)
-        for(pair in styles.chunked(2)){
+        for(pair in visibleStyles.chunked(2)){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 pair.forEach{genre->
                     Card(onClick={onSearch(genre.label)},modifier=Modifier.weight(1f).height(102.dp),shape=RoundedCornerShape(14.dp)){
@@ -52,13 +58,15 @@ internal fun PremiumGenres(onSearch:(String)->Unit){
                             if(cover!=null)AsyncImage(model=cover,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(0.7f))
                             else Icon(Icons.Default.MusicNote,null,tint=Color.White.copy(alpha=.25f),modifier=Modifier.align(Alignment.CenterEnd).padding(12.dp).size(46.dp))
                             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(genre.color),Color(genre.color).copy(alpha=.88f),Color.Black.copy(alpha=.16f)))))
-                            Text(genre.label,Modifier.align(Alignment.TopStart).padding(12.dp),fontWeight=FontWeight.Bold,fontSize=17.sp,color=Color.White,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text(genre.label,Modifier.align(Alignment.TopStart).padding(12.dp),fontWeight=FontWeight.Bold,fontSize=17.sp,color=Color.White,maxLines=2,overflow=TextOverflow.Ellipsis)
                             Text("Explorar",Modifier.align(Alignment.BottomStart).padding(12.dp),fontSize=11.sp,color=Color.White)
                         }
                     }
                 }
+                if(pair.size==1)Spacer(Modifier.weight(1f))
             }
         }
+        OutlinedButton(onClick={expanded=!expanded},modifier=Modifier.fillMaxWidth()){Text(if(expanded)"Mostrar menos gêneros" else "Ver todos os gêneros (${styles.size})")}
     }
 }
 
@@ -75,7 +83,8 @@ internal fun PremiumDiscovery(onSearch:(String)->Unit){
         Text("Seleções para explorar",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Text("Seleções por artistas de cada gênero · não é ranking de paradas",fontSize=11.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            items(listOf("Sertanejo" to "Sertanejo","Pagode" to "Pagode","Pop Brasil" to "Pop Brasil","Gospel" to "Gospel","Forró" to "Forró")){(label,term)->
+            items(neroFeaturedGenreLabels){label->
+                val term=label
                 Card(onClick={onSearch(term)},modifier=Modifier.width(142.dp).height(86.dp)){
                     Column(Modifier.fillMaxSize().background(Color(0xFF172D35)).padding(12.dp),verticalArrangement=Arrangement.SpaceBetween){
                         Text(label,fontWeight=FontWeight.Bold,fontSize=17.sp)

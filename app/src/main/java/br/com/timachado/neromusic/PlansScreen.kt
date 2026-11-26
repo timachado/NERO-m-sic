@@ -55,7 +55,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         if(ready&&owner!=null&&!activating)refresh(owner)
     }
     val premium=subscription?.phase?.premium==true
-    if(confirmTrial)AlertDialog(onDismissRequest={confirmTrial=false},title={Text("Experimentar NERO Premium?")},text={Text("Sete dias gratuitos, sem cartão e sem cobrança automática. Apenas uma experiência por conta elegível.")},confirmButton={TextButton(onClick={
+    if(confirmTrial)AlertDialog(onDismissRequest={confirmTrial=false},title={Text("Experimentar Premium NERO Music?")},text={Text("Sete dias gratuitos, sem cartão e sem cobrança automática. Apenas uma experiência por conta elegível.")},confirmButton={TextButton(onClick={
         val owner=uid;confirmTrial=false
         if(owner!=null&&ready&&NeroSupabase.activeUid.value==owner){
             activating=true
@@ -91,7 +91,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Text("Ouça em modo aleatório e avance para a próxima faixa. Voltar e arrastar a barra da música são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
         }
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Text("Premium NERO Music",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text(when{
                 !ready||checking->"Consultando assinatura…"
                 uid==null->"Entre com Google para consultar seu plano."
@@ -143,13 +143,13 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Button(onClick={
                 val url=neroCheckoutUrl(selection.id)
                 siteError=url==null||!openBrowser(context,android.net.Uri.parse(url))
-            },modifier=Modifier.fillMaxWidth()){Text("Conhecer Premium "+selection.label)}
+            },modifier=Modifier.fillMaxWidth()){Text("Conhecer Premium NERO Music · "+selection.label)}
             Text("O plano selecionado segue para o checkout oficial quando disponível. Ao retornar, a assinatura será consultada automaticamente.",fontSize=12.sp,color=Color.LightGray)
             Text("${NeroPlans.TRIAL_DAYS} dias de experiência, quando o serviço estiver habilitado, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
             Text("O site confirma os valores, disponibilidade e pagamentos.",color=Color.LightGray,fontSize=13.sp)
             if(siteError)Text("Não foi possível abrir o site.",color=Color.LightGray,fontSize=12.sp)
         }
-        Text("O NERO Premium é uma assinatura independente. Downloads sujeitos à disponibilidade e às permissões de cada faixa.",fontSize=12.sp,color=Color.LightGray)
+        Text("O Premium NERO Music é uma assinatura independente. Downloads sujeitos à disponibilidade e às permissões de cada faixa.",fontSize=12.sp,color=Color.LightGray)
         OutlinedButton(onClick=onBack,modifier=Modifier.fillMaxWidth()){Text("Voltar")}
     }
 }

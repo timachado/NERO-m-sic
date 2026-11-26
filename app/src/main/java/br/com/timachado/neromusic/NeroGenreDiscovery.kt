@@ -57,7 +57,8 @@ internal val neroGenres=listOf(
     NeroGenre("Louvor e adoração",listOf("Diante do Trono","Morada","Gabriela Rocha","Isaias Saad","Hillsong Worship","Elevation Worship","Bethel Music"),"worship",listOf("worship","louvor","adoração"))
 )
 internal fun NeroGenre.searchKeys()=(listOf(label)+aliases).map(::genreKey).filter{it.isNotBlank()}.distinct()
-internal val neroGenreLabels:List<String> = listOf("Sertanejo","Pagode","Gospel","MPB","Pop","Rock","Samba","Forró","Eletrônica","Jazz","Hip-hop","Clássica")+neroGenres.drop(12).map{it.label}
+internal val neroFeaturedGenreLabels=listOf("Sertanejo","Funk","Pagode","Gospel","Forró","Piseiro","Arrocha","Trap","Hip-hop","Pop","Samba","MPB")
+internal val neroGenreLabels:List<String> = (neroFeaturedGenreLabels+listOf("Rock","Eletrônica","Reggae","Pop internacional","Rap internacional")+neroGenres.map{if(it.label=="Pop Brasil")"Pop" else it.label}).distinct()
 internal val neroReleaseGenreOptions:List<Pair<String,String?>> = listOf("Todos" to null)+neroGenreLabels.mapNotNull{label->genreForQuery(label)?.let{label to it.releaseTag}}
 internal fun genreForQuery(query:String):NeroGenre?{
     val key=genreKey(query).removeSuffix(" novidades").trim()

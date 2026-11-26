@@ -18,6 +18,7 @@ class NeroGenreDiscoveryTest{
         assertNotNull(genreForQuery("classica"))
     }
     @Test fun expandedGenresShareDiscoveryAndReleaseOptions(){
+        assertEquals(listOf("Sertanejo","Funk","Pagode","Gospel","Forró","Piseiro","Arrocha","Trap","Hip-hop","Pop","Samba","MPB"),neroGenreLabels.take(12))
         assertEquals(44,neroGenres.size)
         assertEquals(44,neroGenreLabels.size)
         assertEquals(45,neroReleaseGenreOptions.size)

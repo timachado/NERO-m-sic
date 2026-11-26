@@ -157,3 +157,6 @@ Seleção inicial neutra, alternância/desmarcação de estilo e bloqueio de mix
 
 ## Build 172 — ampliação de gêneros
 44 categorias (12 existentes + 32 novas), artistas de referência e aliases normalizados em lista compartilhada por pesquisa, lançamentos, Radar e NERO DJ; a seleção de gênero no DJ prioriza a correspondência mais específica. Tags de lançamentos são termos de consulta ao MusicBrainz, não garantia de cobertura; gêneros com tags iguais podem consultar os mesmos lançamentos. A classificação é curada por artista e não certifica o gênero de cada faixa. Nenhuma alteração no catálogo de áudio, planos, Firebase ou pagamentos. Testes de regressão adicionados; CI e validação em aparelho pendentes.
+
+## Build 173 — vitrine de gêneros e identidade Premium
+Corrige a lista fixa de 12 cards em PremiumGenres, compartilhada pela Home e Busca: 12 gêneros prioritários, botão para exibir as 44 categorias, títulos em até duas linhas. Imagens consultadas somente para a vitrine inicial; demais cards usam acabamento gráfico sem exigir 32 consultas extras. Nome Premium NERO Music na tela comercial e navegação. Modal de catálogo descreve experiência independente e fontes externas, sem afirmar propriedade do acervo. Não altera fornecedores, atribuições exigidas, checkout, regras Free/Premium, Firebase ou reprodução. Teste em aparelho pendente.
