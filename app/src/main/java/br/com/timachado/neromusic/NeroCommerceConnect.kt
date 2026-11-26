@@ -11,3 +11,8 @@ internal fun neroCheckoutUrl(planId:String):String? {
     }
     return "https://timachado.ifree.page/?tiac_nero_plan="+plan
 }
+
+/** Accept only the short-lived opaque ticket URL returned by the NERO server. */
+internal fun neroValidatedCheckoutHandoff(url:String):String? = url.takeIf{
+    it.matches(Regex("^https://timachado\\.ifree\\.page/\\?tiac_nero_handoff=[A-Za-z0-9_-]{70,2500}$"))
+}
