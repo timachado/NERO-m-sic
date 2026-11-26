@@ -73,14 +73,15 @@ internal fun ImmersivePlayer(
     var showDevices by remember{mutableStateOf(false)}
     if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,onCast={
         showDevices=false
+        val directTrack=offlineTrack?.takeIf{!mediaId.startsWith("youtube:")&&allowed(it)&&NeroWebVideoCaster.directMediaUrl(it.url,it.mime)!=null}
         when{
-            NeroWebVideoCaster.publicWatchUrl(mediaId)==null->android.widget.Toast.makeText(castContext,"Esta faixa não tem endereço público compatível para transmissão.",android.widget.Toast.LENGTH_LONG).show()
+            directTrack==null->android.widget.Toast.makeText(castContext,"A faixa atual não oferece mídia direta autorizada para o Web Video Caster. A reprodução continua no NERO.",android.widget.Toast.LENGTH_LONG).show()
             !NeroWebVideoCaster.available(castContext)->{
                 android.widget.Toast.makeText(castContext,"Instale o Web Video Caster para transmitir à TV.",android.widget.Toast.LENGTH_LONG).show()
                 runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}
                     .onFailure{runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/apps/details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}}
             }
-            !NeroWebVideoCaster.handoff(castContext,mediaId,title)->android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
+            !NeroWebVideoCaster.handoff(castContext,directTrack)->android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
             else->Unit
         }
     },onClose={showDevices=false})
