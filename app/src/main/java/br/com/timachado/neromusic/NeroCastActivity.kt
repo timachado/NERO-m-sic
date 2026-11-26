@@ -112,7 +112,20 @@ class NeroCastActivity:FragmentActivity(){
         future=request
         request.addListener({
             if(!isDestroyed&&!isFinishing){
-                try{controller=request.get();discoverDlna()}catch(_:Exception){message("Player indisponível.")}
+                try{
+                    controller=request.get()
+                    if(intent.getBooleanExtra(NeroWebVideoCaster.EXTRA_REQUEST,false)){
+                        // Consume once to avoid reopening an external app after recreation.
+                        intent.removeExtra(NeroWebVideoCaster.EXTRA_REQUEST)
+                        val player=controller
+                        if(NeroWebVideoCaster.handoff(this,player?.currentMediaItem?.mediaId,player?.mediaMetadata?.title?.toString().orEmpty())){
+                            finish()
+                        }else{
+                            android.widget.Toast.makeText(this,"Web Video Caster indisponível. Usando o seletor NERO.",android.widget.Toast.LENGTH_LONG).show()
+                            discoverDlna()
+                        }
+                    }else discoverDlna()
+                }catch(_:Exception){message("Player indisponível.")}
             }
         },ContextCompat.getMainExecutor(this))
     }
