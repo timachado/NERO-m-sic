@@ -74,14 +74,15 @@ internal fun NeroConnectLanDialog(uid:String,onClose:()->Unit){
         val server=NeroConnectLanReceiver(context.applicationContext,uid)
         receiver=server;notice="Iniciando recepção…"
         receiverJob=scope.launch{
+            var failed=false
             try{server.listen(onReady={endpoint=it;notice="Recepção ativa por até 5 minutos."},onCommand={action->
                 val ok=execute(action)
-                notice=if(ok)"Comando recebido: "+action.name else "Comando não disponível na faixa atual."
+                notice=if(ok)when(action){ConnectAction.PLAY->"Reprodução iniciada.";ConnectAction.PAUSE->"Reprodução pausada.";ConnectAction.NEXT->"Próxima faixa.";ConnectAction.PREVIOUS->"Faixa anterior.";else->"Comando recebido."} else "Comando não disponível na faixa atual."
                 ok
             })}
             catch(e:CancellationException){throw e}
-            catch(_:Exception){notice="Não foi possível iniciar. Confira o Wi-Fi e o pareamento."}
-            finally{server.close();if(receiver===server){receiver=null;endpoint=""}}
+            catch(_:Exception){failed=true;notice="Não foi possível iniciar. Confira o Wi-Fi e o pareamento."}
+            finally{server.close();if(receiver===server){receiver=null;endpoint="";if(!failed)notice="Sessão encerrada. Autorize novamente para receber comandos."}}
         }
     }
     fun send(action:ConnectAction){
