@@ -83,6 +83,8 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
             OutlinedButton(onClick=onPlans,modifier=Modifier.fillMaxWidth()){Text("Conhecer NERO Premium")}
             TextButton(enabled=enabled&&!planBusy,onClick={scope.launch{refreshPlan()}}){Text("Consultar / restaurar assinatura")}
             if(planBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
+            HorizontalDivider()
+            NeroPlayerAppearance(user.uid,enabled)
         }
     }
     confirm?.let{kind->

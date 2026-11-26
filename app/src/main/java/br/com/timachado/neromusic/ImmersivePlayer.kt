@@ -43,9 +43,6 @@ internal object NeroSleepTimer{
     fun start(minutes:Int){require(minutes in 1..120);state.value=SystemClock.elapsedRealtime()+minutes*60000L}
     fun cancel(){state.value=null}
 }
-private val neon=Color(0xFF39FF14)
-private val aqua=Color(0xFF00E5FF)
-private val panel=Color(0xFF17262D)
 private fun clock(ms:Long):String{val sec=(ms.coerceAtLeast(0)/1000);return "%d:%02d".format(sec/60,sec%60)}
 @Composable
 internal fun ImmersivePlayer(
@@ -62,6 +59,10 @@ internal fun ImmersivePlayer(
         FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()},pipSupported=pipSupported,onPip=onPip,favorite=favorite,canFavorite=canSave,onFavorite=onFavorite)
         return
     }
+    val appearance=rememberNeroPlayerTheme()
+    val neon=Color(appearance.primary)
+    val aqua=Color(appearance.secondary)
+    val panel=Color(appearance.panel)
     val deadline by NeroSleepTimer.deadline.collectAsState()
     var remaining by remember(deadline){mutableLongStateOf((deadline?.minus(SystemClock.elapsedRealtime())?:0L).coerceAtLeast(0))}
     var showTimer by remember{mutableStateOf(false)}
@@ -98,8 +99,8 @@ internal fun ImmersivePlayer(
         },confirmButton={TextButton(onClick={showTimer=false}){Text("Fechar")}},
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
     val tones=rememberPlayerTones(track,remoteCover)
-    BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)){
-        NeroAuroraBackdrop(tones,playing&&!videoMode,Modifier.matchParentSize())
+    BoxWithConstraints(modifier.fillMaxSize().background(Color(appearance.background))){
+        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else aqua,playing&&!videoMode,Modifier.matchParentSize())
         val compact=maxHeight<780.dp
         val coverSize=minOf(maxWidth-36.dp,(maxHeight-(if(canVideo) 335.dp else 285.dp)).coerceAtLeast(150.dp),410.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
@@ -141,7 +142,7 @@ internal fun ImmersivePlayer(
                     val shape=RoundedCornerShape(50)
                     val outline=if(selected)neon else aqua.copy(alpha=.7f)
                     Row(Modifier.height(40.dp).widthIn(min=108.dp).clip(shape)
-                        .background(if(selected)Brush.horizontalGradient(listOf(neon,Color(0xFF00DDA3)))else Brush.horizontalGradient(listOf(Color(0xFF102327),Color(0xFF071619))))
+                        .background(if(selected)Brush.horizontalGradient(listOf(neon,if(appearance==NeroPlayerTheme.AURORA)Color(0xFF00DDA3)else aqua))else Brush.horizontalGradient(listOf(Color(0xFF102327),Color(0xFF071619))))
                         .border(1.dp,outline,shape).clickable(enabled=ready&&!selected){onVideoToggle()}.padding(horizontal=12.dp),
                         horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
                         Icon(if(video)Icons.Default.OndemandVideo else Icons.Default.MusicNote,null,tint=if(selected)Color.Black else neon,modifier=Modifier.size(20.dp))
