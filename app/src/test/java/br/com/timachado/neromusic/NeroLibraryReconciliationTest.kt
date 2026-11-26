@@ -23,13 +23,30 @@ class NeroLibraryReconciliationTest{
         assertEquals(setOf(a,b,c),result.snapshot.favorites.toSet())
         assertTrue(result.conflicts.isEmpty())
     }
-    @Test fun concurrentPlaylistEditsAreConflicts(){
+    @Test fun independentRenameAndTrackChangesMerge(){
         val original=OnlineList("list","Original",listOf(a))
         val base=CloudLibrarySnapshot(emptyList(),listOf(original))
         val local=base.copy(playlists=listOf(original.copy(name="Renamed")))
-        val remote=base.copy(playlists=listOf(original.copy(songs=listOf(a,b))))
-        val result=reconcileNeroLibrary(base,local,remote)
-        assertEquals(listOf(NeroSyncConflict("playlist","list")),result.conflicts)
+        val remote=base.copy(playlists=listOf(original.copy(songs=listOf(b,a))))
+        for((left,right) in listOf(local to remote,remote to local)){
+            val result=reconcileNeroLibrary(base,left,right)
+            assertTrue(result.conflicts.isEmpty())
+            assertEquals(listOf(original.copy(name="Renamed",songs=listOf(b,a))),result.snapshot.playlists)
+        }
+    }
+    @Test fun incompatibleTrackChangesRemainConflicts(){
+        val original=OnlineList("list","Original",listOf(a))
+        val base=CloudLibrarySnapshot(emptyList(),listOf(original))
+        val local=base.copy(playlists=listOf(original.copy(songs=listOf(a,b))))
+        val remote=base.copy(playlists=listOf(original.copy(songs=listOf(a,c))))
+        assertEquals(listOf(NeroSyncConflict("playlist","list")),reconcileNeroLibrary(base,local,remote).conflicts)
+    }
+    @Test fun incompatibleRenamesRemainConflicts(){
+        val original=OnlineList("list","Original",listOf(a))
+        val base=CloudLibrarySnapshot(emptyList(),listOf(original))
+        val local=base.copy(playlists=listOf(original.copy(name="Local")))
+        val remote=base.copy(playlists=listOf(original.copy(name="Remote")))
+        assertEquals(listOf(NeroSyncConflict("playlist","list")),reconcileNeroLibrary(base,local,remote).conflicts)
     }
     @Test fun deleteVersusEditIsConflict(){
         val list=OnlineList("list","Original",listOf(a))
