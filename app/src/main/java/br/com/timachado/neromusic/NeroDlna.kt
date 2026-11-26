@@ -124,6 +124,23 @@ internal object NeroDlna {
         soap(context,d,"SetAVTransportURI","<CurrentURI>"+escape(url)+"</CurrentURI><CurrentURIMetaData>"+escape(metadata)+"</CurrentURIMetaData>")
         soap(context,d,"Play","<Speed>1</Speed>")
     }
+    // A successful SOAP response only acknowledges the command. Confirm
+    // the actual transport state and URI before pausing local playback.
+    internal fun confirmedPlayback(state:String?,currentUri:String?,expectedUri:String):Boolean =
+        state=="PLAYING" && currentUri==expectedUri
+    fun awaitPlaying(context:Context,d:NeroDlnaDevice,url:String):Boolean{
+        val deadline=SystemClock.elapsedRealtime()+12000L
+        while(SystemClock.elapsedRealtime()<deadline){
+            val state=field(soap(context,d,"GetTransportInfo",""),"CurrentTransportState")
+            if(state=="PLAYING"){
+                val current=field(soap(context,d,"GetMediaInfo",""),"CurrentURI")
+                return confirmedPlayback(state,current,url)
+            }
+            if(state=="NO_MEDIA_PRESENT")return false
+            Thread.sleep(500)
+        }
+        return false
+    }
     fun control(context:Context,d:NeroDlnaDevice,url:String,action:String){
         require(action in setOf("Pause","Play","Stop"))
         val current=field(soap(context,d,"GetMediaInfo",""),"CurrentURI")
