@@ -372,14 +372,14 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
             if(current!=null)IconButton(onClick={leavePlaylist()}){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text(current?.name ?: "NERO Transfer",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("Playlists importadas do Spotify · NERO Transfer",color=Color(0xFF00E5FF),fontSize=12.sp)
+            Text(current?.name ?: "Importar do Spotify",fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text("NERO Transfer · Playlists do Spotify",color=Color(0xFF00E5FF),fontSize=12.sp)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,color=Color.LightGray)}
             if(current==null){
                 Text("Solicite seus dados na página de privacidade do Spotify e selecione o ZIP recebido ou os arquivos Playlist*.json. Não é necessário fornecer senha ou token.",color=Color.LightGray,fontSize=13.sp)
                 OutlinedButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://www.spotify.com/account/privacy/")))}},modifier=Modifier.fillMaxWidth()){Text("Solicitar dados ao Spotify")}
-                Button(onClick={picker.launch(arrayOf("application/zip","application/x-zip-compressed","application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Importar ZIP ou JSON")}
+                Button(onClick={picker.launch(arrayOf("application/zip","application/x-zip-compressed","application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Importar playlists do Spotify")}
             }else{
                 Text("${current.items.size} itens · ${queue.size} reproduzíveis",color=Color.LightGray)
                 Text("${catalogMatches.size} online · ${matchedByPosition.size} locais · ${current.items.size-queue.size} pendentes",fontSize=12.sp,color=Color.LightGray)

@@ -10,3 +10,6 @@ O APK registra FirebaseMessagingService, tópico nero_music_stable_updates_v1, a
 
 ## Build 167 — revisão de atualização
 Adiciona consulta manual e recuperação do download na conta mesmo após dispensar o aviso inicial. Valida no servidor de publicação a URL oficial, o hash, o registro de publicação e a reserva de envio antes de chamar FCM; testes unitários sem rede, credenciais ou destinatários. Preserva o fluxo de publicação protegido. CI e validação em Android pendentes.
+
+## Build 168 — identificação da importação
+Padroniza o título e o acesso da biblioteca como “Importar do Spotify”, preserva NERO Transfer como identificação secundária e explicita o botão de importação. O seletor ZIP/JSON, os nomes originais das playlists e toda a lógica de correspondência permanecem intactos. Sem alteração de Firebase, comércio ou publicação. Compilação pendente.

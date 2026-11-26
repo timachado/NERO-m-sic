@@ -146,7 +146,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
             if(!artistFilter&&!albumFilter&&!loading&&!failed&&lists.isEmpty())item{
                 Text("Suas playlists aparecem aqui.",color=Color.LightGray)
                 TextButton(onClick=onCreate){Text("Criar minha primeira playlist")}
-                TextButton(onClick={onOpen(6,null)}){Text("Importar minhas playlists")}
+                TextButton(onClick={onOpen(6,null)}){Text("Importar do Spotify")}
                 TextButton(onClick=onSearch){Text("Encontrar músicas")}
             }
         }
