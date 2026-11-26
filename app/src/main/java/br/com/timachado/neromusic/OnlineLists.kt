@@ -204,6 +204,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO Music.",fontSize=12.sp,color=Color.LightGray)
             if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
+            if(active==null)NeroSmartLibrary(uid,ready,lists.getOrDefault(emptyList())){next->lists=Result.success(next);notice="Coleções inteligentes salvas."}
             if(active!=null){
                 TextButton(enabled=ready&&!renaming,onClick={renameName=active.name;renameTarget=active.id}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Renomear playlist")}
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}

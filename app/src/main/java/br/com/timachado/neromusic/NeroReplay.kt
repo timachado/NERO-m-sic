@@ -16,8 +16,8 @@ import java.util.Locale
 
 internal data class ReplayEntry(val day:Long,val id:String,val title:String,val artist:String,val millis:Long)
 internal data class ReplayTrack(val id:String,val title:String,val artist:String,val millis:Long)
-internal fun replayTracks(entries:List<ReplayEntry>,today:Long,days:Int):List<ReplayTrack> =
-    entries.filter{it.day in (today-days.coerceIn(1,90)+1)..today&&it.millis>0}
+internal fun replayTracks(entries:List<ReplayEntry>,today:Long,days:Int,maxDays:Int=90):List<ReplayTrack> =
+    entries.filter{it.day in (today-days.coerceIn(1,maxDays)+1)..today&&it.millis>0}
         .groupBy{it.id}.map{(id,rows)->
             val latest=rows.maxByOrNull{it.day}!!
             ReplayTrack(id,latest.title,latest.artist,rows.sumOf{it.millis})

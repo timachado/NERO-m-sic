@@ -22,13 +22,13 @@ import java.util.Locale
 
 internal data class ReplayPremiumSummary(val total:Long,val activeDays:Int,val daily:List<Pair<Long,Long>>,val longestStreak:Int,val tracks:List<ReplayTrack>,val artists:List<Pair<String,Long>>)
 internal fun summarizePremiumReplay(entries:List<ReplayEntry>,today:Long,days:Int):ReplayPremiumSummary{
-    val period=days.coerceIn(1,90)
+    val period=days.coerceIn(1,365)
     val valid=entries.filter{it.day in today-period+1..today&&it.millis in 1L..86400000L}
     val totals=valid.groupBy{it.day}.mapValues{(_,v)->v.sumOf{it.millis}}
     val daily=(today-period+1..today).map{it to (totals[it]?:0L)}
     var streak=0;var longest=0
     daily.forEach{(_,ms)->streak=if(ms>0)streak+1 else 0;longest=maxOf(streak,longest)}
-    val tracks=replayTracks(valid,today,period)
+    val tracks=replayTracks(valid,today,period,maxDays=365)
     return ReplayPremiumSummary(valid.sumOf{it.millis},totals.size,daily,longest,tracks,replayArtists(tracks))
 }
 
@@ -60,18 +60,25 @@ internal object NeroReplayPremiumStore{
         return prefs(context,uid).all.mapNotNull{(key,value)->
             if(!key.startsWith("r:")||value !is String)return@mapNotNull null
             runCatching{val j=JSONObject(value);ReplayEntry(j.getLong("day"),j.getString("id"),j.getString("title"),j.optString("artist"),j.getLong("ms"))}.getOrNull()
-                ?.takeIf{it.day in day-89..day&&it.millis in 1L..86400000L}
+                ?.takeIf{it.day in day-364..day&&it.millis in 1L..86400000L}
         }.takeIf{active(uid)}?:emptyList()
     }
     @Synchronized fun add(context:Context,uid:String,id:String,title:String,artist:String,ms:Long){
         if(!enabled(context,uid)||!NeroReplay.enabled(context)||id.isBlank()||id.length>512||title.isBlank()||ms !in 1L..6000L)return
         val day=NeroReplay.today();val p=prefs(context,uid);val key="r:"+day+":"+id
         val edit=p.edit()
-        val keys=p.all.keys.filter{it.startsWith("r:")}
-        val expired=keys.filter{it.substringAfter("r:").substringBefore(':').toLongOrNull()?.let{d->d in day-89..day}!=true}
-        expired.forEach{edit.remove(it)}
-        val remaining=keys.size-expired.size
-        if(key !in keys&&remaining>=3000){edit.apply();return}
+        // Only inspect the full index on a new track/day; frequent samples update one row.
+        if(!p.contains(key)){
+            val keys=p.all.keys.filter{it.startsWith("r:")}
+            val expired=keys.filter{it.substringAfter("r:").substringBefore(':').toLongOrNull()?.let{d->d in day-364..day}!=true}
+            expired.forEach{edit.remove(it)}
+            val expiredSet=expired.toSet()
+            val remaining=keys.filterNot{it in expiredSet}
+            if(remaining.size>=12000){
+                val oldest=remaining.minByOrNull{it.substringAfter("r:").substringBefore(':').toLongOrNull()?:Long.MIN_VALUE}
+                if(oldest!=null)edit.remove(oldest)
+            }
+        }
         val old=runCatching{JSONObject(p.getString(key,null)?:"{}").optLong("ms")}.getOrDefault(0L).coerceIn(0L,86400000L)
         val row=JSONObject().put("day",day).put("id",id).put("title",title.take(200)).put("artist",artist.take(200)).put("ms",(old+ms).coerceAtMost(86400000L))
         if(active(uid))edit.putString(key,row.toString()).apply()
@@ -83,7 +90,7 @@ internal fun NeroReplayPremium(days:Int){
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
-    Text("NERO Replay Premium",fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+    Text("NERO Replay 365",fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
     val owner=uid
     if(!ready||owner==null){Text("Entre com Google para conhecer as estatísticas da sua conta neste aparelho.",fontSize=12.sp);return}
     key(owner){
@@ -95,6 +102,7 @@ internal fun NeroReplayPremium(days:Int){
         var confirm by remember{mutableStateOf(false)}
         var entries by remember{mutableStateOf(emptyList<ReplayEntry>())}
         var today by remember{mutableLongStateOf(NeroReplay.today())}
+        var period by remember(days){mutableIntStateOf(days)}
         LaunchedEffect(owner,verified){
             if(!verified){entries=emptyList();return@LaunchedEffect}
             while(true){
@@ -120,13 +128,21 @@ internal fun NeroReplayPremium(days:Int){
         }},modifier=Modifier.fillMaxWidth()){Text(if(busy)"Verificando…" else if(verified)"Revalidar assinatura" else "Consultar Premium")}
         if(checked&&!verified)Text("Assinatura ativa não confirmada. As estatísticas básicas continuam disponíveis.",fontSize=12.sp,color=Color.LightGray)
         if(verified){
-            val summary=remember(entries,today,days){summarizePremiumReplay(entries,today,days)}
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                items(4){i->
+                    val option=listOf(7,30,90,365)[i]
+                    FilterChip(selected=period==option,onClick={period=option},label={Text(if(option==365)"365 dias" else "$option dias")})
+                }
+            }
+            val summary=remember(entries,today,period){summarizePremiumReplay(entries,today,period)}
+            Text("Retrospectiva · últimos $period dias",fontWeight=FontWeight.Bold)
+            Text("${summary.tracks.size} faixas diferentes · ${summary.artists.size} artistas",fontSize=13.sp)
             Text("${summary.activeDays} dias ativos · maior sequência: ${summary.longestStreak} dias",fontSize=13.sp)
             Text("Tempo ouvido: "+premiumReplayTime(summary.total),fontWeight=FontWeight.Bold)
-            Text("Evolução diária · últimos ${minOf(days,14)} dias",fontWeight=FontWeight.Medium)
-            val visible=summary.daily.takeLast(14)
+            val visible=if(period==365)summary.daily.groupBy{java.time.YearMonth.from(LocalDate.ofEpochDay(it.first))}.values.map{group->group.first().first to group.sumOf{it.second}} else summary.daily.takeLast(14)
+            Text(if(period==365)"Evolução mensal" else "Evolução diária · últimos ${minOf(period,14)} dias",fontWeight=FontWeight.Medium)
             val max=visible.maxOfOrNull{it.second}?.coerceAtLeast(1L)?:1L
-            val dateFormat=remember{DateTimeFormatter.ofPattern("dd/MM",Locale("pt","BR"))}
+            val dateFormat=remember(period){DateTimeFormatter.ofPattern(if(period==365)"MMM/yy" else "dd/MM",Locale("pt","BR"))}
             visible.forEach{(day,ms)->
                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Text(LocalDate.ofEpochDay(day).format(dateFormat),fontSize=11.sp)
@@ -146,7 +162,7 @@ internal fun NeroReplayPremium(days:Int){
         }
         TextButton(onClick={confirm=true}){Text("Apagar registros desta conta")}
         if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Apagar Replay da conta neste aparelho?")},text={Text("Apaga apenas o registro separado desta conta. Não altera o Replay básico, favoritos ou playlists.")},confirmButton={TextButton(onClick={if(NeroSupabase.activeUid.value==owner&&NeroSupabase.identityReady.value){NeroReplayPremiumStore.clear(context,owner);entries=emptyList()};confirm=false}){Text("Apagar")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancelar")}})
-        Text("Estimativas com amostragem de 5 segundos; retenção de até 90 dias e 3.000 registros.",fontSize=11.sp,color=Color.LightGray)
+        Text("Estimativas com amostragem de 5 segundos; retenção de até 365 dias e 12.000 registros. A retrospectiva usa somente dados já registrados; períodos anteriores não são recuperados.",fontSize=11.sp,color=Color.LightGray)
     }
 }
 private fun premiumReplayTime(ms:Long):String{

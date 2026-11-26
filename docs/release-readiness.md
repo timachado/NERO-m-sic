@@ -91,3 +91,6 @@ NERO Radar gratuito na home, opt-in por conta/dispositivo, consultas de lançame
 
 ## 0.9.80-dev — Radar alerts e Studio
 Alertas gratuitos opt-in com permissão Android, WorkManager periódico diário sujeito ao sistema, validação local da identidade sem refresh de tokens, preferências por conta, primeiro levantamento silencioso e deduplicação. Notificação abre o aplicativo (não a faixa diretamente). Studio amplia temas Ruby Night e Glacier, atualiza preferência do player via listener e aplica cores às animações decorativas. Não há mudança de cobrança, catálogo ou outras funções. Testes de deduplicação adicionados; build e validação de notificações/temas em aparelho pendentes. Replay 365, Together e Smart Library continuam pendentes.
+
+## 0.9.81-dev — Replay 365 e Smart Library
+Replay Premium com janela de até 365 dias, gráfico mensal e retenção de até 12 mil registros por conta no aparelho; dados já descartados não são recuperados. Replay Free preserva limite de 90 dias. Smart Library analisa playlists online da conta, identifica referências repetidas e versões possíveis, propõe coleções por gêneros inferidos, exige seleção e confirmação Premium antes de copiar; originais permanecem. Testes adicionados. Together pendente. Compilação e teste em dispositivo pendentes. Sem alterações de cobrança ou produção.
