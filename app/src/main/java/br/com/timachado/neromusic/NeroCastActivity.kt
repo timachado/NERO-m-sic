@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.app.AlertDialog
 import android.net.wifi.WifiManager
 import android.widget.ScrollView
+import android.view.View
 import com.google.android.gms.cast.framework.CastState
 import com.google.android.gms.cast.framework.CastStateListener
 import kotlinx.coroutines.*
@@ -53,26 +54,29 @@ class NeroCastActivity:FragmentActivity(){
     private var dlnaPlaying:Pair<NeroDlnaDevice,String>?=null
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
     private var multicast:WifiManager.MulticastLock?=null
-    private lateinit var castStatus:TextView
+    private lateinit var devicesPanel:LinearLayout
+    private lateinit var controls:LinearLayout
+    private lateinit var googleChoice:Button
+    private var castPickerJob:Job?=null
     private lateinit var targetStatus:TextView
     private val castListener=CastStateListener{state->
-        if(::castStatus.isInitialized)castStatus.text=when(state){
-            CastState.NO_DEVICES_AVAILABLE->"Google Cast: nenhum dispositivo compatível detectado."
-            CastState.NOT_CONNECTED->"Google Cast: dispositivos disponíveis."
-            CastState.CONNECTING->"Google Cast: conectando…"
-            CastState.CONNECTED->"Google Cast: conectado."
-            else->"Google Cast: verificando…"
-        }
+        if(::googleChoice.isInitialized)googleChoice.visibility=
+            if(state==CastState.NOT_CONNECTED||state==CastState.CONNECTED||state==CastState.CONNECTING)View.VISIBLE else View.GONE
     }
     private lateinit var status:TextView
-    private fun message(value:String){if(!isFinishing&&!isDestroyed)status.text=value}
+    private fun message(value:String){
+        if(!isFinishing&&!isDestroyed){
+            status.text=value
+            if(::controls.isInitialized)controls.visibility=if(dlnaPlaying!=null||ours()!=null&&!sending)View.VISIBLE else View.GONE
+        }
+    }
     private fun client()=cast?.sessionManager?.currentCastSession?.takeIf{it.isConnected}?.remoteMediaClient
     private fun ours():RemoteMediaClient?=loaded?.takeIf{it===client()&&it.mediaInfo?.contentId==loadedUrl}
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this,object:androidx.activity.OnBackPressedCallback(true){
             override fun handleOnBackPressed(){
-                if(sending||dlnaPlaying!=null)message("Encerre a transmissão DLNA antes de sair.")
+                if(sending||dlnaPlaying!=null||ours()!=null)message("Desconecte a transmissão antes de sair.")
                 else finish()
             }
         })
@@ -85,45 +89,56 @@ class NeroCastActivity:FragmentActivity(){
         fun button(label:String,action:()->Unit)=Button(this).apply{
             text=label;setOnClickListener{action()};panel.addView(this)
         }
-        panel.addView(text("NERO Cast",24f))
-        panel.addView(text("Google Cast ou DLNA/UPnP. Conecte a TV à mesma rede Wi-Fi. Apenas faixas de áudio livre compatíveis podem ser enviadas; não transmite arquivos locais ou faixas de serviços protegidos.",15f))
-        status=text("Conectando ao player…",16f)
+        panel.addView(text("Transmitir para dispositivo",24f))
+        status=text("Procurando dispositivos na rede Wi-Fi…",16f)
         panel.addView(status)
-        castStatus=text("Google Cast: verificando…",14f)
-        targetStatus=text("Destino: Google Cast",16f)
-        panel.addView(castStatus)
+        targetStatus=text("",16f)
         panel.addView(targetStatus)
+        devicesPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        panel.addView(devicesPanel)
+        googleChoice=button("Dispositivos Google Cast"){}.apply{visibility=View.GONE}
+        controls=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;visibility=View.GONE}
+        panel.addView(controls)
+        fun controlButton(label:String,action:()->Unit){
+            controls.addView(Button(this).apply{text=label;setOnClickListener{action()}})
+        }
         setContentView(ScrollView(this).apply{addView(panel)})
         try{
             cast=CastContext.getSharedInstance(this)
-            val route=MediaRouteButton(this)
-            panel.addView(route,LinearLayout.LayoutParams(120,100))
+            val route=MediaRouteButton(this).apply{visibility=View.GONE}
+            panel.addView(route,LinearLayout.LayoutParams(1,1))
             CastButtonFactory.setUpMediaRouteButton(this,route)
+            googleChoice.setOnClickListener{
+                if(sending||dlnaPlaying!=null||ours()!=null)return@setOnClickListener
+                castPickerJob?.cancel()
+                selectedDlna=null
+                if(client()!=null){send();return@setOnClickListener}
+                if(!route.showDialog()){message("Seletor de dispositivos indisponível.");return@setOnClickListener}
+                castPickerJob=scope.launch{
+                    val connected=withTimeoutOrNull(20000L){
+                        while(client()==null)delay(300L)
+                        true
+                    }==true
+                    if(connected&&!sending&&selectedDlna==null)send()
+                }
+            }
             cast?.addCastStateListener(castListener)
             cast?.let{castListener.onCastStateChanged(it.castState)}
-        }catch(_:Exception){message("Google Cast indisponível neste aparelho.")}
-        panel.addView(text("Smart TVs LG e Samsung: procure primeiro por DLNA. Para espelhar a tela, use a conexão sem fio do próprio Android.",14f))
-        button("Buscar TVs LG / Samsung / DLNA"){discoverDlna()}
-        button("Espelhar tela · Miracast / Smart View"){openMirrorSettings()}
-        button("Ajuda para LG e Samsung"){showTvHelp()}
-        button("Usar Google Cast"){
-            if(!sending&&dlnaPlaying==null){selectedDlna=null;targetStatus.text="Destino: Google Cast"}
-            else message("Encerre a transmissão atual antes de trocar.")
-        }
-        button("Testar comunicação com a TV"){testReceiver()}
-        button("Transmitir faixa atual"){send()}
-        button("Pausar na TV"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()?:message("Nenhuma transmissão NERO ativa.")}
-        button("Continuar na TV"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()?:message("Nenhuma transmissão NERO ativa.")}
-        button("Encerrar transmissão"){
+        }catch(_:Exception){googleChoice.visibility=View.GONE}
+        controlButton("Pausar"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()}
+        controlButton("Continuar"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()}
+        controlButton("Desconectar"){
             if(dlnaPlaying!=null)dlnaControl("Stop")
-            else if(!sending){stopOwn();message("Transmissão encerrada. Retome a música no player quando quiser.")}
+            else if(!sending){stopOwn();message("Transmissão encerrada.")}
         }
-        button("Voltar ao NERO"){if(sending||dlnaPlaying!=null)message("Encerre a transmissão DLNA antes de sair.") else finish()}
+        button("Buscar novamente"){discoverDlna()}
+        button("Espelhar tela (Android)"){openMirrorSettings()}
+        button("Voltar ao NERO"){if(sending||dlnaPlaying!=null||ours()!=null)message("Desconecte a transmissão antes de sair.") else finish()}
         val request=MediaController.Builder(this,SessionToken(this,ComponentName(this,PlaybackService::class.java))).buildAsync()
         future=request
         request.addListener({
             if(!isDestroyed&&!isFinishing){
-                try{controller=request.get();message("Escolha o destino Google Cast ou busque TVs DLNA.")}catch(_:Exception){message("Player indisponível.")}
+                try{controller=request.get();discoverDlna()}catch(_:Exception){message("Player indisponível.")}
             }
         },ContextCompat.getMainExecutor(this))
     }
@@ -140,6 +155,7 @@ class NeroCastActivity:FragmentActivity(){
         super.onStop()
     }
     private fun openMirrorSettings(){
+        castPickerJob?.cancel()
         if(sending||dlnaPlaying!=null||ours()!=null){
             message("Encerre a transmissão atual antes de espelhar.");return
         }
@@ -150,56 +166,34 @@ class NeroCastActivity:FragmentActivity(){
             message("Abra as configurações rápidas do celular e procure Transmitir, Smart View ou Smart Connect.")
         }
     }
-    private fun showTvHelp(){
-        AlertDialog.Builder(this).setTitle("Conectar sua Smart TV")
-            .setMessage("LG webOS: abra Screen Share para espelhamento, ou habilite o compartilhamento de mídia quando disponível.\n\nSamsung: habilite Screen Mirroring ou o acesso de dispositivos externos na TV. Em celulares Galaxy, procure Smart View.\n\nMotorola: quando disponível, use Smart Connect para localizar telas Miracast.\n\nDLNA transmite somente áudio compatível com o receptor. Miracast espelha a tela pelo sistema; não é um transmissor independente do NERO. Nem todos os modelos suportam os mesmos protocolos.")
-            .setPositiveButton("Entendi",null).show()
-    }
     private fun discoverDlna(){
-        if(scanning||sending||dlnaPlaying!=null||ours()!=null){message("Encerre a transmissão atual antes de buscar.");return}
-        scanning=true;message("Buscando TVs e caixas de som DLNA na rede Wi-Fi…")
+        if(scanning||sending||dlnaPlaying!=null||ours()!=null)return
+        castPickerJob?.cancel()
+        selectedDlna=null
+        targetStatus.text=""
+        devicesPanel.removeAllViews()
+        scanning=true;message("Procurando dispositivos na rede Wi-Fi…")
         scope.launch{
             try{
                 val devices=withContext(Dispatchers.IO){NeroDlna.discover(applicationContext)}
                 if(isDestroyed||isFinishing)return@launch
-                if(devices.isEmpty()){
-                    message("Nenhum DLNA encontrado. Ative o receptor de mídia na TV; verifique Wi-Fi de convidados, isolamento de dispositivos e VPN.")
-                }else{
-                    message("Dispositivos DLNA encontrados: "+devices.size)
-                    AlertDialog.Builder(this@NeroCastActivity).setTitle("Escolha um dispositivo DLNA")
-                        .setItems(devices.map{it.name+" ("+it.endpoint.host+")"}.toTypedArray()){_,i->
-                            selectedDlna=devices[i];targetStatus.text="Destino DLNA: "+devices[i].name
-                            message("TV encontrada e selecionada. Toque em Transmitir faixa atual para verificar o áudio.")
-                        }.setNegativeButton("Cancelar",null).show()
+                scanning=false
+                message(if(devices.isEmpty())"Nenhum dispositivo DLNA encontrado." else "Selecione uma TV para transmitir.")
+                devices.forEach{device->
+                    devicesPanel.addView(Button(this@NeroCastActivity).apply{
+                        text=device.name
+                        isAllCaps=false
+                        setOnClickListener{
+                            if(sending||scanning||dlnaPlaying!=null||ours()!=null)return@setOnClickListener
+                            castPickerJob?.cancel()
+                            selectedDlna=device
+                            targetStatus.text=device.name
+                            send()
+                        }
+                    })
                 }
-            }catch(e:CancellationException){throw e}catch(_:Exception){message("Busca DLNA indisponível. Confira se o Wi-Fi está conectado.")}
+            }catch(e:CancellationException){throw e}catch(_:Exception){message("Não foi possível procurar TVs na rede. Confira o Wi-Fi.")}
             finally{scanning=false}
-        }
-    }
-    private fun testReceiver(){
-        if(sending||scanning)return
-        val device=selectedDlna
-        if(device==null){
-            message(if(client()!=null)"Google Cast: sessão conectada. Inicie uma faixa compatível para testar a reprodução." else "Selecione primeiro a TV DLNA ou Google Cast.")
-            return
-        }
-        sending=true
-        message("Consultando receptor DLNA…")
-        scope.launch{
-            try{
-                val state=withContext(Dispatchers.IO){NeroDlna.transportState(applicationContext,device)}
-                val label=when(state){
-                    "PLAYING"->"reproduzindo"
-                    "STOPPED"->"parado"
-                    "NO_MEDIA_PRESENT"->"sem mídia"
-                    "PAUSED_PLAYBACK"->"pausado"
-                    "TRANSITIONING"->"carregando"
-                    else->null
-                }
-                message(if(label!=null)"TV respondeu ao comando DLNA: "+label+". A transmissão de uma faixa ainda precisa ser testada."
-                    else "A TV respondeu, mas não informou um estado de reprodução reconhecido.")
-            }catch(e:CancellationException){throw e}catch(_:Exception){message("TV encontrada, mas não respondeu ao controle DLNA. Verifique a autorização de dispositivos na TV.")}
-            finally{sending=false}
         }
     }
     private fun dlnaControl(action:String){
@@ -284,6 +278,7 @@ class NeroCastActivity:FragmentActivity(){
                             }==true
                             if(confirmed&&player.currentMediaItem==item){
                                 player.pause()
+                                sending=false
                                 message("TV confirmou a reprodução: "+track.title)
                             }else{
                                 stopOwn()
