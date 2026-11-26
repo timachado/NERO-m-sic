@@ -52,7 +52,7 @@ internal object NeroDlna {
                 network.bindSocket(socket)
                 socket.soTimeout=400
                 val group=InetAddress.getByName("239.255.255.250")
-                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:service:AVTransport:1")){
+                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:device:MediaRenderer:2","urn:schemas-upnp-org:service:AVTransport:1","urn:schemas-upnp-org:service:AVTransport:2")){
                     val bytes=("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: "+st+"\r\n\r\n").toByteArray(Charsets.US_ASCII)
                     socket.send(DatagramPacket(bytes,bytes.size,group,1900))
                 }
@@ -115,8 +115,13 @@ internal object NeroDlna {
         val body="<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body><u:"+action+" xmlns:u=\""+d.service+"\"><InstanceID>0</InstanceID>"+args+"</u:"+action+"></s:Body></s:Envelope>"
         return http(context,d.network,d.endpoint,d.service+"#"+action,body)
     }
-    fun play(context:Context,d:NeroDlnaDevice,url:String){
-        soap(context,d,"SetAVTransportURI","<CurrentURI>"+escape(url)+"</CurrentURI><CurrentURIMetaData></CurrentURIMetaData>")
+    internal fun mediaMetadata(url:String,title:String,artist:String,mime:String):String{
+        require(mime in setOf("audio/mpeg","audio/flac","audio/wav","audio/ogg"))
+        return "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\"><item id=\"0\" parentID=\"-1\" restricted=\"1\"><dc:title>"+escape(title.take(300))+"</dc:title><upnp:artist>"+escape(artist.take(300))+"</upnp:artist><upnp:class>object.item.audioItem.musicTrack</upnp:class><res protocolInfo=\"http-get:*:"+mime+":*\">"+escape(url)+"</res></item></DIDL-Lite>"
+    }
+    fun play(context:Context,d:NeroDlnaDevice,url:String,title:String,artist:String,mime:String){
+        val metadata=mediaMetadata(url,title,artist,mime)
+        soap(context,d,"SetAVTransportURI","<CurrentURI>"+escape(url)+"</CurrentURI><CurrentURIMetaData>"+escape(metadata)+"</CurrentURIMetaData>")
         soap(context,d,"Play","<Speed>1</Speed>")
     }
     fun control(context:Context,d:NeroDlnaDevice,url:String,action:String){
