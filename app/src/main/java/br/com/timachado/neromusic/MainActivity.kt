@@ -268,6 +268,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         }
     }
     var tab by remember { mutableIntStateOf(3) }
+    var premiumReturnTab by remember { mutableIntStateOf(3) }
     var searchSeed by remember { mutableStateOf("") }
     var searchAutoFocus by remember { mutableStateOf(false) }
     var searchOpenAudio by remember { mutableStateOf(false) }
@@ -286,7 +287,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var showQueue by remember { mutableStateOf(false) }
     var playerArtist by remember{mutableStateOf<String?>(null)}
     var playerAlbum by remember{mutableStateOf<NativeCollection?>(null)}
-    BackHandler(fullPlayer || showAccount || showEq || showLyrics || showQueue) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showEq) showEq = false else if(showAccount) showAccount = false else fullPlayer = false }
+    BackHandler(fullPlayer || showAccount || showEq || showLyrics || showQueue || tab==5) { if(showQueue) showQueue = false else if(showLyrics) showLyrics = false else if(showEq) showEq = false else if(showAccount) showAccount = false else if(fullPlayer) fullPlayer = false else if(tab==5) tab=premiumReturnTab }
     val filtered = remember(tracks, tab, query, favorites) {
         tracks.filter { t -> (tab != 2 || t.id.toString() in favorites) &&
             (tab != 1 || t.title.contains(query, true) || t.artist.contains(query, true) || t.album.contains(query,true) || t.genre.contains(query,true)) }
@@ -358,7 +359,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 1, onClick = { showAccount=false;if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab in setOf(0,2,4), onClick = { showAccount=false;tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab in setOf(0,2,4), onClick = { showAccount=false;tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca",maxLines=1,softWrap=false,fontSize=11.sp) })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=Color(0xFF102B23),unselectedIconColor=Color(0xFFFFD170),unselectedTextColor=Color(0xFFFFD170)),selected=!showAccount&&tab==5,onClick={showAccount=false;if(tab!=5){premiumReturnTab=tab;tab=5}},icon={Icon(Icons.Default.WorkspacePremium,null)},label={Text("Premium",maxLines=1,softWrap=false,fontSize=11.sp)})
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=Color(0xFF102B23),unselectedIconColor=Color(0xFFB9C6CF),unselectedTextColor=Color(0xFFB9C6CF)),selected=showAccount,onClick={showAccount=true},icon={Icon(Icons.Default.AccountCircle,null)},label={Text("Conta")})
             }
         }
@@ -389,6 +391,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 onHistory={showAccount=false;tab=0;libraryPage=2;librarySelection=null},
                 wifiOnly=offlineState.wifiOnly,onWifiChange=offlineManager::setWifiOnly,
                 economicalDownload=offlineState.economical,onDownloadQuality=offlineManager::setEconomical)
+        } else if (tab==5 && !fullPlayer) {
+            PlansScreen(onBack={tab=premiumReturnTab},modifier=Modifier.padding(padding))
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
