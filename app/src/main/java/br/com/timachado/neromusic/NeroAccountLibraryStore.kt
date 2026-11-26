@@ -91,7 +91,7 @@ internal object NeroAccountSync{
         require(album.kind==NativeCollectionKind.ALBUM&&album.title.isNotBlank())
         val id=requireNotNull(savedAlbumKey(album.url))
         val next=if(snapshot.albums.any{it.id==id})snapshot.albums.filterNot{it.id==id}
-            else listOf(CloudAlbum(id,album.title.take(250),album.credit.take(250)))+snapshot.albums
+            else listOf(CloudAlbum(id,album.title.take(250),album.credit.take(250),cloudAlbumArtwork(album.artwork)))+snapshot.albums
         snapshot.copy(albums=next)
     }
     suspend fun replacePlaylists(context:Context,uid:String,expected:List<OnlineList>,next:List<OnlineList>)=mutex.withLock{
