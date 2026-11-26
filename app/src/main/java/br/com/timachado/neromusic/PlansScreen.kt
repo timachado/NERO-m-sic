@@ -31,6 +31,8 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
     val scope=rememberCoroutineScope()
+    val resumed=rememberNeroCommerceResume()
+    var refreshRequest by remember(uid,ready){mutableIntStateOf(0)}
     var subscription by remember(uid,ready){mutableStateOf<NeroSubscription?>(null)}
     var checking by remember(uid,ready){mutableStateOf(false)}
     var activating by remember(uid,ready){mutableStateOf(false)}
@@ -48,9 +50,9 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             if(NeroSupabase.activeUid.value==owner){subscription=null;notice="Serviço de assinaturas indisponível."}
         }finally{checking=false}
     }
-    LaunchedEffect(uid,ready){
+    LaunchedEffect(uid,ready,resumed,refreshRequest){
         val owner=uid
-        if(ready&&owner!=null)refresh(owner)
+        if(ready&&owner!=null&&!activating)refresh(owner)
     }
     val premium=subscription?.phase?.premium==true
     if(confirmTrial)AlertDialog(onDismissRequest={confirmTrial=false},title={Text("Experimentar NERO Premium?")},text={Text("Sete dias gratuitos, sem cartão e sem cobrança automática. Apenas uma experiência por conta elegível.")},confirmButton={TextButton(onClick={
@@ -130,13 +132,13 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             val selection=NeroPlans.offers.first{it.id==selectedPlan}
             Text("Selecionado: "+selection.label+" · "+selection.price,fontWeight=FontWeight.Medium,color=premiumGreen)
             Button(enabled=ready&&uid!=null&&!checking&&!activating&&subscription?.phase==NeroSubscriptionPhase.FREE,onClick={confirmTrial=true},modifier=Modifier.fillMaxWidth()){Text(if(activating)"Ativando…" else if(premium)"Premium ativo" else "Experimentar 7 dias grátis")}
-            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating,onClick={val owner=uid;if(owner!=null)scope.launch{refresh(owner)}},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
+            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating,onClick={refreshRequest++},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             Button(onClick={
                 val url=neroCheckoutUrl(selection.id)
                 siteError=url==null||!openBrowser(context,android.net.Uri.parse(url))
             },modifier=Modifier.fillMaxWidth()){Text("Conhecer Premium "+selection.label)}
-            Text("O plano selecionado segue para o checkout oficial quando disponível. Ao retornar, consulte sua assinatura.",fontSize=12.sp,color=Color.LightGray)
+            Text("O plano selecionado segue para o checkout oficial quando disponível. Ao retornar, a assinatura será consultada automaticamente.",fontSize=12.sp,color=Color.LightGray)
             Text("${NeroPlans.TRIAL_DAYS} dias de experiência, quando o serviço estiver habilitado, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
             Text("O site confirma os valores, disponibilidade e pagamentos.",color=Color.LightGray,fontSize=13.sp)
             if(siteError)Text("Não foi possível abrir o site.",color=Color.LightGray,fontSize=12.sp)

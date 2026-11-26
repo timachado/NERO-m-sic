@@ -18,6 +18,8 @@ import kotlinx.coroutines.withContext
 internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit={}){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
+    val resumed=rememberNeroCommerceResume()
+    var refreshRequest by remember(user.uid){mutableIntStateOf(0)}
     val pull by NeroAccountSync.status.collectAsState()
     val changes by NeroAccountSync.changes.collectAsState()
     var cached by remember(user.uid){mutableStateOf<NeroAccountLibraryState?>(null)}
@@ -42,7 +44,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
         }catch(e:CancellationException){throw e}catch(_:Exception){planError=true}
         finally{planBusy=false}
     }
-    LaunchedEffect(user.uid){refreshPlan()}
+    LaunchedEffect(user.uid,resumed,refreshRequest){refreshPlan()}
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("NERO Cloud",fontSize=20.sp,fontWeight=FontWeight.Bold)
@@ -95,7 +97,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
             Text("Experiência prevista: 7 dias. Carência de até 48 horas somente para falha de renovação elegível. A ativação depende do servidor.",fontSize=12.sp,color=Color.LightGray)
             Text("Assinaturas vinculadas à sua conta e gerenciadas pelo servidor. Contratação futura pelo site oficial, sem cobrança nesta versão.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(onClick=onPlans,modifier=Modifier.fillMaxWidth()){Text("Conhecer NERO Premium")}
-            TextButton(enabled=enabled&&!planBusy,onClick={scope.launch{refreshPlan()}}){Text("Consultar / restaurar assinatura")}
+            TextButton(enabled=enabled&&!planBusy,onClick={refreshRequest++}){Text("Consultar / restaurar assinatura")}
             if(planBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
             HorizontalDivider()
             NeroPlayerAppearance(user.uid,enabled)
