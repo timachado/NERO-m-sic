@@ -110,7 +110,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
             OutlinedButton(enabled=!opening,onClick={handoff{runCatching{context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS));true}.getOrDefault(false)}},modifier=Modifier.fillMaxWidth()){
                 Icon(Icons.Default.Bluetooth,null);Spacer(Modifier.width(8.dp));Text("Conectar dispositivo Bluetooth")
             }
-            if(BuildConfig.DEBUG){
+            if(BuildConfig.FULL_FEATURES){
                 HorizontalDivider()
                 Text("TV e Chromecast",fontWeight=FontWeight.Medium)
                 OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Procurar TVs compatíveis")}

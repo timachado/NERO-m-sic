@@ -375,7 +375,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
                 onTogglePlay = { controller?.let(::toggleNeroPlayback) },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
-        } else if (showEq && BuildConfig.DEBUG) {
+        } else if (showEq && BuildConfig.FULL_FEATURES) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
             NeroSupabaseAccount(onBack={showAccount=false},modifier=Modifier.padding(padding),

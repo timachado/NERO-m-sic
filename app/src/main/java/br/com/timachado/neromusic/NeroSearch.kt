@@ -204,7 +204,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
             return
         }
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
-            items(SearchTab.entries.filter{BuildConfig.DEBUG||it in setOf(SearchTab.ALL,SearchTab.LOCAL,SearchTab.OPEN)}){f->FilterChip(selected=tab==f,onClick={tab=f;editing=false;focusManager.clearFocus();keyboard?.hide()},label={Text(f.label)})}
+            items(SearchTab.entries.filter{BuildConfig.FULL_FEATURES||it in setOf(SearchTab.ALL,SearchTab.LOCAL,SearchTab.OPEN)}){f->FilterChip(selected=tab==f,onClick={tab=f;editing=false;focusManager.clearFocus();keyboard?.hide()},label={Text(f.label)})}
         }
         if(busy||openBusy||nativeBusy||resolving!=null)LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=searchAqua,fontSize=12.sp)}

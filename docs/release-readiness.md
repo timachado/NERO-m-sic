@@ -55,3 +55,6 @@ Não habilitar extração experimental em release para contornar licenciamento. 
 
 ## 0.9.68-dev — revisão visual de gravação do Android
 Replay em tela cheia rolável, com Fechar sempre visível; botão direto de Daily Mix reutiliza a consulta manual existente, com feedback de progresso; Discovery oferece busca pelos artistas quando a consulta não encontra álbuns; rádio local explica a ausência de arquivos e orienta uso da rádio online experimental quando disponível. Não altera o catálogo, não habilita fonte experimental no release, não altera dados ou assinatura. Validação visual em aparelho e compilação desta versão ainda pendentes.
+
+## 0.9.69-dev — paridade de recursos do candidato assinado
+A pedido do proprietário, debug e release compartilham a implementação existente do catálogo e dependências, sem substituição por outro catálogo. Busca, clipes, artistas, álbuns, mixes, rádio, downloads e controles existentes preservados no código. Cast, Android Auto e equalizador disponíveis nas duas variantes; release continua não debuggable. Sem alteração de chaves, OAuth, checkout ou banco. O candidato assinado é para homologação privada; direitos de distribuição comercial da fonte musical e funcionamento em aparelho não validados. Sem alegação de parceria ou autorização da plataforma de origem.

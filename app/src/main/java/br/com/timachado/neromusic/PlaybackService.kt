@@ -66,7 +66,7 @@ class PlaybackService : MediaLibraryService() {
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
         }
-        if(BuildConfig.DEBUG) {
+        if(BuildConfig.FULL_FEATURES) {
             eq = SessionEqualizer(applicationContext)
             player.addListener(object : Player.Listener {
                 override fun onAudioSessionIdChanged(audioSessionId: Int) { eq?.attach(audioSessionId) }

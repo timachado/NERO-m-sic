@@ -11,8 +11,9 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 123
-        versionName = "0.9.68-dev"
+        versionCode = 124
+        versionName = "0.9.69-dev"
+        buildConfigField("boolean", "FULL_FEATURES", "true")
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
         val googleClient = System.getenv("NERO_GOOGLE_CLIENT_ID").orEmpty().trim()
@@ -37,18 +38,15 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
-// NewPipe debug brings protobuf-javalite 4.x, which includes descriptor types.
-// Firebase\u0027s legacy companion AAR duplicates those classes. Keep release untouched.
+// Both variants use the same catalogue and dependency conflict resolution.
 configurations.configureEach {
-    if (name.contains("debug", ignoreCase = true)) {
-        exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-    }
+    exclude(group = "com.google.firebase", module = "protolite-well-known-types")
 }
 dependencies {
-    debugImplementation("com.google.android.gms:play-services-cast-framework:21.5.0")
-    debugImplementation("androidx.appcompat:appcompat:1.7.0")
-    debugImplementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
-    debugImplementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")

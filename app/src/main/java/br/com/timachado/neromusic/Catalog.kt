@@ -50,7 +50,7 @@ internal object DevCatalog {
     private var lastRequest = 0L
     private val cache = LinkedHashMap<String,List<CatalogEntry>>()
     suspend fun search(query:String,kind:CatalogKind):List<CatalogEntry> = withContext(Dispatchers.IO) {
-        check(BuildConfig.DEBUG)
+        check(BuildConfig.FULL_FEATURES)
         val term = query.trim().take(100)
         require(term.isNotBlank())
         lock.withLock {
@@ -98,7 +98,7 @@ internal object DevCatalog {
         }
     }
     private suspend fun fetchDetails(path:String, params:Map<String,String>):JSONObject = withContext(Dispatchers.IO) {
-        check(BuildConfig.DEBUG)
+        check(BuildConfig.FULL_FEATURES)
         lock.withLock {
             val remaining=1100-(SystemClock.elapsedRealtime()-lastRequest)
             if(remaining>0)delay(remaining)

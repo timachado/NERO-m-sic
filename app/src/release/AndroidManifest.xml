@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" android:value="br.com.timachado.neromusic.NeroCastOptions" />
+        <activity android:name=".NeroCastActivity" android:exported="false" android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MEDIA_BUTTON" /></intent-filter>
+        </receiver>
+        <service android:name=".PlaybackService" android:exported="true" tools:replace="android:exported">
+            <intent-filter><action android:name="android.media.browse.MediaBrowserService" /></intent-filter>
+            <intent-filter><action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" /></intent-filter>
+        </service>
+    </application>
+</manifest>

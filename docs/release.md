@@ -26,3 +26,6 @@ O workflow na branch feat/nero-connect permite dispatch manual desta branch espe
 
 ## Ajuste da configuração do certificado
 O workflow aceita `NERO_RELEASE_CERT_SHA256` em Environment secrets (prioridade) ou Environment variables. A execução #1 falhou por procurar apenas a variável, embora o certificado estivesse cadastrado como segredo. A verificação de igualdade do certificado permanece obrigatória. Iniciar nova execução manual na branch feat/nero-connect; reexecutar #1 usaria o commit antigo.
+
+## Paridade 0.9.69-dev
+A configuração anterior que desativava o catálogo experimental no release foi substituída por código compartilhado entre variantes. O candidato assinado preserva os recursos em vez de usar o stub vazio. A distribuição pública segue pendente de validação de direitos, funcionamento e aprovação explícita; o workflow apenas gera o APK privado.
