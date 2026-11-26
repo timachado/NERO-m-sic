@@ -14,7 +14,7 @@ internal fun cloudAlbumArtwork(url:String?):String?=url?.takeIf{value->
 internal data class CloudAlbum(val id:String,val title:String,val credit:String,val artwork:String?=null){
     fun collection()=NativeCollection("https://music.youtube.com/playlist?list="+id,title,credit,cloudAlbumArtwork(artwork),NativeCollectionKind.ALBUM)
 }
-internal data class CloudLibrarySnapshot(val favorites:List<OnlineRef>,val playlists:List<OnlineList>,val artists:List<String> = emptyList(),val albums:List<CloudAlbum> = emptyList(),val history:List<CloudHeard> = emptyList())
+internal data class CloudLibrarySnapshot(val favorites:List<OnlineRef>,val playlists:List<OnlineList>,val artists:List<String> = emptyList(),val albums:List<CloudAlbum> = emptyList(),val history:List<CloudHeard> = emptyList(),val hiddenSongs:Set<String> = emptySet())
 internal data class CloudHeard(val ref:OnlineRef,val at:Long)
 internal data class CloudLibraryRevision(val revision:Long,val snapshot:CloudLibrarySnapshot)
 
@@ -36,8 +36,9 @@ private fun readCloudRef(row:JSONObject):OnlineRef{
     return OnlineRef(id,title,artist,openAudio=audio).also{require(portableRef(it))}
 }
 internal fun encodeCloudLibrary(snapshot:CloudLibrarySnapshot):JSONObject{
-    require(snapshot.favorites.size<=1000&&snapshot.playlists.size<=100&&snapshot.artists.size<=500&&snapshot.albums.size<=500&&snapshot.history.size<=100)
+    require(snapshot.favorites.size<=1000&&snapshot.playlists.size<=100&&snapshot.artists.size<=500&&snapshot.albums.size<=500&&snapshot.history.size<=100&&snapshot.hiddenSongs.size<=2000)
     val json=JSONObject().put("format","nero-cloud-v1")
+        .put("hiddenSongs",JSONArray(snapshot.hiddenSongs.sorted().map{require(recommendationId(it)==it);it}))
         .put("history",JSONArray(snapshot.history.map{require(it.at>0);JSONObject().put("ref",cloudRef(it.ref)).put("at",it.at)}))
         .put("artists",JSONArray(snapshot.artists.map{require(it.isNotBlank()&&it.length<=180);it}))
         .put("albums",JSONArray(snapshot.albums.map{
@@ -76,7 +77,9 @@ internal fun decodeCloudLibrary(json:JSONObject):CloudLibrarySnapshot{
     }.distinctBy{it.id}
     val h=json.optJSONArray("history")?:JSONArray();require(h.length()<=100)
     val history=(0 until h.length()).map{i->val row=h.getJSONObject(i);CloudHeard(readCloudRef(row.getJSONObject("ref")),row.getLong("at").also{require(it>0)})}.distinctBy{it.ref.id}.sortedByDescending{it.at}
-    return CloudLibrarySnapshot(refs(json.getJSONArray("favorites")),playlists,artists,albums,history)
+    val hidden=json.optJSONArray("hiddenSongs")?:JSONArray();require(hidden.length()<=2000)
+    val hiddenSongs=(0 until hidden.length()).map{hidden.getString(it).also{id->require(recommendationId(id)==id)}}.toSet()
+    return CloudLibrarySnapshot(refs(json.getJSONArray("favorites")),playlists,artists,albums,history,hiddenSongs)
 }
 // Additive merge only: keep local names and order; no propagation of deletions.
 internal fun mergeCloudLibrary(local:CloudLibrarySnapshot,remote:CloudLibrarySnapshot):CloudLibrarySnapshot{

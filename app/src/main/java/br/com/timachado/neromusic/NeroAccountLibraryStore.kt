@@ -81,6 +81,12 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    suspend fun toggleHiddenSong(context:Context,uid:String,id:String)=updateCollections(context,uid){snapshot->
+        val key=requireNotNull(recommendationId(id));val current=snapshot.hiddenSongs
+        val next=if(key in current)current-key else {require(current.size<2000);current+key}
+        snapshot.copy(hiddenSongs=next)
+    }
+    suspend fun resetHiddenSongs(context:Context,uid:String)=updateCollections(context,uid){it.copy(hiddenSongs=emptySet())}
     fun historyEnabled(context:Context,uid:String):Boolean=
         context.getSharedPreferences("nero_account_history",0).getBoolean(NeroAccountLibraryStore.fileName(uid),false)
     fun setHistoryEnabled(context:Context,uid:String,enabled:Boolean){

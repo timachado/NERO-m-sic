@@ -119,7 +119,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 TextButton(onClick={privacyPage=NeroPrivacyPage.ACCOUNT}){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Solicitar exclusão da conta")}
             }
         }
-        Text("Preferências musicais armazenadas localmente. ${hidden.size} músicas ocultadas das recomendações.",fontSize=13.sp,color=Color.LightGray)
+        Text("${hidden.size} músicas ocultadas das recomendações. As preferências de músicas ocultadas acompanham a conta conectada quando a nuvem estiver disponível.",fontSize=13.sp,color=Color.LightGray)
         TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://timachado.ifree.page")))notice="Não foi possível abrir o site."}){Icon(Icons.Default.Language,null);Spacer(Modifier.width(8.dp));Text("Site e suporte T.I. Machado")}
         Text("NERO Music · "+BuildConfig.VERSION_NAME,fontSize=12.sp,color=Color.LightGray)
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())

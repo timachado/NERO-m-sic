@@ -20,9 +20,27 @@ internal object NeroHiddenSongs{
     }
     fun reset(context:Context){prefs(context).edit().remove("ids").apply()}
 }
+internal fun scopedHiddenSongs(context:Context,uid:String?):Set<String>{
+    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+    return if(uid==null)NeroHiddenSongs.read(context) else NeroAccountLibraryStore.read(context,uid)?.pending?.hiddenSongs.orEmpty()
+}
+internal suspend fun toggleScopedHiddenSong(context:Context,uid:String?,id:String):Boolean{
+    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+    if(uid==null)return NeroHiddenSongs.toggle(context,id)
+    NeroAccountSync.toggleHiddenSong(context,uid,id);return true
+}
+internal suspend fun resetScopedHiddenSongs(context:Context,uid:String?){
+    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+    if(uid==null)NeroHiddenSongs.reset(context) else NeroAccountSync.resetHiddenSongs(context,uid)
+}
 @Composable
 internal fun rememberHiddenSongs():Set<String>{
     val context=LocalContext.current
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
+    if(!ready)return emptySet()
+    if(uid!=null)return remember(uid,changes){runCatching{scopedHiddenSongs(context,uid)}.getOrDefault(emptySet<String>())}
     val prefs=remember(context){NeroHiddenSongs.prefs(context)}
     var rows by remember(prefs){mutableStateOf(NeroHiddenSongs.read(context))}
     DisposableEffect(prefs){

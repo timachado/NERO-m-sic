@@ -46,7 +46,7 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
     val historyChanges by NeroAccountSync.changes.collectAsState()
     var heard by remember(historyUid,historyReady,historyChanges){mutableStateOf(history(context))}
     val scope=rememberCoroutineScope()
-    var mix by remember{mutableStateOf(emptyList<NativeMusicHit>())}
+    var mix by remember(historyUid,historyReady){mutableStateOf(emptyList<NativeMusicHit>())}
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf<String?>(null)}
     DisposableEffect(prefs,historyUid,historyReady){
@@ -61,11 +61,14 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
         while(true){played=replayTracks(NeroReplay.entries(context),NeroReplay.today(),30);kotlinx.coroutines.delay(10000L)}
     }
     val hidden=rememberHiddenSongs()
-    var resetHidden by remember{mutableStateOf(false)}
+    var resetHidden by remember(historyUid,historyReady){mutableStateOf(false)}
     val visibleMix=filterRecommendedSongs(mix,hidden)
-    if(resetHidden)AlertDialog(onDismissRequest={resetHidden=false},title={Text("Restaurar recomendações?")},text={Text("As músicas ocultadas poderão voltar a aparecer no seu mix. Seus favoritos e playlists não serão alterados.")},confirmButton={TextButton(onClick={NeroHiddenSongs.reset(context);resetHidden=false}){Text("Restaurar")}},dismissButton={TextButton(onClick={resetHidden=false}){Text("Cancelar")}})
+    if(resetHidden)AlertDialog(onDismissRequest={resetHidden=false},title={Text("Restaurar recomendações?")},text={Text("As músicas ocultadas poderão voltar a aparecer no seu mix. Seus favoritos e playlists não serão alterados.")},confirmButton={TextButton(enabled=historyReady,onClick={val owner=historyUid;resetHidden=false;scope.launch{
+        try{resetScopedHiddenSongs(context,owner)}catch(e:CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner)notice="Não foi possível restaurar as recomendações."}
+    }}){Text("Restaurar")}},dismissButton={TextButton(onClick={resetHidden=false}){Text("Cancelar")}})
     val followed=rememberFollowedArtists()
-    val artists=remember(recent,liked,played,followed){preferredMixArtists(followed,mixArtists(played,liked.map{it.artist},recent.map{it.artist}))}
+    val scopedPlayed=if(historyReady&&historyUid==null)played else emptyList()
+    val artists=remember(recent,liked,scopedPlayed,followed){preferredMixArtists(followed,mixArtists(scopedPlayed,liked.map{it.artist},recent.map{it.artist}))}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         if(recent.isNotEmpty()){
             Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -75,13 +78,15 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
             Text("Sugestões pelos artistas que você segue, mais ouvidos, favoritos e recentes. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
-            OutlinedButton(enabled=!busy,onClick={
+            OutlinedButton(enabled=!busy&&historyReady,onClick={
+                val owner=historyUid
                 busy=true;notice=null
                 scope.launch{
                     try{
-                        val excluded=(recent+liked).map{it.id}.toSet()+played.map{it.id.removePrefix("youtube:")}
+                        val excluded=(recent+liked).map{it.id}.toSet()+scopedPlayed.map{it.id.removePrefix("youtube:")}
                         val rows=artists.flatMap{NativeMusicCatalog.search(it).take(12)}
-                        mix=filterRecommendedSongs(rows.filter{it.id !in excluded},NeroHiddenSongs.read(context)).distinctBy{it.id}.take(24)
+                        if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
+                        mix=filterRecommendedSongs(rows.filter{it.id !in excluded},scopedHiddenSongs(context,owner)).distinctBy{it.id}.take(24)
                         if(mix.isEmpty())notice="Nenhuma nova faixa encontrada."
                     }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
                     finally{busy=false}

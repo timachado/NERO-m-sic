@@ -28,5 +28,11 @@ internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySn
     val artists=merge("artist",base.artists,local.artists,remote.artists,::nativeArtistKey)
     val albums=merge("album",base.albums,local.albums,remote.albums){it.id}
     val history=merge("history",base.history,local.history,remote.history){it.ref.id}.sortedByDescending{it.at}.take(100)
-    return NeroSyncResult(CloudLibrarySnapshot(favorites,playlists,artists,albums,history),conflicts)
+    val hidden=mergeHiddenSongs(base.hiddenSongs,local.hiddenSongs,remote.hiddenSongs)
+    if(hidden.size>2000)conflicts+=NeroSyncConflict("hiddenSongs","limit")
+    return NeroSyncResult(CloudLibrarySnapshot(favorites,playlists,artists,albums,history,hidden),conflicts)
 }
+
+// Set membership is binary: if both devices changed the same item, they agree.
+internal fun mergeHiddenSongs(base:Set<String>,local:Set<String>,remote:Set<String>):Set<String> =
+    (base intersect local intersect remote)+(local-base)+(remote-base)
