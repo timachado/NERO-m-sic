@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 internal enum class NeroPlayerTheme(val label:String,val primary:Long,val secondary:Long,val panel:Long,val background:Long,val description:String){
     AURORA("Aurora Neon",0xFF39FF14,0xFF00E5FF,0xFF17262D,0xFF000000,"Energia neon e identidade original NERO."),
@@ -40,9 +39,7 @@ private object PlayerAppearanceStore{
 internal suspend fun verifiedPremium(context:Context,uid:String):Boolean{
     if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return false
     return try{
-        withTimeoutOrNull(12000L){
-            readNeroSubscription(context,uid).phase.premium
-        }==true
+        readNeroSubscription(context,uid)?.phase?.premium==true
     }catch(e:CancellationException){throw e}catch(_:Exception){false}
 }
 

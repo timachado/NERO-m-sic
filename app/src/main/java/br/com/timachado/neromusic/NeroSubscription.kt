@@ -1,7 +1,7 @@
 package br.com.timachado.neromusic
 
 import android.content.Context
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.time.Instant
 import java.time.ZoneId
@@ -41,7 +41,7 @@ internal fun decodeNeroSubscription(row:JSONObject):NeroSubscription{
     val auto=row.opt("auto_renew") as? Boolean
     return NeroSubscription(phase,plan,expires,auto)
 }
-internal suspend fun readNeroSubscription(context:Context,uid:String):NeroSubscription=withTimeout(12000L){
+internal suspend fun readNeroSubscription(context:Context,uid:String):NeroSubscription?=withTimeoutOrNull(12000L){
     require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
     val current=NeroSupabase.session(context,false)
     require(current.uid==uid)

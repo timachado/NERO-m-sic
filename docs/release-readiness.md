@@ -1,6 +1,8 @@
 # NERO Music — critérios para 1.0.0-RC1
 
-Status: estabilização pré-RC, 0.9.63-dev. Não é aprovação de distribuição.
+Status: estabilização pré-RC, 0.9.64-dev. Não é aprovação de distribuição.
+
+Correções 0.9.64: um único timeout de consulta de assinatura, com ausência de resposta tratada como não verificada; tela de planos distingue catálogo experimental e release sem catálogo. Sem mudanças no checkout, no SQL ou na fonte musical.
 
 ## Evidência de CI
 Execução #299 (commit 708fc9a21e069280aa965eba8be1c7ac6b331c31): assembleDebug, lintDebug, testDebugUnitTest e verificação de release sem assinatura concluídos com sucesso. Execuções #292–298 também concluídas com sucesso. Isso não comprova testes em aparelho, configuração de produção ou assinatura comercial. A nova versão acrescenta teste Python da referência Commerce Connect ao CI; resultado ainda pendente.
