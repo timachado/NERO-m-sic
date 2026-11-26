@@ -36,6 +36,8 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     var activating by remember(uid,ready){mutableStateOf(false)}
     var notice by remember(uid,ready){mutableStateOf<String?>(null)}
     var confirmTrial by remember(uid,ready){mutableStateOf(false)}
+    var confirmBinding by remember(uid,ready){mutableStateOf(false)}
+    var binding by remember(uid,ready){mutableStateOf(false)}
     suspend fun refresh(owner:String){
         checking=true
         try{
@@ -53,6 +55,29 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         if(ready&&owner!=null)refresh(owner)
     }
     val premium=subscription?.phase?.premium==true
+    if(confirmBinding)AlertDialog(
+        onDismissRequest={confirmBinding=false},
+        title={Text("Vincular minha conta")},
+        text={Text("Acesse sua conta no site oficial da T.I. Machado e confirme o vínculo com o NERO Music. O código é temporário e de uso único. Confira a conta antes de confirmar. Nenhuma compra será realizada.")},
+        confirmButton={TextButton(onClick={
+            val owner=uid
+            confirmBinding=false
+            if(owner!=null&&ready&&NeroSupabase.activeUid.value==owner&&!binding){
+                binding=true
+                scope.launch{
+                    try{
+                        val link=requestNeroCommerceBinding(context,owner)
+                        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){
+                            notice=if(openBrowser(context,android.net.Uri.parse(link))) "Confirme o vínculo no site. Ao voltar, consulte sua assinatura." else "Não foi possível abrir o site. Solicite outro vínculo."
+                        }
+                    }catch(e:CancellationException){throw e}catch(_:Exception){
+                        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner)notice="Conexão comercial ainda indisponível."
+                    }finally{binding=false}
+                }
+            }
+        }){Text("Continuar no site")}},
+        dismissButton={TextButton(onClick={confirmBinding=false}){Text("Cancelar")}}
+    )
     if(confirmTrial)AlertDialog(onDismissRequest={confirmTrial=false},title={Text("Experimentar NERO Premium?")},text={Text("Sete dias gratuitos, sem cartão e sem cobrança automática. Apenas uma experiência por conta elegível.")},confirmButton={TextButton(onClick={
         val owner=uid;confirmTrial=false
         if(owner!=null&&ready&&NeroSupabase.activeUid.value==owner){
@@ -97,7 +122,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             },fontWeight=FontWeight.Medium,color=if(premium)premiumGreen else Color.LightGray)
             subscription?.dateLabel()?.let{Text("Acesso até: "+it,fontSize=12.sp,color=Color.LightGray)}
             subscription?.planLabel?.let{Text("Seu plano: "+it,fontSize=13.sp)}
-            if(checking||activating)LinearProgressIndicator(Modifier.fillMaxWidth())
+            if(checking||activating||binding)LinearProgressIndicator(Modifier.fillMaxWidth())
             listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
             PlanFeature("NERO Together · integração em homologação",false)
             PlanFeature("Suporte prioritário · previsto",false)
@@ -129,8 +154,9 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             }
             val selection=NeroPlans.offers.first{it.id==selectedPlan}
             Text("Selecionado: "+selection.label+" · "+selection.price,fontWeight=FontWeight.Medium,color=premiumGreen)
-            Button(enabled=ready&&uid!=null&&!checking&&!activating&&subscription?.phase==NeroSubscriptionPhase.FREE,onClick={confirmTrial=true},modifier=Modifier.fillMaxWidth()){Text(if(activating)"Ativando…" else if(premium)"Premium ativo" else "Experimentar 7 dias grátis")}
-            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating,onClick={val owner=uid;if(owner!=null)scope.launch{refresh(owner)}},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
+            Button(enabled=ready&&uid!=null&&!checking&&!activating&&!binding&&subscription?.phase==NeroSubscriptionPhase.FREE,onClick={confirmTrial=true},modifier=Modifier.fillMaxWidth()){Text(if(activating)"Ativando…" else if(premium)"Premium ativo" else "Experimentar 7 dias grátis")}
+            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating&&!binding,onClick={confirmBinding=true},modifier=Modifier.fillMaxWidth()){Text(if(binding)"Preparando conexão…" else "Vincular conta T.I. Machado")}
+            OutlinedButton(enabled=ready&&uid!=null&&!checking&&!activating&&!binding,onClick={val owner=uid;if(owner!=null)scope.launch{refresh(owner)}},modifier=Modifier.fillMaxWidth()){Text("Consultar / restaurar assinatura")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             Button(enabled=false,onClick={},modifier=Modifier.fillMaxWidth()){Text("Contratação em preparação")}
             Text("Nenhum pedido ou cobrança será realizado nesta versão.",fontSize=12.sp,color=Color.LightGray)

@@ -22,3 +22,6 @@ NERO Commerce Connect 0.1.0 instalado pelo proprietário (print 26/11), atualmen
 
 ## Estado real
 NERO 0.9.85-dev compilado e assinado com sucesso (run 45762604099). Plugin 0.1.0 instalado, modo preparação. Nenhum novo produto, cobrança ou backend de assinaturas ativado nesta etapa. Falta fonte/versão exata do Core instalado e a verificação da integração EBD vigente. Não inferir estado de produção a partir de documentos antigos.
+
+## Android 0.9.86-dev — vínculo comercial
+O app solicita `nero_commerce_intent_v1` autenticado, valida código hexadecimal de 64 caracteres e abre exclusivamente o site oficial com `nero_connect`. O usuário confirma o vínculo no WordPress, que usa o cliente autenticado e a ponte de homologação 2.8.3. Ao voltar, consulta/restaura assinatura por `nero_plan_read_v1`. Não é login WordPress automático; requer sessão no site. Sem confiança em retorno do navegador, sem token Google ou UID na URL, sem gravação de código no app. Checkout pago ainda bloqueado. O código opaco de uso único é transmitido na URL conforme contrato anterior: risco de exposição em logs/histórico deve ser tratado antes de produção (handoff por POST ou mecanismo equivalente). Nenhuma migração ou Edge Function implantada. Testes locais de formato e destino fixo adicionados; CI e homologação integrada pendentes.
