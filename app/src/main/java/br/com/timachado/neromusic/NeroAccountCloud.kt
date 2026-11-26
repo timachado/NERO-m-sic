@@ -26,6 +26,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
     var busy by remember(user.uid){mutableStateOf(false)}
     var notice by remember(user.uid){mutableStateOf<String?>(null)}
     var confirm by remember(user.uid){mutableStateOf<String?>(null)}
+    var historyEnabled by remember(user.uid){mutableStateOf(NeroAccountSync.historyEnabled(context,user.uid))}
     LaunchedEffect(user.uid,changes){
         cached=withContext(Dispatchers.IO){runCatching{NeroAccountLibraryStore.read(context,user.uid)}.getOrNull()}
     }
@@ -51,7 +52,16 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
                 else->"Nuvem indisponível ou ainda não configurada"
             },color=if(state=="ready"&&!pending)MaterialTheme.colorScheme.primary else Color.LightGray,fontSize=13.sp)
             cached?.let{Text("${it.pending.favorites.size} favoritos · ${it.pending.playlists.size} playlists · ${it.pending.artists.size} artistas · ${it.pending.albums.size} álbuns da conta",fontSize=13.sp)}
-            Text("Playlists, artistas seguidos e álbuns salvos também pertencem à conta. Histórico e arquivos offline ainda não integram a sincronização.",fontSize=12.sp,color=Color.LightGray)
+            Text("Playlists, artistas seguidos, álbuns e histórico online pertencem à conta. Arquivos offline e Replay ficam no aparelho.",fontSize=12.sp,color=Color.LightGray)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    Text("Histórico da conta")
+                    Text("Registra até 100 faixas online neste aparelho para sincronização. Pausar não apaga registros anteriores.",fontSize=12.sp,color=Color.LightGray)
+                }
+                Switch(checked=historyEnabled,enabled=enabled,onCheckedChange={value->
+                    if(NeroSupabase.activeUid.value==user.uid){NeroAccountSync.setHistoryEnabled(context,user.uid,value);historyEnabled=value}
+                })
+            }
             OutlinedButton(enabled=enabled&&!busy&&state!="loading",onClick={scope.launch{NeroAccountSync.pull(context,user.uid)}},modifier=Modifier.fillMaxWidth()){Text("Sincronizar agora")}
             TextButton(enabled=enabled&&!busy,onClick={confirm="favorites"}){Text("Importar favoritos anteriores do aparelho")}
             TextButton(enabled=enabled&&!busy,onClick={confirm="playlists"}){Text("Importar playlists anteriores do aparelho")}
