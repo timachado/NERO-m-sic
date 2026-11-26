@@ -25,6 +25,14 @@ internal object NeroFollowedArtists {
 @Composable
 internal fun rememberFollowedArtists():List<String>{
     val context=LocalContext.current
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
+    if(!ready)return emptyList()
+    if(uid!=null){
+        val owner=uid
+        return remember(owner,changes){runCatching{NeroAccountLibraryStore.read(context,requireNotNull(owner))?.pending?.artists.orEmpty()}.getOrDefault(emptyList<String>())}
+    }
     val prefs=remember(context){NeroFollowedArtists.preference(context)}
     var rows by remember(prefs){mutableStateOf(NeroFollowedArtists.read(context))}
     DisposableEffect(prefs){
