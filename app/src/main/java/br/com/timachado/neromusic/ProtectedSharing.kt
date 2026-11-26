@@ -45,23 +45,38 @@ private fun shareError(e:Exception):String=when(e){
     is GoogleRequired->"Entre com sua conta Google para continuar."
     else->"Não foi possível concluir. Confira a conexão, o link e a validade do compartilhamento."
 }
+private suspend fun createNeroShare(context:Context,playlist:SharedPlaylist,single:Boolean):String{
+    if(!ShareLinks.configured||!NeroSupabase.configured)throw ShareNotConfigured()
+    val payload=encodePlaylist(playlist).toString(Charsets.UTF_8)
+    require(payload.toByteArray(Charsets.UTF_8).size<=180000)
+    val session=NeroSupabase.session(context,interactive=false)
+    val id=java.util.UUID.randomUUID().toString().replace("-","")
+    val response=NeroSupabase.rpc("nero_share_create",org.json.JSONObject().put("p_id",id).put("p_payload",payload).put("p_single",single),session.access)
+    check(org.json.JSONObject(response).optBoolean("created"))
+    return ShareLinks.url(id)
+}
 @Composable
 internal fun MusicShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()->Unit,send:suspend(String?,Boolean)->Unit,cover:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
-    val link=if(single)playlist.songs.firstOrNull()?.let(::shareLink) else null
-    fun share(action:String){
+    var link by remember(playlist){mutableStateOf<String?>(null)}
+    val ready=ShareLinks.configured&&NeroSupabase.configured
+    val owner by NeroSupabase.activeUid.collectAsState()
+    fun share(action:String,withoutLink:Boolean=false){
         busy=true;message=null
         scope.launch{
             try{
+                val target=if(withoutLink)null else link?:createNeroShare(context,playlist,single).also{link=it}
                 if(action=="copy"){
                     val clipboard=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",link?:neroShareCaption(playlist,single,null)))
-                    message=if(link!=null)"Link copiado." else "Texto copiado."
-                }else{send(link,action=="card");onClose()}
-            }catch(e:CancellationException){throw e}catch(e:Exception){message="Não foi possível compartilhar. Tente novamente."}
+                    clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",target?:neroShareCaption(playlist,single,null)))
+                    message=if(target!=null)"Link copiado." else "Texto copiado."
+                }else{send(target,action=="card");onClose()}
+            }catch(e:CancellationException){throw e}
+            catch(e:GoogleRequired){message="Entre na sua conta para criar um link NERO."}
+            catch(_:Exception){message="Não foi possível criar o link NERO. Você pode compartilhar sem link."}
             finally{busy=false}
         }
     }
@@ -81,11 +96,14 @@ internal fun MusicShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()-
                     }
                 }
             }
-            Button(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("send")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("WhatsApp e redes sociais")}
-            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text(if(link!=null)"Copiar link" else "Copiar texto")}
-            if(single)OutlinedButton(enabled=!busy,onClick={share("card")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text("Status e Stories")}
-            if(single&&link!=null)Text("O link abre a música na fonte original.",style=MaterialTheme.typography.bodySmall)
-            if(!single)Text("Compartilhe o arquivo da playlist para importar no NERO Music.",style=MaterialTheme.typography.bodySmall)
+            Button(enabled=!busy&&playlist.songs.isNotEmpty()&&ready&&owner!=null,onClick={share("send")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("WhatsApp e redes sociais")}
+            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty()&&ready&&owner!=null,onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text("Copiar link NERO")}
+            if(single)OutlinedButton(enabled=!busy,onClick={share("card",withoutLink=!ready||owner==null)},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text("Status e Stories")}
+            if(!ready)Text("Link NERO indisponível no momento.",style=MaterialTheme.typography.bodySmall)
+            else if(owner==null)Text("Entre na sua conta para compartilhar um link NERO.",style=MaterialTheme.typography.bodySmall)
+            else Text("Quem receber pode abrir no NERO Music. Link válido por 7 dias.",style=MaterialTheme.typography.bodySmall)
+            TextButton(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("send",withoutLink=true)},modifier=Modifier.fillMaxWidth()){Text(if(single)"Compartilhar sem link" else "Compartilhar arquivo da playlist")}
+            if(single&&ready&&owner!=null)TextButton(enabled=!busy,onClick={share("card",withoutLink=true)},modifier=Modifier.fillMaxWidth()){Text("Status sem link")}
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             message?.let{Text(it,color=if(it=="Link copiado."||it=="Texto copiado.")Color(0xFF39FF14)else MaterialTheme.colorScheme.error)}
         }
