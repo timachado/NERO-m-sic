@@ -485,7 +485,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 }})
             } else if(tab == 0 && libraryPage == 6) {
                 TransferScreen(tracks = tracks, canPlay = controller != null, initialSelection=librarySelection, onPlay = { queue, index, random, origin -> controller?.let { p ->
-                    if(queue.isNotEmpty()) { p.shuffleModeEnabled = random; p.setMediaItems(queue.map { it.mediaItem() }.withOrigin(origin), index.coerceIn(0,queue.lastIndex),0L); p.prepare();p.play() }
+                    if(queue.isNotEmpty()) { p.shuffleModeEnabled = random; p.setMediaItems(queue.withOrigin(origin), index.coerceIn(0,queue.lastIndex),0L); p.prepare();p.play() }
                 } })
             } else if(tab == 0 && libraryPage >= 3) {
                 key(libraryPage) {

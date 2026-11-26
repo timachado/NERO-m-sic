@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import androidx.media3.common.MediaItem
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
@@ -143,7 +146,7 @@ private fun spotifyLink(uri:String):String?{
     return null
 }
 @Composable
-internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Track>,Int,Boolean,PlaybackOrigin?)->Unit,initialSelection:String?=null){
+internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean,PlaybackOrigin?)->Unit,initialSelection:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var lists by remember{mutableStateOf(emptyList<ImportedList>())}
@@ -169,11 +172,124 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
         }.orEmpty()
     }
     val matchedByPosition=remember(matchedEntries){matchedEntries.toMap()}
-    val visibleEntries=remember(current,matchedByPosition,missingOnly){
-        current?.items?.withIndex()?.filter{!missingOnly||it.index !in matchedByPosition}.orEmpty()
+    val catalogPrefs=remember(context){SpotifyCatalogLinks.prefs(context)}
+    var catalogRevision by remember{mutableIntStateOf(0)}
+    var matchingJob by remember{mutableStateOf<Job?>(null)}
+    var matchProgress by remember{mutableStateOf<String?>(null)}
+    var onlinePosition by remember{mutableStateOf<Int?>(null)}
+    var onlineQuery by remember{mutableStateOf("")}
+    var onlineCandidates by remember{mutableStateOf(emptyList<NativeMusicHit>())}
+    var onlineChoice by remember{mutableStateOf<NativeMusicHit?>(null)}
+    var onlineBusy by remember{mutableStateOf(false)}
+    var onlineNotice by remember{mutableStateOf<String?>(null)}
+    var confirmMatch by remember{mutableStateOf(false)}
+    var confirmSave by remember{mutableStateOf(false)}
+    var saving by remember{mutableStateOf(false)}
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val catalogMatches=remember(current,catalogRevision){
+        current?.items?.indices?.mapNotNull{i->SpotifyCatalogLinks.read(catalogPrefs,current.id,i)?.let{i to it}}?.toMap().orEmpty()
     }
-    val queue=remember(matchedEntries){matchedEntries.map{it.second}}
-    BackHandler(current!=null&&linkIndex==null){selected=null;missingOnly=false}
+    val playable=remember(current,matchedByPosition,catalogMatches){
+        current?.items?.indices?.mapNotNull{i->
+            (matchedByPosition[i]?.mediaItem()?:catalogMatches[i]?.takeIf{NativeMusicCatalog.enabled}?.queueItem())?.let{i to it}
+        }.orEmpty()
+    }
+    val playablePositions=remember(playable){playable.map{it.first}.toSet()}
+    val visibleEntries=remember(current,playablePositions,missingOnly){
+        current?.items?.withIndex()?.filter{!missingOnly||it.index !in playablePositions}.orEmpty()
+    }
+    val queue=remember(playable){playable.map{it.second}}
+    val onlineRefs=remember(current,catalogMatches){current?.items?.indices?.mapNotNull{i->catalogMatches[i]?.reference()}?.distinctBy{it.id}.orEmpty()}
+    fun leavePlaylist(){
+        matchingJob?.cancel();matchingJob=null;matchProgress=null;selected=null;missingOnly=false
+    }
+    BackHandler(current!=null&&linkIndex==null&&onlinePosition==null){leavePlaylist()}
+    if(confirmMatch&&current!=null)AlertDialog(onDismissRequest={confirmMatch=false},title={Text("Localizar músicas no NERO?")},
+        text={Text("O NERO consultará somente título e artista das músicas desta playlist na fonte musical. Correspondências exatas e únicas serão vinculadas; versões ambíguas ficam disponíveis para revisão. Nenhum áudio será baixado.")},
+        confirmButton={TextButton(onClick={
+            confirmMatch=false
+            val list=current
+            val targets=list.items.withIndex().filter{it.value.kind=="track"&&it.value.artist.isNotBlank()&&it.index !in catalogMatches}
+            if(targets.isEmpty()){notice="Nenhuma faixa pendente de busca no catálogo."}
+            else matchingJob=scope.launch{
+                var found=0;var errors=0;var done=0
+                val cache=mutableMapOf<String,List<NativeMusicHit>>()
+                try{
+                    for(entry in targets){
+                        val term=spotifySearchTerm(entry.value)
+                        matchProgress="Buscando ${done+1} de ${targets.size} · ${found} encontradas"
+                        try{
+                            val hits=cache[term]?:NativeMusicCatalog.search(term).also{
+                                if(cache.size>=100)cache.clear()
+                                cache[term]=it
+                            }
+                            spotifyAutomaticMatch(entry.value,hits)?.let{hit->
+                                SpotifyCatalogLinks.save(catalogPrefs,list.id,entry.index,hit)
+                                catalogRevision++;found++
+                            }
+                        }catch(e:CancellationException){throw e}catch(_:Exception){errors++}
+                        done++;delay(350)
+                    }
+                    notice="${found} novas correspondências online. "+if(errors>0)"${errors} consultas falharam; tente novamente." else "Revise as faixas restantes."
+                }finally{matchProgress=null;matchingJob=null}
+            }
+        }){Text("Buscar músicas")}},dismissButton={TextButton(onClick={confirmMatch=false}){Text("Cancelar")}})
+    if(confirmSave&&current!=null)AlertDialog(onDismissRequest={confirmSave=false},title={Text("Salvar playlist no NERO?")},
+        text={Text("${onlineRefs.size} faixas online únicas serão copiadas na ordem original para "+(if(uid!=null)"a biblioteca da conta conectada, com sincronização quando disponível." else "a biblioteca de visitante deste aparelho.")+" Itens não localizados e duplicatas permanecem preservados na importação. Nenhuma playlist existente será sobrescrita.")},
+        confirmButton={TextButton(enabled=ready&&!saving,onClick={
+            val owner=uid;val list=current;val rows=onlineRefs
+            confirmSave=false;saving=true
+            scope.launch{
+                try{
+                    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner)
+                    require(rows.isNotEmpty()&&rows.size<=1000)
+                    val existing=withContext(Dispatchers.IO){scopedOnlineLists(context,owner)}
+                    val newId=java.util.UUID.nameUUIDFromBytes(("spotify-transfer:"+list.id).toByteArray(Charsets.UTF_8)).toString()
+                    val next=importPortablePlaylists(existing,listOf(OnlineList(newId,list.name.take(100),rows)))
+                    require(next.size<=100)
+                    saveScopedOnlineLists(context,owner,existing,next)
+                    notice="Playlist disponível na biblioteca NERO."
+                }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível salvar a playlist. Confira os limites da biblioteca (100 playlists e 1.000 faixas por playlist); a importação original foi preservada."}
+                finally{saving=false}
+            }
+        }){Text("Salvar")}},dismissButton={TextButton(onClick={confirmSave=false}){Text("Cancelar")}})
+    val position=onlinePosition
+    if(current!=null&&position!=null){
+        val original=current.items.getOrNull(position)
+        if(original!=null)AlertDialog(onDismissRequest={if(!onlineBusy)onlinePosition=null},title={Text("Vincular música do catálogo")},
+            text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                Text(original.title+" · "+displayArtistName(original.artist),color=Color.LightGray)
+                OutlinedTextField(onlineQuery,{onlineQuery=it.take(100);onlineChoice=null},label={Text("Título e artista")},singleLine=true)
+                OutlinedButton(enabled=!onlineBusy&&onlineQuery.trim().length>=3,onClick={
+                    onlineBusy=true;onlineNotice=null;onlineChoice=null;onlineCandidates=emptyList()
+                    val term=onlineQuery.trim()
+                    scope.launch{
+                        try{onlineCandidates=NativeMusicCatalog.search(term).take(25);if(onlineCandidates.isEmpty())onlineNotice="Nenhum resultado."}
+                        catch(e:CancellationException){throw e}catch(_:Exception){onlineNotice="Falha na consulta. Tente novamente."}
+                        finally{onlineBusy=false}
+                    }
+                }){Text("Buscar no NERO")}
+                if(onlineBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
+                onlineNotice?.let{Text(it,fontSize=12.sp)}
+                LazyColumn(Modifier.heightIn(max=280.dp)){
+                    itemsIndexed(onlineCandidates){_,hit->
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            RadioButton(selected=onlineChoice==hit,onClick={onlineChoice=hit})
+                            Column(Modifier.weight(1f)){Text(hit.title);Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray)}
+                        }
+                    }
+                }
+            }},
+            confirmButton={TextButton(enabled=onlineChoice!=null&&!onlineBusy,onClick={
+                onlineChoice?.let{SpotifyCatalogLinks.save(catalogPrefs,current.id,position,it);catalogRevision++}
+                onlinePosition=null
+            }){Text("Vincular")}},
+            dismissButton={Row{
+                if(position in catalogMatches)TextButton(enabled=!onlineBusy,onClick={catalogPrefs.edit().remove(SpotifyCatalogLinks.key(current.id,position)).apply();catalogRevision++;onlinePosition=null}){Text("Desvincular")}
+                TextButton(enabled=!onlineBusy,onClick={onlinePosition=null}){Text("Cancelar")}
+            }})
+    }
     val linkingPosition=linkIndex
     if(current!=null&&linkingPosition!=null){
         val original=current.items.getOrNull(linkingPosition)
@@ -242,7 +358,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                 pending=null
                 scope.launch{
                     busy=true;notice=null
-                    try{lists=saveImport(context,preview);notice="Playlists importadas. Confira as correspondências locais."}
+                    try{lists=saveImport(context,preview);notice="Playlists importadas. Abra uma lista para localizar as músicas no catálogo NERO."}
                     catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível salvar a importação. Os dados anteriores foram preservados."}
                     finally{busy=false}
                 }
@@ -250,9 +366,9 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
     }
     LazyColumn(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
-            if(current!=null)IconButton(onClick={selected=null;missingOnly=false}){Icon(Icons.Default.ArrowBack,"Voltar")}
+            if(current!=null)IconButton(onClick={leavePlaylist()}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(current?.name ?: "NERO Transfer",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("Playlists importadas do Spotify · metadados locais",color=Color(0xFF00E5FF),fontSize=12.sp)
+            Text("Playlists importadas do Spotify · NERO Transfer",color=Color(0xFF00E5FF),fontSize=12.sp)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,color=Color.LightGray)}
             if(current==null){
@@ -260,13 +376,17 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
                 OutlinedButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://www.spotify.com/account/privacy/")))}},modifier=Modifier.fillMaxWidth()){Text("Solicitar dados ao Spotify")}
                 Button(onClick={picker.launch(arrayOf("application/zip","application/x-zip-compressed","application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Importar ZIP ou JSON")}
             }else{
-                Text("${current.items.size} itens · ${queue.size} disponíveis na biblioteca local",color=Color.LightGray)
-                Text("${current.items.size-queue.size} itens ainda sem correspondência",fontSize=12.sp,color=Color.LightGray)
+                Text("${current.items.size} itens · ${queue.size} reproduzíveis",color=Color.LightGray)
+                Text("${catalogMatches.size} online · ${matchedByPosition.size} locais · ${current.items.size-queue.size} pendentes",fontSize=12.sp,color=Color.LightGray)
+                matchProgress?.let{Text(it,fontSize=13.sp,color=MaterialTheme.colorScheme.primary);LinearProgressIndicator(Modifier.fillMaxWidth())}
+                if(matchingJob!=null)OutlinedButton(onClick={matchingJob?.cancel()},modifier=Modifier.fillMaxWidth()){Text("Parar busca (preservar resultados)")}
+                else Button(enabled=!saving&&NativeMusicCatalog.enabled,onClick={confirmMatch=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Search,null);Text("Localizar músicas no NERO")}
+                OutlinedButton(enabled=ready&&!saving&&matchingJob==null&&onlineRefs.isNotEmpty(),onClick={confirmSave=true},modifier=Modifier.fillMaxWidth()){Text("Salvar como playlist NERO")}
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
                     OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}
                 }
-                Text("A fila inclui somente os arquivos locais correspondentes; os demais itens permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
+                Text("A fila preserva a ordem dos itens vinculados, locais ou online. Os demais permanecem na playlist.",fontSize=12.sp,color=Color.LightGray)
                 Text("As faixas sem correspondência permanecem na lista. Importar não transfere o áudio nem a assinatura Spotify.",color=Color.LightGray,fontSize=12.sp)
                 OutlinedButton(enabled=current.items.isNotEmpty(),onClick={sharing=SharedPlaylist(current.name,current.items.map{SharedSong(it.title,it.artist,publicLink=spotifyLink(it.uri))})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 FilterChip(selected=missingOnly,onClick={missingOnly=!missingOnly},label={Text("Mostrar apenas faixas faltantes")})
@@ -286,18 +406,21 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Trac
             val i=entry.index
             val item=entry.value
             val local=matchedByPosition[i]
+            val online=catalogMatches[i]
             val link=spotifyLink(item.uri)
             Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
                 Text((i+1).toString(),color=Color.LightGray,modifier=Modifier.width(36.dp))
                 Column(Modifier.weight(1f)){
                     Text(item.title,fontWeight=FontWeight.Medium)
-                    if(item.artist.isNotBlank())Text(item.artist,fontSize=12.sp,color=Color.LightGray)
+                    if(item.artist.isNotBlank())Text(displayArtistName(item.artist),fontSize=12.sp,color=Color.LightGray)
                     val manual=links.getString(current.id+":"+i,null)?.let{trackByFingerprint[it]}!=null
-                    Text(if(manual)"Vinculada manualmente" else if(local!=null)"Disponível no aparelho" else "Sem correspondência local",fontSize=11.sp,color=if(local!=null)Color(0xFF39FF14)else Color.LightGray)
+                    Text(if(manual)"Vinculada ao arquivo local" else if(local!=null)"Disponível no aparelho" else if(online!=null)"Disponível no NERO" else "Aguardando correspondência",fontSize=11.sp,color=if(i in playablePositions)Color(0xFF39FF14)else Color.LightGray)
                     if(item.kind=="track")TextButton(onClick={linkQuery=item.title;choice=null;linkIndex=i},contentPadding=PaddingValues(0.dp)){Text(if(manual)"Alterar vínculo" else "Vincular faixa local",fontSize=12.sp)}
                 }
-                if(local!=null)IconButton(enabled=canPlay,onClick={val position=matchedEntries.indexOfFirst{it.first==i};if(position>=0)onPlay(queue,position,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
-                if(local==null&&item.kind=="track"&&item.artist.isNotBlank())IconButton(onClick={if(!openYouTubeMusic(context,item.title+" "+item.artist))notice="Não foi possível abrir o YouTube Music."}){Icon(Icons.Default.Search,"Buscar faixa no YouTube Music")}
+                if(i in playablePositions)IconButton(enabled=canPlay,onClick={val index=playable.indexOfFirst{it.first==i};if(index>=0)onPlay(queue,index,false,PlaybackOrigin("imported",current.name,current.id))}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}
+                if(item.kind=="track"&&NativeMusicCatalog.enabled)IconButton(enabled=matchingJob==null&&!saving,onClick={
+                    onlineQuery=spotifySearchTerm(item);onlineCandidates=listOfNotNull(online);onlineChoice=online;onlineNotice=null;onlinePosition=i
+                }){Icon(Icons.Default.Search,if(online==null)"Localizar no NERO" else "Revisar vínculo online")}
                 if(link!=null)IconButton(onClick={runCatching{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(link)))}}){Icon(Icons.Default.OpenInNew,"Abrir faixa no Spotify")}
             }
         }

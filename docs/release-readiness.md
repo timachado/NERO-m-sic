@@ -73,3 +73,6 @@ Créditos de colaboração são apresentados com feat.; nomes oficiais conhecido
 
 ## 0.9.74-dev — títulos das coleções
 Normalização de colaboração nos títulos do Daily Mix básico e Premium, incluindo cache existente sem regeneração; títulos de origem do mix no player e artistas dos rankings Replay também padronizados. Preserva nomes oficiais conhecidos, chaves de cache, preferências, referências e catálogo. Testes de títulos adicionados. Workflow automático assina a nova versão após testes; validação no Android pendente.
+
+## 0.9.75-dev — NERO Transfer online
+Importador existente mantém ZIP/JSON, metadados e ordem original. Busca explícita por playlist usa somente título/artista, com vinculação automática conservadora de correspondências únicas, revisão manual no próprio NERO, progresso e cancelamento com preservação dos resultados. Fila mista local/online na ordem original. Ação explícita copia referências online únicas para biblioteca de visitante ou conta, sem sobrescrever playlists; itens faltantes e duplicatas permanecem na importação. Limites existentes da biblioteca preservados. Nenhuma transferência de áudio/assinatura Spotify ou envio do ZIP. Testes sintéticos adicionados; exportação real do usuário e homologação pendentes. Sem alteração de credenciais, pagamentos ou banco de produção.
