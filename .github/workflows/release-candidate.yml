@@ -51,7 +51,7 @@ jobs:
           NERO_STORE_PASSWORD: ${{ secrets.NERO_RELEASE_STORE_PASSWORD }}
           NERO_KEY_ALIAS: ${{ secrets.NERO_RELEASE_KEY_ALIAS }}
           NERO_KEY_PASSWORD: ${{ secrets.NERO_RELEASE_KEY_PASSWORD }}
-          NERO_CERT_SHA256: ${{ vars.NERO_RELEASE_CERT_SHA256 }}
+          NERO_CERT_SHA256: ${{ secrets.NERO_RELEASE_CERT_SHA256 || vars.NERO_RELEASE_CERT_SHA256 }}
         run: |
           set -euo pipefail
           for field in NERO_STORE_B64 NERO_STORE_PASSWORD NERO_KEY_ALIAS NERO_KEY_PASSWORD NERO_CERT_SHA256; do
