@@ -51,14 +51,14 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier,onRetry:()->Unit=onPlayPause
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier,onRetry:()->Unit=onPlayPause,nextAvailable:Boolean=ready
 ){
     val premiumSignal by NeroPlaybackAccess.premium.collectAsState()
     val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
     var fullscreen by rememberSaveable{mutableStateOf(false)}
     LaunchedEffect(videoMode){if(!videoMode)fullscreen=false}
     if(fullscreen&&videoMode&&videoPlayer!=null){
-        FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()},pipSupported=pipSupported,onPip=onPip,favorite=favorite,canFavorite=canSave,onFavorite=onFavorite)
+        FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()},pipSupported=pipSupported,onPip=onPip,favorite=favorite,canFavorite=canSave,onFavorite=onFavorite,fullControls=fullControls,nextAvailable=nextAvailable)
         return
     }
     val appearance=rememberNeroPlayerTheme()
@@ -193,7 +193,7 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,if(fullControls)"Aleatório" else "Aleatório obrigatório no Free",tint=if(shuffle||!fullControls)neon else Color.White,modifier=Modifier.size(26.dp))}
                 IconButton(onClick=onPrevious,enabled=ready&&fullControls){Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
                 FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)66.dp else 76.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color.White,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
-                IconButton(onClick=onNext,enabled=ready){Icon(Icons.Default.SkipNext,"Próxima",tint=if(ready)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
+                IconButton(onClick=onNext,enabled=ready&&nextAvailable){Icon(Icons.Default.SkipNext,"Próxima",tint=if(ready&&nextAvailable)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Timer,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White,modifier=Modifier.size(26.dp))}
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){

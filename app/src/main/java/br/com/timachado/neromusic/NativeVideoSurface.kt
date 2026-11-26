@@ -75,7 +75,7 @@ internal fun ClipQualityMenu(quality:Int,onQuality:(Int)->Unit,enabled:Boolean=t
     }
 }
 @Composable
-internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit,pipSupported:Boolean=false,onPip:()->Unit={},favorite:Boolean=false,canFavorite:Boolean=false,onFavorite:()->Unit={}){
+internal fun FullscreenClip(player:Player,title:String,artist:String,position:Long,duration:Long,playing:Boolean,quality:Int,error:String?,onQuality:(Int)->Unit,onSeek:(Long)->Unit,onToggle:()->Unit,onPrevious:()->Unit,onNext:()->Unit,onClose:()->Unit,onAudio:()->Unit,pipSupported:Boolean=false,onPip:()->Unit={},favorite:Boolean=false,canFavorite:Boolean=false,onFavorite:()->Unit={},fullControls:Boolean=true,nextAvailable:Boolean=true){
     val context=LocalContext.current
     val activity=remember(context){findActivity(context)}
     DisposableEffect(activity){
@@ -97,7 +97,7 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
         }
     }
     BackHandler(onBack=onClose)
-    var seek by remember(title,artist){mutableStateOf<Float?>(null)}
+    var seek by remember(title,artist,fullControls){mutableStateOf<Float?>(null)}
     var controlsVisible by remember{mutableStateOf(false)}
     var interaction by remember{mutableIntStateOf(0)}
     var qualityOpen by remember{mutableStateOf(false)}
@@ -123,11 +123,11 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color.Black.copy(alpha=.65f)).padding(horizontal=20.dp),horizontalAlignment=Alignment.CenterHorizontally){
             if(error!=null){Text("Vídeo indisponível nesta qualidade.",color=Color.LightGray);TextButton(onClick=onAudio){Text("Voltar para música")}}
-            Slider(value=seek?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={seek=it;keepControls()},onValueChangeFinished={seek?.let{onSeek((it*duration).toLong())};seek=null;keepControls()},enabled=duration>0)
+            Slider(value=seek?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={if(fullControls){seek=it;keepControls()}},onValueChangeFinished={if(fullControls)seek?.let{onSeek((it*duration).toLong())};seek=null;keepControls()},enabled=duration>0&&fullControls,colors=SliderDefaults.colors(disabledThumbColor=Color.White,disabledActiveTrackColor=Color.White,disabledInactiveTrackColor=Color.White.copy(alpha=.25f)))
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(24.dp)){
-                IconButton(onClick={keepControls();onPrevious()}){Icon(Icons.Default.SkipPrevious,"Anterior")}
+                IconButton(enabled=fullControls,onClick={keepControls();onPrevious()}){Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f))}
                 FilledIconButton(onClick={keepControls();onToggle()}){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar")}
-                IconButton(onClick={keepControls();onNext()}){Icon(Icons.Default.SkipNext,"Próximo")}
+                IconButton(enabled=nextAvailable,onClick={keepControls();onNext()}){Icon(Icons.Default.SkipNext,"Próximo",tint=if(nextAvailable)Color.White else Color.White.copy(alpha=.32f))}
             }
         }
         }

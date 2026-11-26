@@ -220,6 +220,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var shuffle by remember { mutableStateOf(false) }
     var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+    var nextAvailable by remember(controller) { mutableStateOf(false) }
     // Metadata is event-driven. Only the visible progress indicator needs polling.
     DisposableEffect(controller,foreground) {
         val p=controller
@@ -244,6 +245,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 buffering = p.playbackState==Player.STATE_BUFFERING
                 pos = p.currentPosition.coerceAtLeast(0)
                 duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
+                nextAvailable = p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem()
                 shuffle = p.shuffleModeEnabled
                 repeat = p.repeatMode
                 playbackError = p.playerError?.let { neroPlaybackErrorMessage(it.errorCode) }
@@ -350,7 +352,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     Text(displayArtistName(artist), color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
                 }
                 IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
-                IconButton(onClick = { controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()} }) { Icon(Icons.Default.SkipNext, "Próxima") }
+                IconButton(enabled=nextAvailable,onClick = { controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()} }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
@@ -420,7 +422,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     else->showQueue=true
                 }},onOpenAlbum={playerAlbum=it},onExploreArtist={term->playerArtist=term},
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
-                favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
+                favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,nextAvailable=nextAvailable,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={if(NeroPlaybackAccess.allowed())controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},

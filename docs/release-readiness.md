@@ -130,3 +130,6 @@ Player reorganizado conforme captura Spotify fornecida: capa quadrada ampla, cab
 
 ## 0.9.97-dev — próxima faixa no Free
 Libera comandos Media3 de próxima faixa na política central, widget e callbacks do player, mantendo anterior e seek bloqueados. Próxima branca no layout, anterior cinza. Testes de permissão atualizados. Lint 0.9.96 relatou UnsafeOptInUsageError pelo marcador UnstableApi em todo NeroPlaybackAccess; substituído por opt-in localizado nas duas funções de comandos que usam API Media3 experimental, sem propagar marcador aos consumidores estáveis. Não desabilitar lint. Build 0.9.96 compilou e passou unit tests, mas não foi aprovado no lint. Novo CI e homologação de dispositivo ainda pendentes. Sem alterações comerciais.
+
+## 0.9.98-dev — consistência dos controles
+Player principal, miniplayer e vídeo em tela cheia compartilham disponibilidade de próxima faixa derivada do MediaController; próxima fica disponível para Free e Premium se houver próxima mídia e comando permitido. No vídeo em tela cheia o Free também vê anterior cinza e progresso sem interação, mantendo play/pause, timer existente no player e demais recursos. Não altera a política de seleção, fila aleatória, catálogo ou backend. 0.9.97 estava em execução no momento da revisão; build da nova versão e teste Android/Bluetooth/Cast ainda pendentes. Sem mudança comercial.
