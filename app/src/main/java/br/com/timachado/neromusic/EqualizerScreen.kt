@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 private fun settings(context:Context) = context.getSharedPreferences("nero_eq",Context.MODE_PRIVATE)
-private data class EqStatus(val frequencies:List<Int> = emptyList(),val low:Int = 0,val high:Int = 0,val available:Boolean = false,val active:Boolean = false)
+private data class EqStatus(val frequencies:List<Int> = emptyList(),val low:Int = 0,val high:Int = 0,val available:Boolean = false,val active:Boolean = false,val reason:String? = null)
+internal fun neroEqualizerCanAttach(sessionId:Int):Boolean=BuildConfig.FULL_FEATURES&&sessionId>0
 private object EqRuntime { var state by mutableStateOf(EqStatus()) }
 
 // The effect belongs to the player's audio session, not the device-wide output.
@@ -36,12 +37,12 @@ internal class SessionEqualizer(context:Context) {
         if(id==sessionId && effect!=null) return
         releaseEffect()
         sessionId=id
-        if(!BuildConfig.DEBUG || id<=0) return
+        if(!neroEqualizerCanAttach(id)) return
         try {
             effect=Equalizer(0,id)
             effect?.setControlStatusListener { _,_ -> applySettings() }
             applySettings()
-        } catch(_:Exception) { releaseEffect() }
+        } catch(_:Exception) { releaseEffect();EqRuntime.state=EqStatus(reason="Não foi possível inicializar o equalizador nesta saída de áudio. Tente reproduzir outra faixa ou trocar a saída.") }
     }
 
     private fun applySettings() {
@@ -51,7 +52,7 @@ internal class SessionEqualizer(context:Context) {
             val range=e.bandLevelRange
             val low=range[0].toInt().coerceAtLeast(-600)
             val high=range[1].toInt().coerceAtMost(600)
-            if(count<=0 || low>=high) { EqRuntime.state=EqStatus();return }
+            if(count<=0 || low>=high) { EqRuntime.state=EqStatus(reason="A saída de áudio não disponibilizou bandas ajustáveis.");return }
             val frequencies=(0 until count).map { e.getCenterFreq(it.toShort())/1000 }
             val control=e.hasControl()
             var active=false
@@ -64,8 +65,8 @@ internal class SessionEqualizer(context:Context) {
                     active=e.setEnabled(true)==AudioEffect.SUCCESS && e.enabled
                 } else e.setEnabled(false)
             }
-            EqRuntime.state=EqStatus(frequencies,low,high,control,active)
-        } catch(_:Exception) { EqRuntime.state=EqStatus() }
+            EqRuntime.state=EqStatus(frequencies,low,high,control,active,if(control)null else "Outro efeito de áudio está controlando esta sessão. Feche o equalizador externo e tente novamente.")
+        } catch(_:Exception) { releaseEffect();EqRuntime.state=EqStatus(reason="Não foi possível aplicar o efeito nesta sessão de áudio.") }
     }
 
     private fun releaseEffect() {
@@ -122,7 +123,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Switch(checked=enabled,enabled=status.available,onCheckedChange={prefs.edit().putBoolean("enabled",it).apply()})
         }
         Text(when {
-            !status.available -> "Inicie uma faixa no NERO. Se o controle continuar indisponível, o dispositivo ou a saída de áudio pode não oferecer suporte."
+            !status.available -> status.reason ?: "Inicie uma faixa no NERO para conectar o equalizador à sessão de áudio."
             status.active -> "Efeito ativo na sessão de áudio do NERO."
             enabled -> "Efeito solicitado, mas ainda não ativo."
             else -> "Equalização desativada."
@@ -147,6 +148,6 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             }
             OutlinedButton(onClick={preset("Plano")},modifier=Modifier.fillMaxWidth()){Text("Restaurar bandas")}
         }
-        Text("As bandas e a disponibilidade dependem do aparelho. O efeito não altera arquivos e não controla o YouTube Music externo. Use ganhos moderados para evitar distorção.",fontSize=12.sp,color=Color.LightGray)
+        Text("As bandas e a disponibilidade dependem do aparelho. O efeito atua somente no áudio reproduzido pelo NERO e não altera arquivos. Use ganhos moderados para evitar distorção.",fontSize=12.sp,color=Color.LightGray)
     }
 }
