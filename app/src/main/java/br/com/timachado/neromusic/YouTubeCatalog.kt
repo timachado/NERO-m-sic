@@ -38,8 +38,8 @@ internal object YouTubeCatalog{
     suspend fun search(context:Context,term:String):List<YouTubeHit>{
         check(configured)
         val user=runCatching{FirebaseAuth.getInstance().currentUser}.getOrNull()
-            ?:error("Entre na conta NERO para consultar o YouTube.")
-        val token=user.getIdToken(false).await().token?:error("Entre na conta NERO para consultar o YouTube.")
+            ?:error("Entre na sua conta NERO Music para consultar o catálogo externo.")
+        val token=user.getIdToken(false).await().token?:error("Entre na sua conta NERO Music para consultar o catálogo externo.")
         return withContext(Dispatchers.IO){
             val uri=Uri.parse(BuildConfig.YOUTUBE_ENDPOINT).buildUpon().appendQueryParameter("q",term.take(100)).build()
             val c=URL(uri.toString()).openConnection() as HttpURLConnection
@@ -79,7 +79,7 @@ internal fun YouTubePlayerScreen(hit:YouTubeHit,onBack:()->Unit){
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("YouTube · vídeo musical",fontSize=20.sp)
+            Text("NERO Music · Vídeo musical",fontSize=20.sp)
         }
         AndroidView(factory={ctx->
             WebView(ctx).apply{
@@ -102,7 +102,7 @@ internal fun YouTubePlayerScreen(hit:YouTubeHit,onBack:()->Unit){
         },modifier=Modifier.fillMaxWidth().height(240.dp),onReset=null,onRelease={view->view.stopLoading();view.destroy()})
         Text(hit.title,fontSize=21.sp)
         Text(hit.channel)
-        Text("Toque em reproduzir no player do YouTube. Disponibilidade depende do vídeo e da região.",fontSize=12.sp)
+        Text("Reproduza no player incorporado do YouTube. A disponibilidade depende do vídeo e da região.",fontSize=12.sp)
     }
 }
 
@@ -121,9 +121,9 @@ internal fun YouTubeWebSearchScreen(query:String,onBack:()->Unit){
     Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(8.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar à busca NERO")}
-            Text("YouTube · "+query,fontSize=18.sp,modifier=Modifier.weight(1f),maxLines=1)
+            Text("NERO Music · "+query,fontSize=18.sp,modifier=Modifier.weight(1f),maxLines=1)
         }
-        Text("Página oficial integrada. Use os controles do próprio YouTube.",fontSize=12.sp)
+        Text("Página externa do YouTube integrada ao NERO Music. Use os controles da página.",fontSize=12.sp)
         if(failed){
             Text("A página não carregou. Verifique a conexão ou tente novamente.")
             TextButton(onClick={failed=false;reload++}){Text("Tentar novamente")}
