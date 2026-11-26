@@ -129,9 +129,10 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         catch(_:Exception){onlineNotice="Serviço de letras temporariamente indisponível."}
     }
     val synced=lines.firstOrNull()?.at!=null
-    val active=if(synced)lines.indexOfLast{(it.at?:Long.MAX_VALUE)<=position}else -1
+    val active=if(synced)activeLyricIndex(lines,position)else -1
+    var follow by remember(key){mutableStateOf(true)}
     val state=rememberLazyListState()
-    LaunchedEffect(active,key){if(active>=0&&active<lines.size)state.animateScrollToItem((active-1).coerceAtLeast(0))}
+    LaunchedEffect(active,key,follow){if(follow&&active>=0&&active<lines.size)state.animateScrollToItem((active-1).coerceAtLeast(0))}
     Column(modifier.fillMaxSize().padding(18.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar ao player")}
@@ -141,6 +142,10 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         Text(title,fontSize=21.sp,fontWeight=FontWeight.Bold)
         Text(displayArtistName(artist),color=Color.LightGray)
         Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=Color(0xFF00E5FF),fontSize=12.sp)
+        if(synced)Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            Text(if(follow)"Acompanhar música" else "Leitura livre",modifier=Modifier.weight(1f),fontSize=13.sp)
+            Switch(checked=follow,onCheckedChange={follow=it})
+        }
         source?.let{Text(it,color=Color.LightGray,fontSize=11.sp)}
         onlineNotice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
         notice?.let{Text(it,color=MaterialTheme.colorScheme.error)}
@@ -176,4 +181,18 @@ internal suspend fun playerPreviewLyrics(context:Context,mediaId:String,title:St
     }
     if(local.isNotEmpty()||!BuildConfig.DEBUG||duration<=0)return local
     return OnlineLyrics.lookup(title,artist,(duration+500L)/1000L)?.let{parseLyrics(it.text)}.orEmpty()
+}
+
+// Timed lyrics are sorted by parseLyrics. Return the last matching timestamp,
+// including equal timestamps, without scanning the full lyric every player tick.
+internal fun activeLyricIndex(lines:List<LyricLine>,position:Long):Int {
+    var low=0
+    var high=lines.lastIndex
+    var result=-1
+    while(low<=high){
+        val mid=low+(high-low)/2
+        val time=lines[mid].at?:Long.MAX_VALUE
+        if(time<=position){result=mid;low=mid+1}else high=mid-1
+    }
+    return result
 }

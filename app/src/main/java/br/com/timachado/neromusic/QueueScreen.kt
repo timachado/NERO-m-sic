@@ -37,10 +37,15 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
     var message by remember{mutableStateOf<String?>(null)}
     var confirmClear by remember{mutableStateOf<QueueSnapshot?>(null)}
     var saveItems by remember{mutableStateOf<List<MediaItem>?>(null)}
+    var saveOwner by remember{mutableStateOf<String?>(null)}
+    var saving by remember{mutableStateOf(false)}
     val context=androidx.compose.ui.platform.LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
     val scope=rememberCoroutineScope()
+    LaunchedEffect(uid,ready){
+        if(!ready||saveOwner!=uid)saveItems=null
+    }
     val listState=rememberLazyListState()
     LaunchedEffect(queue.current,queue.items.size){if(queue.current in queue.items.indices)listState.scrollToItem(queue.current)}
     val byId=remember(tracks){tracks.associateBy{it.id.toString()}}
@@ -72,25 +77,33 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
             }
         }.distinctBy{it.id}
         val mixedAccount=uid!=null&&!localOnly&&refs.any{it.id.startsWith("local:")}
-        val canSave=ready&&!mixedAccount&&(localOnly||items.all{item->openRefFromItem(item)!=null||youtubeRefFromItem(item)!=null||byId[item.mediaId]!=null})
-        AlertDialog(onDismissRequest={saveItems=null},title={Text("Salvar fila como playlist")},text={
+        val canSave=ready&&saveOwner==uid&&!saving&&!mixedAccount&&(localOnly||items.all{item->openRefFromItem(item)!=null||youtubeRefFromItem(item)!=null||byId[item.mediaId]!=null})
+        AlertDialog(onDismissRequest={if(!saving)saveItems=null},title={Text("Salvar fila como playlist")},text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 Text("Cria uma nova playlist com as músicas da fila, na ordem da lista, sem alterar a reprodução.")
                 Text("Faixas repetidas serão salvas uma vez.",fontSize=12.sp,color=Color.LightGray)
                 if(!canSave)Text(if(mixedAccount)"A fila combina arquivos locais e músicas online. Saia da conta para salvá-la na biblioteca do aparelho, ou separe as faixas." else "Há faixas sem referência compatível nesta fila.",color=MaterialTheme.colorScheme.error)
-                OutlinedTextField(name,{name=it.take(80)},singleLine=true,label={Text("Nome da playlist")})
+                OutlinedTextField(name,{name=it.take(80)},singleLine=true,enabled=!saving,label={Text("Nome da playlist")})
+                if(saving)LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         },confirmButton={TextButton(enabled=canSave&&name.isNotBlank(),onClick={
-            val owner=uid;scope.launch{try{
+            val owner=saveOwner
+            val playlistName=name.trim()
+            if(saving||!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@TextButton
+            saving=true
+            scope.launch{try{
+                require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner)
                 val id=java.util.UUID.randomUUID().toString()
-                if(localOnly)saveMixes(context,mixes(context)+Mix(id,name.trim(),localTracks.mapNotNull{it?.id}.distinct()))
+                if(localOnly)saveMixes(context,mixes(context)+Mix(id,playlistName,localTracks.mapNotNull{it?.id}.distinct()))
                 else{
                     val current=scopedOnlineLists(context,owner)
-                    saveScopedOnlineLists(context,owner,current,current+OnlineList(id,name.trim(),refs))
+                    require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner)
+                    saveScopedOnlineLists(context,owner,current,current+OnlineList(id,playlistName,refs))
                 }
-                saveItems=null;message="Playlist criada. Encontre em Sua biblioteca."
-            }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){message="Não foi possível salvar a playlist.";saveItems=null}}
-        }){Text("Criar playlist")}},dismissButton={TextButton(onClick={saveItems=null}){Text("Cancelar")}})
+                if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){saveItems=null;message="Playlist criada. Encontre em Sua biblioteca."}
+            }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner){message="Não foi possível salvar a playlist.";saveItems=null}}
+            finally{saving=false}}
+        }){Text(if(saving)"Salvando…" else "Criar playlist")}},dismissButton={TextButton(enabled=!saving,onClick={saveItems=null}){Text("Cancelar")}})
     }
     val expectedClear=confirmClear
     if(expectedClear!=null){
@@ -126,7 +139,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         }
         if(queue.shuffle)Text("Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas.",color=Color(0xFF00E5FF),fontSize=12.sp)
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            OutlinedButton(enabled=queue.items.isNotEmpty()&&queue.items.size<=1000,onClick={saveItems=queue.items.toList()},modifier=Modifier.weight(1f)){Text("Salvar fila")}
+            OutlinedButton(enabled=ready&&!saving&&queue.items.isNotEmpty()&&queue.items.size<=1000,onClick={saveOwner=uid;saveItems=queue.items.toList()},modifier=Modifier.weight(1f)){Text("Salvar fila")}
             OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.weight(1f)){Text("Limpar próximas")}
         }
         message?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
