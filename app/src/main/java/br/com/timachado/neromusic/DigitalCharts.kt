@@ -60,7 +60,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
     var revision by remember{mutableIntStateOf(0)}
     var expanded by remember{mutableStateOf(false)}
     var showSource by remember{mutableStateOf(false)}
-    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre as paradas")},text={Text("Ranking semanal do Brasil obtido do YouTube Music Global Charts. A ordem é a da fonte, não uma medição de reproduções do NERO. A lista permanece dentro do aplicativo.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
+    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre as paradas")},text={Text("Paradas digitais do NERO Music: ranking semanal do Brasil exibido a partir de uma fonte externa (YouTube Music Global Charts). A classificação não representa reproduções medidas pelo NERO Music.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
     LaunchedEffect(lifecycle,revision){
         var force=revision>0
         suspend fun update(){
@@ -76,7 +76,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(7.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
-            Text("Paradas digitais",fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            Text("Paradas digitais NERO",fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar parada")}
         }
         Text("Brasil · Top músicas da semana",fontSize=12.sp,color=Color.LightGray)
@@ -117,6 +117,6 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
             }
         }
         TextButton(onClick={showSource=true}){Text("Sobre o ranking")}
-        Text("Top Brasil · Toque em uma faixa para ouvir no NERO.",fontSize=11.sp,color=Color.LightGray)
+        Text("Top Brasil · Toque em uma faixa para ouvir no NERO Music.",fontSize=11.sp,color=Color.LightGray)
     }
 }
