@@ -16,7 +16,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONObject
 
 internal enum class NeroPlayerTheme(val label:String,val primary:Long,val secondary:Long,val panel:Long,val background:Long,val description:String){
     AURORA("Aurora Neon",0xFF39FF14,0xFF00E5FF,0xFF17262D,0xFF000000,"Energia neon e identidade original NERO."),
@@ -42,10 +41,7 @@ internal suspend fun verifiedPremium(context:Context,uid:String):Boolean{
     if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return false
     return try{
         withTimeoutOrNull(12000L){
-            val session=NeroSupabase.session(context,false)
-            if(session.uid!=uid)return@withTimeoutOrNull false
-            val row=JSONObject(NeroSupabase.rpc("nero_plan_read_v1",JSONObject(),session.access))
-            row.optString("status")=="active"&&NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid
+            readNeroSubscription(context,uid).phase.premium
         }==true
     }catch(e:CancellationException){throw e}catch(_:Exception){false}
 }

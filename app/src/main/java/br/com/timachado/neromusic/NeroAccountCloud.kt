@@ -13,7 +13,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 @Composable
 internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit={}){
@@ -22,7 +21,8 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
     val pull by NeroAccountSync.status.collectAsState()
     val changes by NeroAccountSync.changes.collectAsState()
     var cached by remember(user.uid){mutableStateOf<NeroAccountLibraryState?>(null)}
-    var plan by remember(user.uid){mutableStateOf("Não verificado")}
+    var plan by remember(user.uid){mutableStateOf<NeroSubscription?>(null)}
+    var planError by remember(user.uid){mutableStateOf(false)}
     var planBusy by remember(user.uid){mutableStateOf(false)}
     var busy by remember(user.uid){mutableStateOf(false)}
     var notice by remember(user.uid){mutableStateOf<String?>(null)}
@@ -34,13 +34,11 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
     suspend fun refreshPlan(){
         if(planBusy)return
         planBusy=true
-        plan="Consultando assinatura…"
+        plan=null;planError=false
         try{
-            val current=NeroSupabase.session(context,false);require(current.uid==user.uid)
-            val row=JSONObject(NeroSupabase.rpc("nero_plan_read_v1",JSONObject(),current.access))
-            require(NeroSupabase.activeUid.value==user.uid)
-            plan=neroPlanStatus(row.optString("status"))
-        }catch(e:CancellationException){throw e}catch(_:Exception){plan="Serviço de planos ainda indisponível"}
+            plan=kotlinx.coroutines.withTimeoutOrNull(13000L){readNeroSubscription(context,user.uid)}
+            if(plan==null)planError=true
+        }catch(e:kotlinx.coroutines.TimeoutCancellationException){planError=true}catch(e:CancellationException){throw e}catch(_:Exception){planError=true}
         finally{planBusy=false}
     }
     LaunchedEffect(user.uid){refreshPlan()}
@@ -78,7 +76,14 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("Plano e assinatura",fontSize=20.sp,fontWeight=FontWeight.Bold)
-            Text(plan,color=MaterialTheme.colorScheme.primary)
+            Text(when{planBusy->"Consultando assinatura…";planError->"Serviço de planos ainda indisponível";else->plan?.phase?.label?:"Não verificado"},color=MaterialTheme.colorScheme.primary)
+            plan?.let{details->
+                details.planLabel?.let{Text("Plano: "+it,fontSize=13.sp)}
+                details.dateLabel()?.let{Text("Acesso até: "+it,fontSize=13.sp)}
+                details.autoRenew?.let{Text(if(it)"Renovação automática informada pelo servidor" else "Sem renovação automática",fontSize=12.sp,color=Color.LightGray)}
+            }
+            Text("Experiência prevista: 7 dias. Carência de até 48 horas somente para falha de renovação elegível. A ativação depende do servidor.",fontSize=12.sp,color=Color.LightGray)
+            Text("A contratação e o gerenciamento serão feitos no site oficial. Nenhuma cobrança ativa.",fontSize=12.sp,color=Color.LightGray)
             Text("As assinaturas serão gerenciadas pelo servidor e vinculadas à sua conta. Nenhuma cobrança disponível nesta versão.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(onClick=onPlans,modifier=Modifier.fillMaxWidth()){Text("Conhecer NERO Premium")}
             TextButton(enabled=enabled&&!planBusy,onClick={scope.launch{refreshPlan()}}){Text("Consultar / restaurar assinatura")}

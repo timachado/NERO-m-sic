@@ -29,7 +29,7 @@ Login Google via Supabase, UID autenticado estável como NERO ID interno; visita
 - Retorno de checkout não comprova pagamento. Processar eventos autenticados, verificar estado no provedor e tratar duplicidade, replay, reembolso, revogação, cancelamento, expiração e renovação.
 - Histórico, gerenciamento e cancelamento pelo canal oficial; integrar Portal do Cliente/MACH Care somente após autorização e validação.
 - A recuperação no app consulta o estado do servidor; não recria compras nem concede Premium localmente.
-- RPC nero_plan_read_v1 existente retorna somente status; detalhes de plano e vencimento dependem de contrato backend futuro. Nenhuma migração aplicada. A tela não inventa dados.
+- RPC nero_plan_read_v1 legado retorna somente status. O contrato estendido proposto em supabase/setup/nero_account_plan_details_draft.sql fornece fase, plano, vencimento e recorrência apenas se disponíveis. A tela aceita respostas legadas. Nenhum SQL aplicado. A experiência e a carência são apenas estados consultáveis; o escritor transacional, o controle de uso único da experiência e os webhooks ainda precisam de implementação e homologação.
 - Não liberar benefício a partir de retorno, comprovante, status pendente ou preço informado pelo cliente. Testes de isolamento, idempotência e ciclo de vida em sandbox antes de produção.
 
 ## Portões de lançamento
