@@ -116,7 +116,7 @@ internal fun PlayerContextShelf(ref:OnlineRef?,artist:String,origin:PlaybackOrig
             }
         }
     }
-    if(artist.isNotBlank())ArtistProfileCard(artist,onOpen={onArtist(artist)})
+    if(artist.isNotBlank())ArtistProfileCard(artist,onOpen={onArtist(primaryArtistName(artist))},fallbackArtwork=seed?.thumbnail,onArtist=onArtist)
 }
 @Composable
 private fun PlayerRelatedRows(rows:List<NativeMusicHit>,canPlay:Boolean,onPlay:(NativeMusicHit)->Unit){
@@ -124,7 +124,7 @@ private fun PlayerRelatedRows(rows:List<NativeMusicHit>,canPlay:Boolean,onPlay:(
         rows.forEach{hit->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
-                Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(hit.artist,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
+                Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(displayArtistName(hit.artist),color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 IconButton(enabled=canPlay,onClick={onPlay(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
             }
         }

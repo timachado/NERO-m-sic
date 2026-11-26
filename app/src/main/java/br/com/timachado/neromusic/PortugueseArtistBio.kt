@@ -8,17 +8,38 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-internal fun displayArtistName(value:String):String =
+internal fun rawArtistName(value:String):String =
     value.trim().replace(Regex("(?i)\\s+-\\s+Topic$"),"").trim()
 
-internal data class PortugueseBio(val text:String,val source:String)
+// Keep established English group names intact. For a combined catalogue credit,
+// normalize only the separators, never the artist IDs or track titles.
+private val officialAndNames=listOf("Florence and the Machine","Earth, Wind and Fire","Earth Wind and Fire","Mumford and Sons","Tom Petty and the Heartbreakers","Kool and the Gang","KC and the Sunshine Band","Hall and Oates","Simon and Garfunkel","Gerry and the Pacemakers","Mike and the Mechanics","Nick Cave and the Bad Seeds","Echo and the Bunnymen","Hootie and the Blowfish","The Mamas and the Papas","Of Monsters and Men","Belle and Sebastian","Tegan and Sara","Crosby Stills and Nash","Peter Bjorn and John","Daryl Hall and John Oates","Noah and the Whale","Catfish and the Bottlemen","The Head and the Heart","Portugal. The Man")
+private val collaborationSeparator=Regex("(?i)\\s+(?:and|feat\\.?|ft\\.?|featuring)\\s+")
+internal fun artistCreditParts(value:String):List<String>{
+    var clean=rawArtistName(value)
+    if(clean.isBlank())return emptyList()
+    val protected=mutableMapOf<String,String>()
+    officialAndNames.sortedByDescending{it.length}.forEachIndexed{i,name->
+        val pattern=Regex(Regex.escape(name),RegexOption.IGNORE_CASE)
+        clean=pattern.replace(clean){match->val token="__NERO_GROUP_"+i+"__";protected[token]=match.value;token}
+    }
+    return collaborationSeparator.split(clean).map{part->
+        var restored=part
+        protected.forEach{(token,name)->restored=restored.replace(token,name)}
+        rawArtistName(restored)
+    }.filter{it.isNotBlank()}.distinctBy{it.lowercase(Locale.ROOT)}
+}
+internal fun displayArtistName(value:String):String=artistCreditParts(value).joinToString(" feat. ")
+internal fun primaryArtistName(value:String):String=artistCreditParts(value).firstOrNull().orEmpty()
+
+internal data class PortugueseBio(val text:String,val source:String,val avatar:String?=null)
 
 internal suspend fun portugueseArtistBio(artist:String):PortugueseBio?=withContext(Dispatchers.IO){
-    val name=displayArtistName(artist).take(180)
+    val name=rawArtistName(artist).take(180)
     if(name.length<3)return@withContext null
     val endpoint=Uri.parse("https://pt.wikipedia.org/w/api.php").buildUpon()
         .appendQueryParameter("action","query").appendQueryParameter("format","json")
-        .appendQueryParameter("formatversion","2").appendQueryParameter("prop","extracts|pageprops")
+        .appendQueryParameter("formatversion","2").appendQueryParameter("prop","extracts|pageprops|pageimages").appendQueryParameter("piprop","thumbnail").appendQueryParameter("pithumbsize","640").appendQueryParameter("pilicense","free")
         .appendQueryParameter("exintro","1").appendQueryParameter("explaintext","1")
         .appendQueryParameter("exchars","900").appendQueryParameter("redirects","1")
         .appendQueryParameter("titles",name).build().toString()
@@ -44,6 +65,10 @@ internal suspend fun portugueseArtistBio(artist:String):PortugueseBio?=withConte
         if(listOf("cantor","cantora","músic","dupla","banda","compositor","rapper","grupo musical","disc jockey").none{it in lower})return@withContext null
         val id=page.optLong("pageid",-1)
         if(id<=0)return@withContext null
-        PortugueseBio(body,"https://pt.wikipedia.org/?curid="+id)
+        val image=page.optJSONObject("thumbnail")?.optString("source")?.takeIf{url->
+            val uri=Uri.parse(url)
+            uri.scheme=="https"&&uri.host=="upload.wikimedia.org"&&uri.userInfo==null
+        }
+        PortugueseBio(body,"https://pt.wikipedia.org/?curid="+id,image)
     }finally{connection.disconnect()}
 }

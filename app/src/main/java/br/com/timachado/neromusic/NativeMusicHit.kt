@@ -18,14 +18,14 @@ internal fun youtubeRefFromItem(item:MediaItem):OnlineRef?{
     val id=item.mediaId
     if(!id.startsWith("youtube:")||!Regex("[A-Za-z0-9_-]{11}").matches(id.removePrefix("youtube:")))return null
     val title=item.mediaMetadata.title?.toString()?.takeIf{it.isNotBlank()}?:return null
-    return OnlineRef(id,title,item.mediaMetadata.artist?.toString().orEmpty())
+    return OnlineRef(id,title,item.mediaMetadata.extras?.getString("nero_artist_original")?:item.mediaMetadata.artist?.toString().orEmpty())
 }
 
 internal fun NativeMusicHit.queueItem(video:Boolean=false):MediaItem {
     require(Regex("[A-Za-z0-9_-]{11}").matches(id))
     return MediaItem.Builder().setMediaId("youtube:"+id).setUri("nero-music://"+(if(video)"video" else "track")+"/"+id)
-        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(artist)
-            .setArtworkUri(Uri.parse(thumbnail)).setExtras(Bundle().apply{putBoolean("nero_video_mode",video)}).build()).build()
+        .setMediaMetadata(MediaMetadata.Builder().setTitle(title).setArtist(displayArtistName(artist))
+            .setArtworkUri(Uri.parse(thumbnail)).setExtras(Bundle().apply{putBoolean("nero_video_mode",video);putString("nero_artist_original",artist)}).build()).build()
 }
 internal fun nativeQueue(hits:List<NativeMusicHit>,selected:NativeMusicHit,video:Boolean=false):Pair<List<MediaItem>,Int>{
     val all=hits.distinctBy{it.id}.take(30)

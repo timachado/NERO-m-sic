@@ -135,7 +135,8 @@ internal object NativeMusicCatalog{
         val match=matches.singleOrNull()?:return@withContext null
         lock.withLock{
             initialize()
-            val info=ChannelInfo.getInfo(ServiceList.YouTube,match.url)
+            val info=try{ChannelInfo.getInfo(ServiceList.YouTube,match.url)}
+                catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){return@withLock match.artwork?.let{ArtistProfile(match.title,it,"")}}
             if(nativeArtistKey(info.name)!=name)return@withLock null
             val avatar=bestArtwork(info.avatars)?:match.artwork
             ArtistProfile(info.name,avatar,info.description.orEmpty().trim().take(2400))

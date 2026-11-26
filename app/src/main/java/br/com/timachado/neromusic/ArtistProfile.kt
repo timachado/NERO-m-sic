@@ -27,12 +27,12 @@ private object ArtistProfiles{
     private val lock=Mutex()
     private val cache=LinkedHashMap<String,Entry>(32,.75f,true)
     suspend fun get(artist:String):ArtistProfile?=lock.withLock{
-        val key=nativeArtistKey(artist)
+        val key=rawArtistName(artist).lowercase(java.util.Locale.ROOT)
         val now=SystemClock.elapsedRealtime()
         cache[key]?.let{if(now-it.at in 0L..900000L)return@withLock it.value}
         val original=try{NativeMusicCatalog.artistProfile(artist)}catch(e:CancellationException){throw e}catch(_:Exception){null}
         val bio=try{portugueseArtistBio(artist)}catch(e:CancellationException){throw e}catch(_:Exception){null}
-        val profile=ArtistProfile(displayArtistName(artist),original?.avatar,bio?.text.orEmpty(),bio?.source)
+        val profile=ArtistProfile(rawArtistName(artist),original?.avatar?:bio?.avatar,bio?.text.orEmpty(),bio?.source)
         cache[key]=Entry(SystemClock.elapsedRealtime(),profile)
         if(cache.size>32)cache.remove(cache.keys.first())
         profile
@@ -40,27 +40,52 @@ private object ArtistProfiles{
 }
 @Composable
 internal fun rememberArtistProfile(artist:String):ArtistProfile?{
-    var profile by remember(artist){mutableStateOf<ArtistProfile?>(null)}
-    LaunchedEffect(artist){
-        if(NativeMusicCatalog.enabled&&artist.trim().length>=3){
-            try{profile=ArtistProfiles.get(artist)}
+    val name=primaryArtistName(artist)
+    var profile by remember(name){mutableStateOf<ArtistProfile?>(null)}
+    LaunchedEffect(name){
+        if(NativeMusicCatalog.enabled&&name.length>=3){
+            try{profile=ArtistProfiles.get(name)}
             catch(e:CancellationException){throw e}catch(_:Exception){profile=null}
         }
     }
     return profile
 }
 @Composable
-internal fun ArtistProfileCard(artist:String,onOpen:(()->Unit)?=null,expanded:Boolean=false,profile:ArtistProfile?=rememberArtistProfile(artist)){
+internal fun ArtistProfileCard(artist:String,onOpen:(()->Unit)?=null,expanded:Boolean=false,profile:ArtistProfile?=rememberArtistProfile(artist),fallbackArtwork:String?=null,onArtist:((String)->Unit)?=null){
+    val names=remember(artist){artistCreditParts(artist).take(4)}
+    val guests=names.drop(1)
+    val guestProfiles=guests.map{guest->key(guest){rememberArtistProfile(guest)}}
     Card(modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
         Column{
             Box(Modifier.fillMaxWidth().height(if(expanded)220.dp else 180.dp).background(MaterialTheme.colorScheme.primaryContainer),contentAlignment=Alignment.Center){
                 Icon(Icons.Default.Person,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(64.dp))
-                profile?.avatar?.let{NeroArtwork(model=it,contentDescription="Imagem do perfil de "+artist,contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize())}
+                val photo=profile?.avatar
+                if(photo!=null)NeroArtwork(model=photo,contentDescription="Foto de "+primaryArtistName(artist),contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
+                else if(fallbackArtwork!=null)NeroArtwork(model=fallbackArtwork,contentDescription="Capa da música (foto de perfil indisponível)",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha=.35f),Color.Transparent,Color.Black.copy(alpha=.65f)))))
                 Text("Sobre o artista",fontWeight=FontWeight.Bold,fontSize=17.sp,color=Color.White,modifier=Modifier.align(Alignment.TopStart).padding(14.dp))
             }
             Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text(displayArtistName(profile?.name?:artist),fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
+                Text(displayArtistName(artist),fontSize=23.sp,fontWeight=FontWeight.Bold,color=Color.White)
+                if(profile?.avatar==null&&fallbackArtwork!=null)Text("Capa da música · foto de perfil indisponível",fontSize=11.sp,color=Color.LightGray)
+                if(guests.isNotEmpty()){
+                    Text("Artistas da colaboração",fontWeight=FontWeight.Medium)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                        items(guests.size){i->
+                            val guest=guests[i]
+                            val guestProfile=guestProfiles[i]
+                            Column(Modifier.width(104.dp),horizontalAlignment=Alignment.CenterHorizontally){
+                                Box(Modifier.size(88.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.primaryContainer),contentAlignment=Alignment.Center){
+                                    Icon(Icons.Default.Person,null,modifier=Modifier.size(36.dp))
+                                    guestProfile?.avatar?.let{NeroArtwork(model=it,contentDescription="Foto de "+guest,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
+                                }
+                                if(onArtist!=null)TextButton(onClick={onArtist(guest)}){Text(guest,maxLines=2,overflow=TextOverflow.Ellipsis)}
+                                else Text(guest,maxLines=2,overflow=TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                    if(!profile?.description.isNullOrBlank())Text("Sobre "+primaryArtistName(artist),fontWeight=FontWeight.Medium)
+                }
                 if(!profile?.description.isNullOrBlank()){
                     Text(profile!!.description,maxLines=if(expanded)10 else 4,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                     val context=androidx.compose.ui.platform.LocalContext.current

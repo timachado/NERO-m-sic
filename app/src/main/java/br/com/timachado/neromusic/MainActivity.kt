@@ -238,7 +238,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 videoQuality=currentItem?.videoQuality()?:0
                 nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
                 title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
-                artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
+                artist = currentItem?.mediaMetadata?.extras?.getString("nero_artist_original")?:p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
                 playing = p.isPlaying
                 playRequested = neroPlayRequested(p.playWhenReady,p.playbackState)
                 buffering = p.playbackState==Player.STATE_BUFFERING
@@ -347,7 +347,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 else LocalArtwork(tracks.firstOrNull{it.id.toString()==nowId},Modifier.size(48.dp))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
-                    Text(artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
+                    Text(displayArtistName(artist), color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
                 }
                 IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
                 IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }

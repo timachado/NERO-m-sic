@@ -246,7 +246,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         Card(onClick={playNative(top)},enabled=canPlay,modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
                             Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
                                 NeroArtwork(model=top.thumbnail,contentDescription="Capa de "+top.title,contentScale=ContentScale.Crop,modifier=Modifier.size(76.dp).clip(RoundedCornerShape(10.dp)))
-                                Column(Modifier.weight(1f).padding(horizontal=12.dp)){Text(top.title,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==top.reference().id)searchAccent else Color.Unspecified);Text(top.artist,fontSize=12.sp,color=Color.LightGray)}
+                                Column(Modifier.weight(1f).padding(horizontal=12.dp)){Text(top.title,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==top.reference().id)searchAccent else Color.Unspecified);Text(displayArtistName(top.artist),fontSize=12.sp,color=Color.LightGray)}
                                 if(currentId==top.reference().id)IconButton(enabled=canPlay,onClick=onCurrentToggle){Icon(if(currentPlaying)Icons.Default.PauseCircle else Icons.Default.PlayCircle,if(currentPlaying)"Pausar" else "Continuar",tint=searchAccent,modifier=Modifier.size(36.dp))}
                                 else Icon(Icons.Default.PlayCircle,"Reproduzir",tint=searchAccent,modifier=Modifier.size(36.dp))
                             }
@@ -254,7 +254,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         val artists=nativeResults.map{it.artist.removeSuffix(" - Topic").trim()}.filter{it.isNotBlank()}.distinct().take(6)
                         if(artists.isNotEmpty()){
                             Text("Artistas encontrados",fontSize=14.sp,color=Color.LightGray,modifier=Modifier.padding(top=8.dp))
-                            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items(artists){artist->AssistChip(onClick={artistPage=artist},label={Text(artist)})}}
+                            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items(artists){artist->AssistChip(onClick={artistPage=artist},label={Text(displayArtistName(artist))})}}
                         }
                         Text("Músicas",fontSize=19.sp,fontWeight=FontWeight.Bold)
                     }
@@ -267,7 +267,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                             Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                                 Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))searchAccent else Color.Unspecified)
                                 if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))Text(if(currentPlaying)"♫ Tocando agora" else "Em reprodução · pausada",fontSize=11.sp,color=searchAccent)
-                                Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
+                                Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 if(tab==SearchTab.CLIPS)Text("Videoclipe",fontSize=11.sp,color=searchAqua)
                             }
                             IconButton(enabled=canPlay&&resolving==null,onClick={if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))onCurrentToggle()else playNative(hit)}){Icon(if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)"Pausar" else "Reproduzir no NERO",tint=searchAccent)}
@@ -301,7 +301,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     items(rows,key={it.id}){track->
                         Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){if(currentId==track.id.toString())onOpenPlayer()else onPlay(track)},verticalAlignment=Alignment.CenterVertically){
                             LocalArtwork(track,Modifier.size(52.dp))
-                            Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==track.id.toString())searchAccent else Color.Unspecified);Text(track.artist,fontSize=12.sp,color=Color.LightGray)}
+                            Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=if(currentId==track.id.toString())searchAccent else Color.Unspecified);Text(displayArtistName(track.artist),fontSize=12.sp,color=Color.LightGray)}
                             SearchTrackActions(onAdd={addingLocal=track},onShare=null,canQueue=canPlay,onQueue={next->onEnqueue(track.mediaItem(),next)})
                             IconButton(enabled=canPlay,onClick={if(currentId==track.id.toString())onCurrentToggle()else onPlay(track)}){Icon(if(currentId==track.id.toString()&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==track.id.toString()&&currentPlaying)"Pausar" else "Reproduzir arquivo local",tint=searchAccent)}
                         }
@@ -316,7 +316,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 Card(onClick={if(entry.kind==NativeCollectionKind.ARTIST)artistPage=entry.title else albumPage=entry},modifier=Modifier.fillMaxWidth()){
                                     Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                                         NeroArtwork(model=entry.artwork,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)))
-                                        Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(entry.title,fontWeight=FontWeight.Medium);Text(entry.credit,fontSize=12.sp,color=Color.LightGray)}
+                                        Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(entry.title,fontWeight=FontWeight.Medium);Text(displayArtistName(entry.credit),fontSize=12.sp,color=Color.LightGray)}
                                         Icon(Icons.Default.KeyboardArrowRight,"Abrir")
                                     }
                                 }
@@ -338,7 +338,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         val downloading=offlineState.active?.id==audio.id
                         Column(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(10.dp)){
                             Row(verticalAlignment=Alignment.CenterVertically){
-                                Column(Modifier.weight(1f)){Text(audio.title);Text(audio.artist,fontSize=12.sp,color=Color.LightGray);Text(audio.license,fontSize=11.sp,color=searchAccent)}
+                                Column(Modifier.weight(1f)){Text(audio.title);Text(displayArtistName(audio.artist),fontSize=12.sp,color=Color.LightGray);Text(audio.license,fontSize=11.sp,color=searchAccent)}
                                 SearchTrackActions(onAdd={adding=OnlineRef("commons:"+audio.id,audio.title,audio.artist,openAudio=audio)},onShare=null,canQueue=canPlay,onQueue={next->onEnqueue(if(localAudio!=null)localAudio.item(Uri.fromFile(audioFile(context,localAudio)))else audio.item(Uri.parse(audio.url)),next)})
                                 IconButton(enabled=canPlay,onClick={onOpenPlay(if(localAudio!=null)localAudio.item(Uri.fromFile(audioFile(context,localAudio)))else audio.item(Uri.parse(audio.url)))}){Icon(Icons.Default.PlayArrow,"Reproduzir áudio autorizado")}
                             }
