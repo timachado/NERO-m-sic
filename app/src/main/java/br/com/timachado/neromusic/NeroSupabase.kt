@@ -122,7 +122,18 @@ internal object NeroSupabase{
     }
     private fun parseSession(body:String):NeroSession{
         val row=JSONObject(body);val user=row.getJSONObject("user")
-        require(user.getJSONObject("app_metadata").optString("provider")=="google")
+        val appMeta=user.getJSONObject("app_metadata")
+        require(!user.optBoolean("is_anonymous",false))
+        val owner=user.getString("id")
+        val providers=appMeta.optJSONArray("providers")
+        val identities=user.optJSONArray("identities")
+        val linkedGoogle=appMeta.optString("provider")=="email" &&
+            providers!=null && (0 until providers.length()).any{providers.optString(it)=="google"} &&
+            identities!=null && (0 until identities.length()).any{
+                val identity=identities.optJSONObject(it)
+                identity?.optString("provider")=="google" && identity.optString("user_id")==owner
+            }
+        require(appMeta.optString("provider")=="google" || linkedGoogle)
         val meta=user.optJSONObject("user_metadata")?:JSONObject()
         val name=displayName(meta.optString("full_name").ifBlank{meta.optString("name")})
         val photo=avatarUrl(meta.optString("avatar_url").ifBlank{meta.optString("picture")})
