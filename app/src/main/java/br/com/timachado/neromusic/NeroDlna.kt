@@ -38,7 +38,7 @@ internal object NeroDlna {
     private fun local(context:Context,network:Network,a:InetAddress):Boolean{
         val cm=manager(context)
         if(!privateV4(a)||cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)!=true)return false
-        return cm.getLinkProperties(network)?.routes?.any{!it.hasGateway() && it.destination.contains(a)}==true
+        return cm.getLinkProperties(network)?.routes?.any{it.gateway?.isAnyLocalAddress!=false && it.destination.prefixLength>0 && it.destination.contains(a)}==true
     }
     fun discover(context:Context):List<NeroDlnaDevice>{
         val cm=manager(context)
@@ -112,7 +112,7 @@ internal object NeroDlna {
     }
     private fun soap(context:Context,d:NeroDlnaDevice,action:String,args:String):String{
         require(servicePattern.matches(d.service))
-        val body="""<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:$action xmlns:u=""""+d.service+""""><InstanceID>0</InstanceID>"""+args+"</u:$action></s:Body></s:Envelope>"
+        val body="<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body><u:"+action+" xmlns:u=\""+d.service+"\"><InstanceID>0</InstanceID>"+args+"</u:"+action+"></s:Body></s:Envelope>"
         return http(context,d.network,d.endpoint,d.service+"#"+action,body)
     }
     fun play(context:Context,d:NeroDlnaDevice,url:String){
