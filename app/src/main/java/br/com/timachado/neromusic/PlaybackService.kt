@@ -61,6 +61,7 @@ class PlaybackService : MediaLibraryService() {
                     synchronized(resolved){resolved[cacheKey]=direct to android.os.SystemClock.elapsedRealtime()}
                     direct
                 }catch(e:Exception){throw IOException("Não foi possível carregar a faixa",e)}
+                NeroWebVideoCaster.rememberSource("youtube:"+id,video,address.toString())
                 spec.withUri(address)
             }
         }
@@ -90,6 +91,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object:Player.Listener{
             override fun onPlayerError(error:androidx.media3.common.PlaybackException){
                 synchronized(resolved){resolved.clear()}
+                NeroWebVideoCaster.clearSources()
                 // Do not log URLs, credentials, titles or identifiers.
                 android.util.Log.w("NeroPlayback", "Playback error: "+error.errorCodeName+" / "+error.cause?.javaClass?.simpleName)
             }
@@ -247,6 +249,7 @@ class PlaybackService : MediaLibraryService() {
         active?.let { val player=it.player; it.release(); player.release() }
     }
     override fun onDestroy() {
+        NeroWebVideoCaster.clearSources()
         closePlayback()
         super.onDestroy()
     }
