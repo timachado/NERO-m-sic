@@ -67,6 +67,12 @@ class NeroCastActivity:FragmentActivity(){
     private fun ours():RemoteMediaClient?=loaded?.takeIf{it===client()&&it.mediaInfo?.contentId==loadedUrl}
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this,object:androidx.activity.OnBackPressedCallback(true){
+            override fun handleOnBackPressed(){
+                if(sending||dlnaPlaying!=null)message("Encerre a transmissão DLNA antes de sair.")
+                else finish()
+            }
+        })
         val panel=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL;setPadding(32,32,32,32)
         }
