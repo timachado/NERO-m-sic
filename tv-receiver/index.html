@@ -2,6 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NERO Music TV | Protótipo</title>
 <style>
@@ -22,10 +24,11 @@
 var player=null, ready=false, pending=null, state=document.getElementById("state");
 function query(name){
  var pattern=new RegExp("(?:^|[?&])"+name+"=([^&]*)");
- var match=pattern.exec(location.search);
+ var match=pattern.exec(location.hash.replace(/^#/,"?"))||pattern.exec(location.search);
  try{return match?decodeURIComponent(match[1].replace(/\+/g," ")).slice(0,180):"";}catch(e){return "";}
 }
 var title=query("title"), artist=query("artist");
+var start=Math.min(86400,Math.max(0,Math.floor(Number(query("t"))||0)));
 if(title)document.getElementById("title").textContent=title;
 if(artist)document.getElementById("artist").textContent=artist;
 function clock(value){
@@ -44,7 +47,7 @@ function load(id){
  pending=id;
  if(id!==query("v")){document.getElementById("title").textContent="NERO Music TV";document.getElementById("artist").textContent="";}
  if(!ready){status("Aguardando o player oficial…");return;}
- try{player.loadVideoById(id);status("Solicitando reprodução…");}
+ try{player.loadVideoById({videoId:id,startSeconds:id===query("v")?start:0});status("Solicitando reprodução…");}
  catch(e){status("Não foi possível solicitar reprodução.");}
 }
 document.getElementById("form").onsubmit=function(e){
@@ -54,7 +57,7 @@ document.getElementById("form").onsubmit=function(e){
 };
 window.onYouTubeIframeAPIReady=function(){
  try {
- player=new YT.Player("player",{height:"480",width:"854",playerVars:{controls:1,autoplay:0,playsinline:1},events:{
+ player=new YT.Player("player",{height:"480",width:"854",playerVars:{controls:1,autoplay:0,playsinline:1,origin:location.protocol+"//"+location.host},events:{
  onReady:function(){ready=true;status("Receptor pronto. Selecione o vídeo.");if(pending)load(pending);},
  onStateChange:function(e){
  var messages={"-1":"Aguardando reprodução.","0":"Reprodução encerrada.","1":"Reprodução confirmada pelo player.","2":"Pausado.","3":"Carregando…","5":"Vídeo preparado."};
@@ -65,8 +68,8 @@ window.onYouTubeIframeAPIReady=function(){
  }});
  }catch(e){status("Player incompatível com este navegador.");}
 };
-var match=/(?:^|[?&])v=([A-Za-z0-9_-]{11})(?:&|$)/.exec(location.search);
-if(match){document.getElementById("videoId").value=match[1];pending=match[1];}
+var initialId=query("v");
+if(valid(initialId)){document.getElementById("videoId").value=initialId;pending=initialId;document.getElementById("form").style.display="none";}
 var script=document.createElement("script");script.src="https://www.youtube.com/iframe_api";script.onerror=function(){status("Não foi possível carregar o player oficial. Verifique a compatibilidade do navegador e a rede.");};
 document.head.appendChild(script);
 setTimeout(function(){if(!ready)status("O player ainda não respondeu. Navegadores antigos podem ser incompatíveis.");},20000);
