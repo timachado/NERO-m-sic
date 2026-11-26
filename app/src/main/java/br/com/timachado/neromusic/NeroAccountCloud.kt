@@ -50,8 +50,8 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
                 "ready"->if(pending)"Alterações aguardando envio" else "Última consulta sincronizada"
                 else->"Nuvem indisponível ou ainda não configurada"
             },color=if(state=="ready"&&!pending)MaterialTheme.colorScheme.primary else Color.LightGray,fontSize=13.sp)
-            cached?.let{Text("${it.pending.favorites.size} favoritos · ${it.pending.playlists.size} playlists da conta",fontSize=13.sp)}
-            Text("Playlists online também pertencem à conta. Álbuns, artistas, histórico e arquivos offline ainda não integram a sincronização.",fontSize=12.sp,color=Color.LightGray)
+            cached?.let{Text("${it.pending.favorites.size} favoritos · ${it.pending.playlists.size} playlists · ${it.pending.artists.size} artistas · ${it.pending.albums.size} álbuns da conta",fontSize=13.sp)}
+            Text("Playlists, artistas seguidos e álbuns salvos também pertencem à conta. Histórico e arquivos offline ainda não integram a sincronização.",fontSize=12.sp,color=Color.LightGray)
             OutlinedButton(enabled=enabled&&!busy&&state!="loading",onClick={scope.launch{NeroAccountSync.pull(context,user.uid)}},modifier=Modifier.fillMaxWidth()){Text("Sincronizar agora")}
             TextButton(enabled=enabled&&!busy,onClick={confirm="favorites"}){Text("Importar favoritos anteriores do aparelho")}
             TextButton(enabled=enabled&&!busy,onClick={confirm="playlists"}){Text("Importar playlists anteriores do aparelho")}
