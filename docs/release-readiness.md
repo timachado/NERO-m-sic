@@ -79,3 +79,6 @@ Importador existente mantém ZIP/JSON, metadados e ordem original. Busca explíc
 
 ## 0.9.76-dev — nomes das playlists importadas
 O diálogo Salvar como playlist NERO preenche o nome original do Spotify (até o limite existente de 100 caracteres) e permite editar antes de salvar. Playlists online da conta ou visitante também podem ser renomeadas depois, preservando ID, ordem e referências; alterações usam a sincronização existente. Testes de nome e preservação adicionados. Sem alteração de catálogo, credenciais, banco ou assinatura. Compilação e teste em aparelho pendentes.
+
+## 0.9.77-dev — comunicação dos planos
+Tela de planos com identidade independente NERO, sem menção nominal a YouTube Music Premium e sem jargão de homologação. Mantém aviso de assinatura indisponível, benefícios previstos, ausência de cobrança, restrições de download e preços existentes. Alteração exclusivamente textual; nenhuma mudança de catálogo, direitos, pagamento, credenciais ou produção. Compilação e homologação visual pendentes.
