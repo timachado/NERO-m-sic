@@ -103,6 +103,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     var artistPage by remember{mutableStateOf<String?>(null)}
     var resolving by remember{mutableStateOf<String?>(null)}
     val term=query.trim()
+    val activeGenre=remember(term){genreForQuery(term)}
     val local=remember(tracks,term,tab){if(term.isBlank()){if(tab==SearchTab.LOCAL)tracks else emptyList()}else tracks.filter{t->listOf(t.title,t.artist,t.album,t.genre).any{it.contains(term,true)}}}
     LaunchedEffect(term,tab,revision,editing){
         openResults=emptyList();openError=false;busy=false;openBusy=false;message=null
@@ -119,7 +120,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         nativeResults=emptyList();nativeBusy=false;nativeError=false
         if(editing||!NativeMusicCatalog.enabled||term.length<3||tab !in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.CLIPS))return@LaunchedEffect
         nativeBusy=true;delay(350)
-        try{nativeResults=if(tab==SearchTab.CLIPS)NativeMusicCatalog.searchVideos(term)else NativeMusicCatalog.search(term)}
+        try{nativeResults=activeGenre?.let{discoverGenreTracks(it,tab==SearchTab.CLIPS)}?:if(tab==SearchTab.CLIPS)NativeMusicCatalog.searchVideos(term)else NativeMusicCatalog.search(term)}
         catch(e:CancellationException){throw e}catch(_:Exception){nativeError=true}
         finally{nativeBusy=false}
     }
@@ -134,13 +135,13 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
         if(editing||!NativeMusicCatalog.enabled||term.length<3)return@LaunchedEffect
         delay(450)
         try{
-            if(tab in setOf(SearchTab.ALL,SearchTab.ARTIST))artists=NativeMusicCatalog.collections(term,NativeCollectionKind.ARTIST)
-            if(tab in setOf(SearchTab.ALL,SearchTab.ALBUM))albums=NativeMusicCatalog.collections(term,NativeCollectionKind.ALBUM)
+            if(tab in setOf(SearchTab.ALL,SearchTab.ARTIST))artists=activeGenre?.let{discoverGenreCollections(it,NativeCollectionKind.ARTIST)}?:NativeMusicCatalog.collections(term,NativeCollectionKind.ARTIST)
+            if(tab in setOf(SearchTab.ALL,SearchTab.ALBUM))albums=activeGenre?.let{discoverGenreCollections(it,NativeCollectionKind.ALBUM)}?:NativeMusicCatalog.collections(term,NativeCollectionKind.ALBUM)
         }catch(e:CancellationException){throw e}catch(_:Exception){}
     }
     LaunchedEffect(term,tab,nativeResults,editing){
         moreArtist=emptyList();relatedArtist=""
-        if(editing||tab!=SearchTab.ALL||nativeResults.isEmpty())return@LaunchedEffect
+        if(editing||activeGenre!=null||tab!=SearchTab.ALL||nativeResults.isEmpty())return@LaunchedEffect
         val artist=nativeResults.first().artist.removeSuffix(" - Topic").trim()
         if(artist.length<3||artist.equals(term,true))return@LaunchedEffect
         delay(550)
@@ -233,6 +234,10 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                 }
                 else if(tab==SearchTab.OPEN&&offlineState.saved.isNotEmpty())item{TextButton(onClick=onOfflineOpen){Text("Ver áudios baixados")}}
             }else{
+                activeGenre?.let{genre->item{
+                    Text(genre.label,fontSize=24.sp,fontWeight=FontWeight.Bold)
+                    Text("Seleção de artistas do gênero · sem misturar resultados genéricos",fontSize=12.sp,color=Color.LightGray)
+                }}
                 if(NativeMusicCatalog.enabled&&tab in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.CLIPS)){
                     item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("NERO Music",fontWeight=FontWeight.Bold,fontSize=19.sp);Text(if(tab==SearchTab.CLIPS)"Clipes · catálogo NERO Music" else "Músicas · catálogo NERO Music",fontSize=11.sp,color=Color.LightGray)};IconButton(onClick={showSource=true}){Icon(Icons.Default.Info,"Informações sobre a fonte",tint=Color.LightGray)}}}
                     if(tab==SearchTab.ALL&&nativeResults.isNotEmpty())item{
@@ -254,7 +259,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         Text("Músicas",fontSize=19.sp,fontWeight=FontWeight.Bold)
                     }
                     if(nativeError)item{TextButton(onClick={revision++}){Text("Falha na busca. Tentar novamente")}}
-                    if(!nativeBusy&&!nativeError&&nativeResults.isEmpty()&&term.length>=3)item{Text("Nenhuma faixa encontrada.",color=Color.LightGray)}
+                    if(!nativeBusy&&!nativeError&&nativeResults.isEmpty()&&term.length>=3)item{Text(if(activeGenre!=null)"Nenhuma faixa da seleção disponível agora. Tente novamente." else "Nenhuma faixa encontrada.",color=Color.LightGray)}
                     items(if(tab==SearchTab.ALL)nativeResults.take(8)else nativeResults,key={"native:"+it.id}){hit->
                         Column(Modifier.fillMaxWidth().padding(vertical=4.dp)){
                             Row(Modifier.fillMaxWidth().clickable(enabled=canPlay&&resolving==null){playNative(hit)},verticalAlignment=Alignment.CenterVertically){
@@ -289,7 +294,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         }}}
                     }
                 }
-                if(tab==SearchTab.LOCAL||(tab==SearchTab.ALL&&local.isNotEmpty())){
+                if(tab==SearchTab.LOCAL||(tab==SearchTab.ALL&&activeGenre==null&&local.isNotEmpty())){
                     item{Text("No aparelho",fontWeight=FontWeight.Bold,fontSize=19.sp)}
                     val rows=if(tab==SearchTab.ALL)local.take(5)else local
                     if(rows.isEmpty())item{Text(if(term.isBlank())"Nenhuma música local disponível. Verifique a permissão de acesso ao áudio e os arquivos do aparelho." else "Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)}

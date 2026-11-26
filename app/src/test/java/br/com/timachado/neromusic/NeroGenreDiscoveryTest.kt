@@ -1,0 +1,26 @@
+package br.com.timachado.neromusic
+import org.junit.Assert.*
+import org.junit.Test
+class NeroGenreDiscoveryTest{
+    @Test fun pagodeRejectsUnrelatedArtists(){
+        val genre=requireNotNull(genreForQuery("pagode novidades"))
+        assertTrue(genre.matchesArtist("Grupo Menos É Mais - Topic"))
+        assertTrue(genre.matchesArtist("Turma do Pagode"))
+        assertFalse(genre.matchesArtist("Clayton & Romário"))
+        assertFalse(genre.matchesArtist("Hugo & Guilherme"))
+        assertFalse(genre.matchesArtist("MC Tuto"))
+        assertNull(genreForQuery("pagode do ex amor"))
+    }
+    @Test fun genresRecognizeLabelsAndAliases(){
+        assertEquals("Sertanejo",genreForQuery("sertanejo novidades")?.label)
+        assertTrue(requireNotNull(genreForQuery("Sertanejo")).matchesArtist("Clayton & Romário"))
+        assertEquals("Pop Brasil",genreForQuery("Pop")?.label)
+        assertNotNull(genreForQuery("classica"))
+    }
+    @Test fun selectionPreservesOnlyCuratedArtists(){
+        val genre=requireNotNull(genreForQuery("Pagode"))
+        val good=NativeMusicHit("abcdefghijk","Pagode","Sorriso Maroto",100)
+        val bad=NativeMusicHit("abcdefghijl","Sertanejo","Clayton & Romário",100)
+        assertEquals(listOf(good),genreTracks(genre,listOf(bad,good,good)))
+    }
+}

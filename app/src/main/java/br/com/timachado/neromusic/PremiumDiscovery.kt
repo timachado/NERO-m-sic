@@ -34,8 +34,7 @@ internal fun PremiumGenres(onSearch:(String)->Unit){
             for(genre in styles){
                 try{
                     val hits=NativeMusicCatalog.search(genre.sample)
-                    val first=hits.firstOrNull{it.artist.contains(genre.sample,true)}
-                        ?:hits.firstOrNull()
+                    val first=hits.firstOrNull{genreForQuery(genre.label)?.matchesArtist(it.artist)==true}
                     if(first!=null)artwork=artwork+(genre.label to first.thumbnail)
                 }catch(e:CancellationException){throw e}catch(_:Exception){}
                 delay(350)
@@ -74,9 +73,9 @@ internal fun PremiumDiscovery(onSearch:(String)->Unit){
             }
         }
         Text("Seleções para explorar",fontSize=20.sp,fontWeight=FontWeight.Bold)
-        Text("Sugestões de pesquisa · não é ranking de paradas",fontSize=11.sp,color=Color.LightGray)
+        Text("Seleções por artistas de cada gênero · não é ranking de paradas",fontSize=11.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            items(listOf("Sertanejo" to "sertanejo novidades","Pagode" to "pagode novidades","Pop Brasil" to "pop brasil novidades","Gospel" to "gospel novidades","Forró" to "forró novidades")){(label,term)->
+            items(listOf("Sertanejo" to "Sertanejo","Pagode" to "Pagode","Pop Brasil" to "Pop Brasil","Gospel" to "Gospel","Forró" to "Forró")){(label,term)->
                 Card(onClick={onSearch(term)},modifier=Modifier.width(142.dp).height(86.dp)){
                     Column(Modifier.fillMaxSize().background(Color(0xFF172D35)).padding(12.dp),verticalArrangement=Arrangement.SpaceBetween){
                         Text(label,fontWeight=FontWeight.Bold,fontSize=17.sp)

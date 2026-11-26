@@ -34,7 +34,8 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
     var notice by remember{mutableStateOf<String?>(null)}
     var privacyPage by remember{mutableStateOf<NeroPrivacyPage?>(null)}
     var showPlans by remember{mutableStateOf(false)}
-    androidx.activity.compose.BackHandler(enabled=showPlans){showPlans=false}
+    var manageAccount by remember{mutableStateOf(false)}
+    androidx.activity.compose.BackHandler(enabled=showPlans||manageAccount){if(showPlans)showPlans=false else manageAccount=false}
     privacyPage?.let{NeroPrivacyDialog(it,onClose={privacyPage=null})}
     LaunchedEffect(Unit){
         try{user=NeroSupabase.session(context,false)}
@@ -42,6 +43,20 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         finally{busy=false;restoringSession=false}
     }
     if(showPlans){PlansScreen(onBack={showPlans=false},modifier=modifier);return}
+    val connected=user
+    if(manageAccount&&connected!=null){
+        key(connected.uid){
+            NeroManageAccountScreen(connected,modifier,enabled=!busy,onBack={manageAccount=false},
+                onPlans={showPlans=true},onPrivacy={privacyPage=it},
+                onHistory={manageAccount=false;onHistory()},
+                onSignOut={busy=true;notice=null;scope.launch{
+                    try{NeroSupabase.signOut(context);user=null;manageAccount=false}
+                    catch(e:CancellationException){throw e}catch(_:Exception){user=null;manageAccount=false;notice="Sessão local encerrada; revogação remota não confirmada."}
+                    finally{busy=false}
+                }})
+        }
+        return
+    }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Conta e configurações",fontSize=23.sp,fontWeight=FontWeight.Bold)}
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
@@ -74,7 +89,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             Text(user?.email.orEmpty(),fontSize=14.sp,color=Color.LightGray,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text("Conta Google conectada",color=MaterialTheme.colorScheme.primary)
             Text("Nome e foto fornecidos pelo Google, quando disponíveis.",fontSize=12.sp,color=Color.LightGray)
-            TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://myaccount.google.com/personal-info")))notice="Não foi possível abrir a conta Google."}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Gerenciar perfil no Google")}
+            Button(enabled=!busy,onClick={manageAccount=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Gerenciar minha conta")}
             OutlinedButton(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
                 try{NeroSupabase.signOut(context);user=null}
                 catch(e:CancellationException){throw e}catch(_:Exception){user=null;notice="Sessão local encerrada; revogação remota não confirmada."}
@@ -84,7 +99,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         Text("Favoritos, playlists online, artistas seguidos e álbuns salvos ficam vinculados à conta conectada. O histórico online pode ser sincronizado mediante ativação. Arquivos locais, downloads e preferências do aparelho permanecem locais. A nuvem depende da disponibilidade do serviço.",color=Color.LightGray,fontSize=12.sp)
         }
         }
-        user?.let{key(it.uid){NeroAccountCloud(it,enabled=!busy,onPlans={showPlans=true})}}
+        if(user!=null)OutlinedButton(enabled=!busy,onClick={manageAccount=true},modifier=Modifier.fillMaxWidth()){Text("Perfil, plano e NERO Cloud")}
         if(user==null&&!restoringSession)OutlinedButton(onClick={showPlans=true},modifier=Modifier.fillMaxWidth()){Text("Conhecer os planos NERO")}
         Text("Sua biblioteca",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
