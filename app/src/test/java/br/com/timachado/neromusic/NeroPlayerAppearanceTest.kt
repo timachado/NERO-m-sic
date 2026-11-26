@@ -15,7 +15,10 @@ class NeroPlayerAppearanceTest{
     @Test fun cafeRequiresVerifiedPremium(){
         assertEquals(NeroPlayerTheme.CAFE,effectivePlayerTheme("CAFE",true))
         assertEquals(NeroPlayerTheme.AURORA,effectivePlayerTheme("CAFE",false))
-        assertEquals(5,NeroPlayerTheme.entries.size)
+        assertEquals(setOf("AURORA","OCEAN","VIOLET","GOLD","CAFE","RUBY","ICE"),NeroPlayerTheme.entries.map{it.name}.toSet())
+        NeroPlayerTheme.entries.filter{it!=NeroPlayerTheme.AURORA}.forEach{
+            assertEquals(NeroPlayerTheme.AURORA,effectivePlayerTheme(it.name,false))
+        }
     }
     @Test fun defaultColorsPreserveOriginalPlayer(){
         assertEquals(0xFF39FF14,NeroPlayerTheme.AURORA.primary)
