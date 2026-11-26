@@ -214,6 +214,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
                 NeroRadarShelf(onlineFavorites,onSearch)
+                NeroTogetherShelf(canPlay,onNativeQueue)
                 DigitalChartsShelf(onSearch=onSearch,canPlay=canPlay,onQueue=onNativeQueue)
                 NeroReplayShelf(onSearch)
                 OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue,onSearch=onSearch,onAlbum={selectedAlbum=it})
