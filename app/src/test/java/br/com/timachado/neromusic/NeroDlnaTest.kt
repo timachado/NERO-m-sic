@@ -4,6 +4,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NeroDlnaTest {
+    @Test fun dialEndpointIsBoundToDiscoveredPeer(){
+        val peer="192.168.1.20"
+        assertEquals("http://192.168.1.20:8080/apps/YouTube",NeroDlna.applicationEndpoint("http://192.168.1.20:8080/apps/",peer)?.toString())
+        assertNull(NeroDlna.applicationEndpoint("http://192.168.1.21/apps/",peer))
+        assertNull(NeroDlna.applicationEndpoint("http://192.168.1.20/apps/?x=1",peer))
+        assertNull(NeroDlna.applicationEndpoint("http://192.168.1.20/apps/../",peer))
+        assertNull(NeroDlna.applicationEndpoint("http://192.168.1.20/apps/%2e%2e/",peer))
+    }
+    @Test fun nativeLaunchAcceptsOnlyValidCatalogId(){
+        assertEquals("aBcD1234_-Z",NeroDlna.nativeVideoId("youtube:aBcD1234_-Z"))
+        assertNull(NeroDlna.nativeVideoId("local:aBcD1234_-Z"))
+        assertNull(NeroDlna.nativeVideoId("youtube:aBcD1234_-Z&v=other"))
+        val token=java.util.UUID.fromString("00000000-0000-4000-8000-000000000001")
+        assertEquals("pairingCode="+token+"&v=aBcD1234_-Z&t=42.0",NeroDlna.launchParameters("aBcD1234_-Z",42,token))
+        assertTrue(runCatching{NeroDlna.launchParameters("invalid&v=other",0,token)}.isFailure)
+    }
+
     @Test fun transportAcknowledgementIsNotPlaybackConfirmation(){
         val uri="https://example.test/audio.mp3"
         assertTrue(NeroDlna.confirmedPlayback("PLAYING",uri,uri))
