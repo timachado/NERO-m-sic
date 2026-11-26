@@ -467,7 +467,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 Text(" NERO", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color.White)
                 Text(" MUSIC", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Green)
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showAccount = true }) { Icon(Icons.Default.AccountCircle, "Minha conta", tint = Cyan) }
+                NeroHeaderProfile(onClick={showAccount=true})
                 IconButton(onClick = { if (granted) scan++ else request.launch(permission) }) { Icon(Icons.Default.Refresh, "Atualizar biblioteca") }
             }
             Text("O som da sua liberdade.", color = Color.LightGray, fontSize = 13.sp)

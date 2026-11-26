@@ -41,14 +41,22 @@ internal fun neroGoogleLoginMessage(error:Exception):String=when(error){
     else->"Não foi possível concluir a entrada (G05)."
 }
 internal data class NeroSession(val uid:String,val email:String,val access:String,val refresh:String,val expiresAt:Long,val displayName:String="",val avatar:String?=null)
+// UI-only account metadata: never publish tokens or email in this flow.
+internal data class NeroProfileAvatar(val uid:String,val url:String?)
 internal object NeroSupabase{
     val configured get()=BuildConfig.SUPABASE_URL.isNotBlank()&&BuildConfig.SUPABASE_KEY.isNotBlank()&&BuildConfig.GOOGLE_CLIENT.isNotBlank()
     private val mutex=Mutex()
     private val identity=kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val activeUid: kotlinx.coroutines.flow.StateFlow<String?> = identity
+    private val profileState=kotlinx.coroutines.flow.MutableStateFlow<NeroProfileAvatar?>(null)
+    val profileAvatar:kotlinx.coroutines.flow.StateFlow<NeroProfileAvatar?> = profileState
+    private fun updateIdentity(session:NeroSession?){
+        profileState.value=session?.let{NeroProfileAvatar(it.uid,it.avatar)}
+        identity.value=session?.uid
+    }
     private val readyState=kotlinx.coroutines.flow.MutableStateFlow(false)
     val identityReady: kotlinx.coroutines.flow.StateFlow<Boolean> = readyState
-    fun markGuestReady(){if(!configured){identity.value=null;readyState.value=true}}
+    fun markGuestReady(){if(!configured){updateIdentity(null);readyState.value=true}}
     private const val alias="nero.supabase.session.v1"
     private fun prefs(context:Context)=context.getSharedPreferences("nero_supabase_session",Context.MODE_PRIVATE)
     private fun key():SecretKey{
@@ -92,7 +100,7 @@ internal object NeroSupabase{
             if(owner==null)!hasSession else hasSession&&load(context)?.uid==owner
         }
     }
-    private fun clear(context:Context){prefs(context).edit().remove("session").commit();identity.value=null;NeroRadarAlerts.stop(context)}
+    private fun clear(context:Context){prefs(context).edit().remove("session").commit();updateIdentity(null);NeroRadarAlerts.stop(context)}
     private suspend fun request(path:String,body:JSONObject?,access:String?=null):String=withContext(Dispatchers.IO){
         if(!configured)throw ShareNotConfigured()
         val c=URL(BuildConfig.SUPABASE_URL+path).openConnection() as HttpURLConnection
@@ -123,22 +131,22 @@ internal object NeroSupabase{
     suspend fun session(context:Context,interactive:Boolean):NeroSession=mutex.withLock{
         if(!configured)throw ShareNotConfigured()
         val cached=withContext(Dispatchers.IO){load(context)}
-        identity.value=cached?.uid
+        updateIdentity(cached)
         readyState.value=true
         if(cached!=null){
-            if(cached.expiresAt-System.currentTimeMillis()>60000){identity.value=cached.uid;return@withLock cached}
+            if(cached.expiresAt-System.currentTimeMillis()>60000){updateIdentity(cached);return@withLock cached}
             try{
                 val refreshed=parseSession(request("/auth/v1/token?grant_type=refresh_token",JSONObject().put("refresh_token",cached.refresh)))
                 require(refreshed.uid==cached.uid)
                 withContext(Dispatchers.IO){save(context,refreshed)}
-                identity.value=refreshed.uid
+                updateIdentity(refreshed)
                 return@withLock refreshed
             }catch(e:NeroHttpException){
                 if(e.status!=400&&e.status!=401&&e.status!=403)throw e
                 withContext(Dispatchers.IO){clear(context)}
             }
         }
-        identity.value=null
+        updateIdentity(null)
         if(!interactive)throw GoogleRequired()
         val raw=Base64.encodeToString(ByteArray(32).also{SecureRandom().nextBytes(it)},Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
         val hashed=MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it.toInt() and 255)}
@@ -150,7 +158,7 @@ internal object NeroSupabase{
         val token=GoogleIdTokenCredential.createFrom(credential.data).idToken
         val signed=parseSession(request("/auth/v1/token?grant_type=id_token",JSONObject().put("provider","google").put("id_token",token).put("nonce",raw)))
         withContext(Dispatchers.IO){save(context,signed)}
-        identity.value=signed.uid
+        updateIdentity(signed)
         signed
     }
     suspend fun rpc(name:String,body:JSONObject,access:String?=null):String{
