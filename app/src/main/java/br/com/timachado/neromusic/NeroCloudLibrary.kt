@@ -4,8 +4,15 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal data class CloudAlbum(val id:String,val title:String,val credit:String){
-    fun collection()=NativeCollection("https://music.youtube.com/playlist?list="+id,title,credit,null,NativeCollectionKind.ALBUM)
+internal fun cloudAlbumArtwork(url:String?):String?=url?.takeIf{value->
+    value.length<=2048&&runCatching{
+        val u=java.net.URI(value)
+        u.scheme=="https"&&u.userInfo==null&&u.port in listOf(-1,443)&&
+            (u.host=="i.ytimg.com"||u.host?.endsWith(".googleusercontent.com")==true||u.host?.endsWith(".ggpht.com")==true)
+    }.getOrDefault(false)
+}
+internal data class CloudAlbum(val id:String,val title:String,val credit:String,val artwork:String?=null){
+    fun collection()=NativeCollection("https://music.youtube.com/playlist?list="+id,title,credit,cloudAlbumArtwork(artwork),NativeCollectionKind.ALBUM)
 }
 internal data class CloudLibrarySnapshot(val favorites:List<OnlineRef>,val playlists:List<OnlineList>,val artists:List<String> = emptyList(),val albums:List<CloudAlbum> = emptyList())
 internal data class CloudLibraryRevision(val revision:Long,val snapshot:CloudLibrarySnapshot)
@@ -33,7 +40,7 @@ internal fun encodeCloudLibrary(snapshot:CloudLibrarySnapshot):JSONObject{
         .put("artists",JSONArray(snapshot.artists.map{require(it.isNotBlank()&&it.length<=180);it}))
         .put("albums",JSONArray(snapshot.albums.map{
             require(it.id.matches(Regex("[A-Za-z0-9_-]{8,100}"))&&it.title.isNotBlank()&&it.title.length<=250&&it.credit.length<=250)
-            JSONObject().put("id",it.id).put("title",it.title).put("credit",it.credit)
+            JSONObject().put("id",it.id).put("title",it.title).put("credit",it.credit).put("artwork",cloudAlbumArtwork(it.artwork))
         }))
         .put("favorites",JSONArray(snapshot.favorites.map(::cloudRef)))
         .put("playlists",JSONArray(snapshot.playlists.map{list->
@@ -61,7 +68,7 @@ internal fun decodeCloudLibrary(json:JSONObject):CloudLibrarySnapshot{
     val artists=(0 until ar.length()).map{ar.getString(it).also{a->require(a.isNotBlank()&&a.length<=180)}}.distinctBy(::nativeArtistKey)
     val al=json.optJSONArray("albums")?:JSONArray();require(al.length()<=500)
     val albums=(0 until al.length()).map{i->
-        val a=al.getJSONObject(i);CloudAlbum(a.getString("id"),a.getString("title"),a.getString("credit")).also{
+        val a=al.getJSONObject(i);CloudAlbum(a.getString("id"),a.getString("title"),a.getString("credit"),cloudAlbumArtwork(a.optString("artwork"))).also{
             require(it.id.matches(Regex("[A-Za-z0-9_-]{8,100}"))&&it.title.isNotBlank()&&it.title.length<=250&&it.credit.length<=250)
         }
     }.distinctBy{it.id}
