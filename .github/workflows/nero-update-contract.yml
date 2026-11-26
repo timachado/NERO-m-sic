@@ -1,0 +1,19 @@
+name: NERO update contract tests (no push)
+on:
+  push:
+    branches: [fix/nero-update-final-qa, feat/nero-connect]
+    paths:
+      - 'scripts/nero_send_update.py'
+      - 'scripts/test_nero_send_update.py'
+      - '.github/workflows/nero-update-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate push payload without network or credentials
+        run: python3 -m unittest discover -s scripts -p test_nero_send_update.py -v
