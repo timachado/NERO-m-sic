@@ -30,24 +30,59 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 
-private data class ReleaseDiscoverySnapshot(val rows:List<NativeCollection>,val at:Long,val day:LocalDate)
+// Featured albums are editorial discovery, not a verified release-date ranking.
+internal fun featuredAlbumGenres(genre:String,day:Long,revision:Int):List<NeroGenre> =
+    if(genre=="Todos")albumExploreGenres(day+7L,revision,emptyList())
+    else listOfNotNull(genreForQuery(genre))
+
+internal fun featuredAlbumSeeds(genre:NeroGenre,day:Long,revision:Int,count:Int):List<String> =
+    albumExploreSeeds(genre,day+3L,revision,count)
+
+internal fun featuredAlbumRows(groups:List<List<NativeCollection>>):List<NativeCollection> =
+    diverseAlbumRows(groups.map{group->group.filter{row->
+        genreKey(row.credit) !in setOf("various artists","various","varios artistas","artistas variados","diversos artistas","unknown artist","artista desconhecido")
+    }},limit=24)
+
+private data class ReleaseDiscoverySnapshot(val rows:List<NativeCollection>,val at:Long,val day:LocalDate,val revision:Int,val partial:Boolean)
 private object ReleaseDiscovery {
     private val mutex=Mutex()
     private val cache=LinkedHashMap<String,ReleaseDiscoverySnapshot>()
     suspend fun query(genre:String,force:Boolean):ReleaseDiscoverySnapshot=mutex.withLock{
         val day=LocalDate.now()
-        val key=genre
+        val previous=cache[genre]
         val now=System.currentTimeMillis()
-        cache[key]?.let{if(!force&&it.day==day&&now-it.at in 0L..900000L)return@withLock it}
-        val term=listOf("lançamentos",if(genre=="Todos")"música Brasil" else genre,day.year.toString()).joinToString(" ")
-        val rows=NativeMusicCatalog.collections(term,NativeCollectionKind.ALBUM)
-        val snapshot=ReleaseDiscoverySnapshot(rows,System.currentTimeMillis(),day)
-        cache[key]=snapshot
-        if(cache.size>16)cache.remove(cache.keys.first())
+        if(!force&&previous!=null&&previous.day==day&&(!previous.partial||now-previous.at in 0L..900000L))return@withLock previous
+        val rotation=if(previous?.day==day)previous.revision+(if(force)1 else 0)else 0
+        val groups=mutableListOf<List<NativeCollection>>()
+        var errors=0
+        val plans=featuredAlbumGenres(genre,day.toEpochDay(),rotation)
+        for(plan in plans){
+            val seeds=featuredAlbumSeeds(plan,day.toEpochDay(),rotation,if(genre=="Todos")2 else 4)
+            if(genre=="Todos"){
+                val group=mutableListOf<NativeCollection>()
+                for(seed in seeds){
+                    try{group+=genreCollections(plan,NativeMusicCatalog.collections(seed,NativeCollectionKind.ALBUM),NativeCollectionKind.ALBUM).take(4)}
+                    catch(e:CancellationException){throw e}catch(_:Exception){errors++}
+                    if(group.isNotEmpty())break
+                }
+                groups+=group
+            }else{
+                for(seed in seeds){
+                    try{groups+=genreCollections(plan,NativeMusicCatalog.collections(seed,NativeCollectionKind.ALBUM),NativeCollectionKind.ALBUM).take(6)}
+                    catch(e:CancellationException){throw e}catch(_:Exception){errors++}
+                }
+            }
+        }
+        val rows=featuredAlbumRows(groups)
+        if(rows.isEmpty()&&errors>0)throw IllegalStateException("Featured catalog unavailable")
+        if(rows.isEmpty()&&previous?.rows?.isNotEmpty()==true)throw IllegalStateException("No replacement albums returned")
+        val snapshot=ReleaseDiscoverySnapshot(rows,System.currentTimeMillis(),day,rotation,errors>0)
+        cache[genre]=snapshot
+        while(cache.size>48)cache.remove(cache.keys.first())
         snapshot
     }
 }
-private data class ReleaseState(val rows:List<NativeCollection> = emptyList(),val busy:Boolean=true,val failed:Boolean=false,val at:Long=0L)
+private data class ReleaseState(val rows:List<NativeCollection> = emptyList(),val busy:Boolean=true,val failed:Boolean=false,val at:Long=0L,val day:LocalDate?=null)
 
 @Composable
 private fun releaseState(genre:String,revision:Int):ReleaseState{
@@ -57,14 +92,21 @@ private fun releaseState(genre:String,revision:Int):ReleaseState{
         var force=revision>0
         suspend fun refresh(){
             state=state.copy(busy=true,failed=false)
-            try{val result=ReleaseDiscovery.query(genre,force);state=ReleaseState(result.rows,false,false,result.at)}
-            catch(e:CancellationException){throw e}
+            try{
+                val result=ReleaseDiscovery.query(genre,force)
+                state=ReleaseState(result.rows,false,result.partial,result.at,result.day)
+            }catch(e:CancellationException){throw e}
             catch(_:Exception){state=state.copy(busy=false,failed=true)}
             finally{force=false}
         }
-        if(lifecycle==null)refresh()else lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){
-            while(true){refresh();delay(900000L)}
+        suspend fun loop(){
+            refresh()
+            while(true){
+                delay(if(state.failed)900000L else 60000L)
+                if(state.failed||state.day!=LocalDate.now())refresh()
+            }
         }
+        if(lifecycle==null)loop()else lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){loop()}
     }
     return state
 }
@@ -87,7 +129,7 @@ private fun ReleaseAlbumCard(entry:NativeCollection,modifier:Modifier,onAlbum:(N
 @Composable
 private fun ReleaseStatus(state:ReleaseState){
     if(state.busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-    if(state.failed)Text(if(state.rows.isEmpty())"Consulta indisponível. Tente atualizar." else "Exibindo a última consulta.",fontSize=12.sp,color=Color.LightGray)
+    if(state.failed)Text(if(state.rows.isEmpty())"Consulta indisponível. Tente atualizar." else "Algumas consultas ficaram indisponíveis; tente atualizar.",fontSize=12.sp,color=Color.LightGray)
     else if(!state.busy&&state.rows.isEmpty())Text("Nenhum álbum encontrado.",fontSize=12.sp,color=Color.LightGray)
 }
 
@@ -101,7 +143,7 @@ internal fun NativeReleaseShelf(onOpen:()->Unit,onAlbum:(NativeCollection)->Unit
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
             TextButton(onClick=onOpen){Text("Ver tudo")}
         }
-        Text("Resultados da busca · datas de lançamento não verificadas",fontSize=12.sp,color=Color.LightGray)
+        Text("Seleção variada · renovada diariamente",fontSize=12.sp,color=Color.LightGray)
         ReleaseStatus(state)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
             items(state.rows.take(12),key={it.url}){entry->ReleaseAlbumCard(entry,Modifier.width(138.dp),onAlbum)}
@@ -121,7 +163,7 @@ internal fun NativeReleasesScreen(onBack:()->Unit,onAlbum:(NativeCollection)->Un
             Text("Álbuns em destaque",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
             IconButton(enabled=!state.busy,onClick={revision++}){Icon(Icons.Default.Refresh,"Atualizar")}
         }
-        Text("Sugestões do catálogo. Datas de lançamento não verificadas.",fontSize=12.sp,color=Color.LightGray)
+        Text("Seleção diária do catálogo · explore por gênero.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(genres){label->FilterChip(selected=genre==label,onClick={genre=label},label={Text(label)})}
         }
