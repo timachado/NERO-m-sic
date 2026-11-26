@@ -85,6 +85,8 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
             if(planBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
             HorizontalDivider()
             NeroPlayerAppearance(user.uid,enabled)
+            HorizontalDivider()
+            NeroBackupPremium(user.uid,enabled)
         }
     }
     confirm?.let{kind->

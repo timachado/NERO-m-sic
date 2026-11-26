@@ -81,6 +81,10 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    suspend fun restorePremiumBackup(context:Context,uid:String,backup:CloudLibrarySnapshot)=updateCollections(context,uid){snapshot->
+        require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+        mergeNeroBackup(snapshot,backup)
+    }
     suspend fun toggleHiddenSong(context:Context,uid:String,id:String)=updateCollections(context,uid){snapshot->
         val key=requireNotNull(recommendationId(id));val current=snapshot.hiddenSongs
         val next=if(key in current)current-key else {require(current.size<2000);current+key}
