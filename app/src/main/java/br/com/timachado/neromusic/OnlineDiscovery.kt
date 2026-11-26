@@ -61,7 +61,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
     var busy by remember{mutableStateOf(false)}
     var notice by remember{mutableStateOf<String?>(null)}
     DisposableEffect(prefs,historyUid,historyReady){
-        val listener=SharedPreferences.OnSharedPreferenceChangeListener{_,key->if(key=="history"||key==null)heard=history(context)}
+        val listener=SharedPreferences.OnSharedPreferenceChangeListener{_,key->if(NeroLocalRecent.isHistoryKey(key))heard=history(context)}
         prefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
     }
@@ -92,14 +92,13 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
         }.filter{it.tracks.isNotEmpty()}
     }
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-        if(recent.isNotEmpty()){
-            Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
-            OnlineDiscoveryRow(recent,canPlay,onQueue)
-        }
+        Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
+        if(recent.isNotEmpty())OnlineDiscoveryRow(recent,canPlay,onQueue)
+        else Text("As músicas do catálogo que você ouvir aparecerão aqui.",fontSize=13.sp,color=Color.LightGray)
         if(hidden.isNotEmpty())TextButton(onClick={resetHidden=true}){Text("Restaurar músicas ocultadas (${hidden.size})")}
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
-            Text(if(historyUid!=null)"Sugestões dos artistas seguidos, favoritos e histórico online da sua conta, se disponível." else "Sugestões dos artistas seguidos, favoritos e histórico deste aparelho.",fontSize=12.sp,color=Color.LightGray)
+            Text(if(historyUid!=null)"Sugestões dos artistas seguidos, favoritos e músicas recentes da sua conta." else "Sugestões dos artistas seguidos, favoritos e histórico deste aparelho.",fontSize=12.sp,color=Color.LightGray)
             Text("Inspirado em: "+artists.take(3).joinToString(" · "),fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
             Text("Ao gerar, somente os nomes dos artistas são consultados na fonte musical.",fontSize=11.sp,color=Color.LightGray)
             val generateMixes:()->Unit={

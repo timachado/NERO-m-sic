@@ -51,10 +51,46 @@ internal fun guestHistory(context:Context):List<Heard> = runCatching {
         Heard(o.getString("id"),o.getString("title"),o.optString("artist"),o.getLong("at"))
     }
 }.getOrDefault(emptyList())
+internal fun mergeRecentHistory(local:List<Heard>,cloud:List<Heard>):List<Heard> =
+    (local+cloud).sortedByDescending{it.at}.distinctBy{it.id}.take(100)
+
+// Separate local history per account. Nothing here is sent to the server.
+internal object NeroLocalRecent{
+    private fun key(uid:String)="recent:"+NeroAccountLibraryStore.fileName(uid)
+    private fun settingsKey(uid:String)="recent_enabled:"+NeroAccountLibraryStore.fileName(uid)
+    private fun active(uid:String)=NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid
+    fun enabled(context:Context,uid:String)=prefs(context).getBoolean(settingsKey(uid),true)
+    fun setEnabled(context:Context,uid:String,value:Boolean){
+        require(active(uid));prefs(context).edit().putBoolean(settingsKey(uid),value).apply()
+    }
+    fun isHistoryKey(key:String?)=key==null||key=="history"||key.startsWith("recent:")
+    @Synchronized fun read(context:Context,uid:String):List<Heard>{
+        if(!active(uid))return emptyList()
+        return runCatching{
+            val data=JSONArray(prefs(context).getString(key(uid),"[]")?:"[]")
+            (0 until data.length()).map{i->
+                val row=data.getJSONObject(i)
+                Heard(row.getString("id"),row.getString("title"),row.optString("artist"),row.getLong("at"))
+            }.take(100)
+        }.getOrDefault(emptyList())
+    }
+    @Synchronized fun record(context:Context,uid:String,ref:OnlineRef,at:Long){
+        if(!active(uid)||!enabled(context,uid)||!portableRef(ref))return
+        val rows=mergeRecentHistory(listOf(Heard(ref.id,ref.title.take(300),ref.artist.take(300),at)),read(context,uid))
+        val data=JSONArray()
+        rows.forEach{h->data.put(JSONObject().put("id",h.id).put("title",h.title).put("artist",h.artist).put("at",h.at))}
+        if(active(uid))prefs(context).edit().putString(key(uid),data.toString()).apply()
+    }
+    @Synchronized fun clear(context:Context,uid:String){
+        require(active(uid));prefs(context).edit().remove(key(uid)).apply()
+    }
+}
 internal fun history(context:Context):List<Heard>{
     if(!NeroSupabase.identityReady.value)return emptyList()
     val uid=NeroSupabase.activeUid.value?:return guestHistory(context)
-    return runCatching{NeroAccountLibraryStore.read(context,uid)?.pending?.history.orEmpty().map{Heard(it.ref.id,it.ref.title,it.ref.artist,it.at)}}.getOrDefault(emptyList())
+    val cloud=runCatching{NeroAccountLibraryStore.read(context,uid)?.pending?.history.orEmpty().map{Heard(it.ref.id,it.ref.title,it.ref.artist,it.at)}}.getOrDefault(emptyList())
+    val local=NeroLocalRecent.read(context,uid)
+    return if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)mergeRecentHistory(local,cloud)else emptyList()
 }
 internal fun recordListening(context:Context,id:String,title:String,artist:String) {
     val records=(listOf(Heard(id,title,artist,System.currentTimeMillis()))+guestHistory(context).filterNot { it.id==id }).take(100)
@@ -109,13 +145,13 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
             persist(playlists.filterNot { it.id==selected.id });selectedId=null;adding=false;deleteConfirm=false
         }){Text("Excluir")}},dismissButton={TextButton(onClick={deleteConfirm=false}){Text("Cancelar")}})
     if(clearConfirm) AlertDialog(onDismissRequest={clearConfirm=false},title={Text("Limpar histórico?")},
-        text={Text(if(historyUid!=null)"O histórico da conta será limpo e a alteração será enviada quando a nuvem estiver disponível. O Replay local não será alterado." else "O histórico de visitante e as estatísticas Replay serão limpos. As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
+        text={Text(if(historyUid!=null)"O histórico recente deste aparelho e o histórico sincronizado da conta serão limpos. O Replay local não será alterado." else "O histórico de visitante e as estatísticas Replay serão limpos. As músicas e playlists não serão alteradas.")},confirmButton={TextButton(onClick={
             val owner=historyUid
             clearConfirm=false
             if(historyReady&&NeroSupabase.activeUid.value==owner){
                 if(owner==null){NeroReplay.clear(context);prefs(context).edit().remove("history").apply();recent=emptyList()}
                 else historyScope.launch{
-                    try{NeroAccountSync.clearHistory(context,owner);recent=history(context)}
+                    try{NeroAccountSync.clearHistory(context,owner);if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){NeroLocalRecent.clear(context,owner);recent=history(context)}}
                     catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível limpar o histórico.",android.widget.Toast.LENGTH_SHORT).show()}
                 }
             }
@@ -128,7 +164,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
                     Text("Ouvidas recentemente",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                     TextButton(enabled=recent.isNotEmpty(),onClick={clearConfirm=true}){Text("Limpar")}
                 }
-                Text(if(historyUid!=null)"Até 100 faixas online da conta. Ative novos registros em NERO Cloud." else "Histórico local de visitante das últimas 100 faixas distintas.",fontSize=12.sp,color=Color.LightGray)
+                Text(if(historyUid!=null)"Até 100 faixas online recentes da conta. Controle os registros locais e a sincronização em NERO Cloud." else "Histórico local de visitante das últimas 100 faixas distintas.",fontSize=12.sp,color=Color.LightGray)
             }
             if(recent.isEmpty()) item { Text("As músicas reproduzidas no NERO aparecerão aqui.",color=Color.LightGray) }
             if(!granted) item { TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")} }

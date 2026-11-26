@@ -94,11 +94,12 @@ class PlaybackService : MediaLibraryService() {
                 val owner=NeroSupabase.activeUid.value
                 if(!NeroSupabase.identityReady.value)return
                 if(owner==null)recordListening(applicationContext,id,title,artist)
-                else if(NeroAccountSync.historyEnabled(applicationContext,owner)){
+                else{
                     val ref=p.currentMediaItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
                     if(ref!=null&&portableRef(ref)){
                         val at=System.currentTimeMillis()
-                        timerScope.launch{
+                        NeroLocalRecent.record(applicationContext,owner,ref,at)
+                        if(NeroAccountSync.historyEnabled(applicationContext,owner))timerScope.launch{
                             try{NeroAccountSync.recordHistory(applicationContext,owner,ref,at)}
                             catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){}
                         }

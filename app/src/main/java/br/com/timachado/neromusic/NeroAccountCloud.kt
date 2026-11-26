@@ -28,6 +28,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
     var notice by remember(user.uid){mutableStateOf<String?>(null)}
     var confirm by remember(user.uid){mutableStateOf<String?>(null)}
     var historyEnabled by remember(user.uid){mutableStateOf(NeroAccountSync.historyEnabled(context,user.uid))}
+    var localRecent by remember(user.uid){mutableStateOf(NeroLocalRecent.enabled(context,user.uid))}
     LaunchedEffect(user.uid,changes){
         cached=withContext(Dispatchers.IO){runCatching{NeroAccountLibraryStore.read(context,user.uid)}.getOrNull()}
     }
@@ -59,7 +60,16 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
             Text("Playlists, artistas seguidos, álbuns e histórico online pertencem à conta. Arquivos offline e Replay ficam no aparelho.",fontSize=12.sp,color=Color.LightGray)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
-                    Text("Histórico da conta")
+                    Text("Ouça novamente")
+                    Text("Registra músicas recentes desta conta apenas no aparelho. Pausar não apaga registros anteriores.",fontSize=12.sp,color=Color.LightGray)
+                }
+                Switch(checked=localRecent,enabled=enabled,onCheckedChange={value->
+                    if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==user.uid){NeroLocalRecent.setEnabled(context,user.uid,value);localRecent=value}
+                })
+            }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    Text("Sincronizar histórico")
                     Text("Registra até 100 faixas online neste aparelho para sincronização. Pausar não apaga registros anteriores.",fontSize=12.sp,color=Color.LightGray)
                 }
                 Switch(checked=historyEnabled,enabled=enabled,onCheckedChange={value->

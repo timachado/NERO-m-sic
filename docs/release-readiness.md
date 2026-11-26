@@ -58,3 +58,6 @@ Replay em tela cheia rolável, com Fechar sempre visível; botão direto de Dail
 
 ## 0.9.69-dev — paridade de recursos do candidato assinado
 A pedido do proprietário, debug e release compartilham a implementação existente do catálogo e dependências, sem substituição por outro catálogo. Busca, clipes, artistas, álbuns, mixes, rádio, downloads e controles existentes preservados no código. Cast, Android Auto e equalizador disponíveis nas duas variantes; release continua não debuggable. Sem alteração de chaves, OAuth, checkout ou banco. O candidato assinado é para homologação privada; direitos de distribuição comercial da fonte musical e funcionamento em aparelho não validados. Sem alegação de parceria ou autorização da plataforma de origem.
+
+## 0.9.70-dev — restauração Ouça novamente
+A seção passa a permanecer visível com estado vazio. Histórico recente local separado por conta, independente do opt-in de sincronização, com controle de pausa em NERO Cloud e limpeza pela tela de histórico. Registros locais e sincronizados são mesclados por data, sem importar automaticamente dados de visitante ou Replay de outra conta. Preserva catálogo e demais recursos. Sem mudanças em OAuth, banco ou assinatura; testes de mesclagem adicionados, compilação e homologação pendentes.
