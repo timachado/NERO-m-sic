@@ -1,0 +1,56 @@
+name: NERO Firebase private readiness
+on:
+  push:
+    branches: [qa/nero-firebase-readiness]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    environment: nero-release
+    timeout-minutes: 5
+    steps:
+      - name: Install authentication dependencies
+        run: python3 -m pip install --quiet 'google-auth==2.35.0' 'requests==2.32.3'
+      - name: Validate credentials and FCM authorization without delivery
+        env:
+          CLIENT_CONFIG: ${{ secrets.NERO_GOOGLE_SERVICES_JSON }}
+          SERVER_CONFIG: ${{ secrets.NERO_FIREBASE_SERVICE_ACCOUNT_JSON }}
+          PROJECT: ${{ vars.NERO_FIREBASE_PROJECT_ID }}
+          ENABLED: ${{ vars.NERO_FCM_ENABLED }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+          import requests
+          def check(condition, message):
+              if not condition:
+                  print("::error::" + message)
+                  sys.exit(1)
+          project = "nero-music-c8654"
+          check(os.environ.get("PROJECT") == project, "Project variable absent or mismatched.")
+          try:
+              client = json.loads(os.environ["CLIENT_CONFIG"])
+              server = json.loads(os.environ["SERVER_CONFIG"])
+          except Exception:
+              check(False, "Client or service account JSON missing or invalid.")
+          check(client.get("project_info", {}).get("project_id") == project, "Client project mismatch.")
+          check(any(c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "br.com.timachado.neromusic" for c in client.get("client", [])), "Client package mismatch.")
+          check(server.get("project_id") == project and server.get("type") == "service_account", "Service account project or type mismatch.")
+          check(server.get("token_uri") == "https://oauth2.googleapis.com/token", "Unexpected credential token endpoint.")
+          print("Client and server configuration match.")
+          try:
+              creds = service_account.Credentials.from_service_account_info(server, scopes=["https://www.googleapis.com/auth/firebase.messaging"])
+              creds.refresh(Request())
+          except Exception:
+              check(False, "Service account authentication failed.")
+          print("Service account authenticated.")
+          try:
+              response = requests.post("https://fcm.googleapis.com/v1/projects/" + project + "/messages:send", headers={"Authorization": "Bearer " + creds.token}, json={"validate_only": True, "message": {"topic": "nero_music_stable_updates_v1", "data": {"kind": "nero_readiness_validation_only"}}}, timeout=20)
+          except Exception:
+              check(False, "FCM validation request failed.")
+          check(response.status_code == 200, "FCM validation rejected: HTTP " + str(response.status_code))
+          print("FCM validate_only accepted; no message delivered.")
+          print("Automatic release push enabled: " + str(os.environ.get("ENABLED") == "true"))
+          PY
