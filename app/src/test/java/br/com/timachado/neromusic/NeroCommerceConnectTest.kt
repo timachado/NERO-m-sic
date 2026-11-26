@@ -17,6 +17,12 @@ class NeroCommerceConnectTest {
             assertNull(url.rawUserInfo)
         }
     }
+    @Test fun acceptsOnlyExclusiveHandoff(){
+        val ticket="A".repeat(90)
+        val valid="https://timachado.ifree.page/?tiac_nero_handoff="+ticket
+        assertEquals(valid,neroValidatedCheckoutHandoff(valid))
+        for(bad in listOf(valid+"&plan=yearly",valid+"#extra",valid.replace("https://","http://"),valid.replace("timachado.ifree.page","timachado.ifree.page.evil.test"),valid.replace(ticket,"short"))){assertNull(neroValidatedCheckoutHandoff(bad))}
+    }
     @Test fun rejectsUnknownOrInjectedPlans(){
         for(id in listOf("", "free", "premium_lifetime", "monthly", "premium_monthly&product_id=308")){
             assertNull(neroCheckoutUrl(id))
