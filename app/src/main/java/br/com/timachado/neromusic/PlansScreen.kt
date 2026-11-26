@@ -79,6 +79,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("Planos NERO Music",fontSize=24.sp,fontWeight=FontWeight.Bold)
         }
+        if(ready&&uid!=null)Text("Seu plano: "+(if(checking)"Consultando…" else neroProfilePlanLabel(subscription?.phase)),fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(premium)Color(0xFFFFD170) else premiumCyan)
         Text("Sua música. Sua liberdade.",fontSize=18.sp,fontWeight=FontWeight.Medium,color=premiumCyan)
         Text("Escolha a experiência NERO que combina com você.",fontSize=13.sp,color=Color.LightGray)
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {

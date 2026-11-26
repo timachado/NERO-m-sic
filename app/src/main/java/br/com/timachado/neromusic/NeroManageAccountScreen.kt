@@ -39,6 +39,7 @@ internal fun NeroManageAccountScreen(user:NeroSession,modifier:Modifier=Modifier
                                 Icon(Icons.Default.AccountCircle,null,modifier=Modifier.fillMaxSize(),tint=MaterialTheme.colorScheme.primary)
                                 user.avatar?.let{NeroArtwork(model=it,contentDescription="Foto do perfil",modifier=Modifier.fillMaxSize().clip(CircleShape),contentScale=ContentScale.Crop)}
                             }
+                            NeroProfilePlan(user.uid,onPlans=onPlans)
                             Text("Dados do perfil",fontSize=20.sp,fontWeight=FontWeight.Bold)
                             Text("Nome",style=MaterialTheme.typography.labelMedium)
                             Text(user.displayName.ifBlank{"Minha conta"})

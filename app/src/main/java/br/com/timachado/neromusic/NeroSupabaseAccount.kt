@@ -88,6 +88,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             Text(user?.displayName?.takeIf{it.isNotBlank()}?:"Minha conta",fontSize=23.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text(user?.email.orEmpty(),fontSize=14.sp,color=Color.LightGray,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text("Conta Google conectada",color=MaterialTheme.colorScheme.primary)
+            user?.let{NeroProfilePlan(it.uid,onPlans={showPlans=true})}
             Text("Nome e foto fornecidos pelo Google, quando disponíveis.",fontSize=12.sp,color=Color.LightGray)
             Button(enabled=!busy,onClick={manageAccount=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Gerenciar minha conta")}
             OutlinedButton(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
