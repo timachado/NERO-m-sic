@@ -2,76 +2,173 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex,nofollow">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NERO Music TV | Protótipo</title>
+<title>NERO Music TV</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#111;color:#fff;font:24px Arial,sans-serif}main{padding:5%}header{font-size:24px;letter-spacing:3px;color:#d7d7d7}h1{font-size:46px;margin:24px 0 8px}p{color:#bbb;line-height:1.5;margin:8px 0 18px}#screen{width:72%;max-width:960px;margin:28px 0;background:#050505}#screen iframe{display:block;width:100%;height:480px;border:0}#state{color:#c5d5ea;font-size:20px}button{padding:14px 22px;background:#e8e8e8;color:#111;border:0;font-size:22px}button:focus{outline:4px solid #80aaff}input{font-size:24px;padding:12px;width:280px}small{font-size:16px;color:#aaa}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#030708;color:#fff;font-family:Arial,Helvetica,sans-serif}
+body{background:radial-gradient(ellipse at 10% 10%,#123831 0%,#0b1820 38%,#030708 80%)}
+main{max-width:1600px;margin:0 auto;padding:22px 4% 24px}
+header{border-bottom:1px solid #29443f;padding:0 0 15px;font-size:26px;font-weight:bold;letter-spacing:1px}
+.logo{display:inline-block;color:#39ff14}.tv{display:inline-block;margin-left:12px;color:#00e5ff;font-size:14px;letter-spacing:2px;vertical-align:middle}
+.full{float:right;font-size:14px;padding:8px 14px;background:transparent;color:#b7caca;border:1px solid #42635d;border-radius:8px}
+.stage{display:table;width:100%;table-layout:fixed;margin-top:20px}
+.left,.right{display:table-cell;vertical-align:middle}
+.left{width:35%;padding-right:5%}.right{width:65%}
+.art{width:100%;max-width:310px;aspect-ratio:1/1;position:relative;border:2px solid #39ff14;border-radius:18px;background:#17262d;overflow:hidden;box-shadow:0 0 25px rgba(57,255,20,.12)}
+.art:before{content:"";display:block;padding-top:100%}
+.art img{display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.art .mark{position:absolute;top:0;left:0;right:0;bottom:0;text-align:center;font-size:76px;line-height:1;display:table;width:100%;height:100%;color:#39ff14}
+.mark span{display:table-cell;vertical-align:middle}
+.eyebrow{margin-top:16px;font-size:13px;letter-spacing:2px;font-weight:bold;color:#00e5ff}
+h1{font-size:34px;line-height:1.15;margin:8px 0 6px;max-height:2.3em;overflow:hidden;word-wrap:break-word}
+#artist{font-size:20px;color:#b9c5c9;margin:0 0 10px;word-wrap:break-word}
+.video{width:100%;position:relative;background:#000;border:1px solid #29443f;border-radius:12px;overflow:hidden}
+.video:before{content:"";display:block;padding-top:56.25%}
+.video iframe,.video #player{position:absolute;left:0;top:0;width:100%;height:100%;border:0}
+#state{margin:12px 0 8px;min-height:20px;color:#b9d8d5;font-size:15px}
+.trackbar{height:6px;border-radius:4px;background:#2e454b;overflow:hidden;margin:18px 0 5px}
+#fill{height:100%;width:0;background:#39ff14}
+.times{font-size:15px;color:#acbfbd;overflow:hidden}.times span+span{float:right}
+.controls{text-align:center;padding:15px 0 8px}
+button{font:inherit;cursor:pointer;color:#fff;border:1px solid #4c6b65;border-radius:12px;background:#14272b;padding:12px 20px}
+button:focus,input:focus{outline:3px solid #00e5ff;outline-offset:3px}
+button[disabled]{opacity:.42;cursor:default}
+#play{background:#39ff14;color:#06150a;font-size:20px;font-weight:bold;border:none;border-radius:32px;min-width:172px;min-height:54px}
+#retry{margin-left:12px;font-size:14px}
+#form{margin:16px 0 8px;color:#aabfb9;font-size:15px}
+input{background:#14272b;border:1px solid #4c6b65;color:#fff;border-radius:8px;font-size:17px;padding:10px;max-width:100%}
+#form button{font-size:15px;margin-left:8px}
+footer{font-size:12px;line-height:1.5;color:#9db0ae;margin-top:8px}
+@media(max-width:700px){main{padding:18px 5%}.stage,.left,.right{display:block;width:100%}.left{padding:0 0 18px}.art{max-width:200px}.eyebrow{margin-top:12px}h1{font-size:29px}header{font-size:21px}.full{font-size:12px}.video{min-height:200px}}
+@media(min-width:701px) and (max-height:650px){main{padding-top:12px;padding-bottom:12px}header{padding-bottom:8px}.stage{margin-top:12px}.art{max-width:220px}h1{font-size:27px}.controls{padding:10px 0 4px}}
 </style>
 </head>
-<body><main>
-<header>NERO MUSIC / TV</header>
-<h1 id="title">Receptor experimental</h1>
-<p id="artist"></p><p id="state" role="status">Informe o identificador do vídeo autorizado.</p>
-<form id="form"><label for="videoId">ID do vídeo </label><input id="videoId" maxlength="11" autocomplete="off"><button type="submit">Reproduzir</button></form>
-<div id="screen"><div id="player"></div></div>
-<p id="progress" aria-live="off">00:00 / 00:00</p><small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
+<body><main id="app">
+<header>NER<span class="logo">O</span> Music <span class="tv">TV</span><button id="fullscreen" class="full" type="button" style="display:none">Tela cheia</button></header>
+<div class="stage">
+<section class="left">
+<div class="art"><div class="mark" id="mark"><span>&#9835;</span></div><img id="cover" alt="Imagem da faixa"></div>
+<div class="eyebrow">TOCANDO AGORA</div>
+<h1 id="title">NERO Music</h1><p id="artist">Selecione uma faixa no celular</p>
+</section>
+<section class="right">
+<div class="video"><div id="player"></div></div>
+<div class="trackbar" role="progressbar" aria-label="Progresso da faixa" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><div id="fill"></div></div>
+<div class="times"><span id="elapsed">0:00</span><span id="duration">0:00</span></div>
+<div class="controls"><button id="play" type="button" disabled>&#9654; Reproduzir</button><button id="retry" type="button" style="display:none">Tentar novamente</button></div>
+<p id="state" role="status">Conectando ao player…</p>
+<form id="form" style="display:none"><label for="videoId">ID de teste </label><input id="videoId" maxlength="11" autocomplete="off"><button type="submit">Carregar</button></form>
+<footer>Reprodução pelo player incorporado do YouTube. A sessão TV ainda é independente do celular.</footer>
+</section></div>
 </main>
 <script>
 (function(){
 "use strict";
-var player=null, ready=false, pending=null, state=document.getElementById("state");
+var player=null,ready=false,pending=null,stateCode=-1,watchdog=null;
+var d=document,el=function(id){return d.getElementById(id);};
+var valid=function(id){return /^[A-Za-z0-9_-]{11}$/.test(id||"");};
 function query(name){
  var pattern=new RegExp("(?:^|[?&])"+name+"=([^&]*)");
- var match=pattern.exec(location.hash.replace(/^#/,"?"))||pattern.exec(location.search);
- try{return match?decodeURIComponent(match[1].replace(/\+/g," ")).slice(0,180):"";}catch(e){return "";}
+ var m=pattern.exec(location.hash.replace(/^#/,"?"))||pattern.exec(location.search);
+ try{return m?decodeURIComponent(m[1].replace(/\+/g," ")).slice(0,180):"";}catch(e){return "";}
 }
-var title=query("title"), artist=query("artist");
-var start=Math.min(86400,Math.max(0,Math.floor(Number(query("t"))||0)));
-if(title)document.getElementById("title").textContent=title;
-if(artist)document.getElementById("artist").textContent=artist;
-function clock(value){
- var sec=Math.max(0,Math.floor(Number(value)||0));
- var min=Math.floor(sec/60), rem=sec%60;
- return (min<10?"0":"")+min+":"+(rem<10?"0":"")+rem;
-}
-setInterval(function(){
+function status(s){el("state").textContent=s;}
+function clock(v){var s=Math.max(0,Math.floor(Number(v)||0)),m=Math.floor(s/60),r=s%60;return m+":"+(r<10?"0":"")+r;}
+function updateProgress(){
  if(!ready||!player)return;
- try{document.getElementById("progress").textContent=clock(player.getCurrentTime())+" / "+clock(player.getDuration());}catch(e){}
-},1000);
-var valid=function(id){return /^[A-Za-z0-9_-]{11}$/.test(id);};
-function status(s){state.textContent=s;}
-function load(id){
- if(!valid(id)){status("Identificador inválido.");return;}
- pending=id;
- if(id!==query("v")){document.getElementById("title").textContent="NERO Music TV";document.getElementById("artist").textContent="";}
- if(!ready){status("Aguardando o player oficial…");return;}
- try{player.loadVideoById({videoId:id,startSeconds:id===query("v")?start:0});status("Solicitando reprodução…");}
- catch(e){status("Não foi possível solicitar reprodução.");}
+ try{
+  var t=player.getCurrentTime(),total=player.getDuration();
+  el("elapsed").textContent=clock(t);el("duration").textContent=clock(total);
+  var pct=total>0?Math.max(0,Math.min(100,t/total*100)):0;
+  el("fill").style.width=pct+"%";el("bar").setAttribute("aria-valuenow",String(Math.round(pct)));
+ }catch(e){}
 }
-document.getElementById("form").onsubmit=function(e){
- if(e&&e.preventDefault)e.preventDefault();
- load(document.getElementById("videoId").value);
- return false;
+function updateControl(){
+ el("play").disabled=!ready||!pending;
+ el("play").textContent=stateCode===1?"❚❚ Pausar":"▶ Reproduzir";
+}
+function cover(id){
+ var img=el("cover");img.style.display="none";el("mark").style.display="table";
+ if(!valid(id))return;
+ img.onload=function(){img.style.display="block";el("mark").style.display="none";};
+ img.onerror=function(){img.style.display="none";el("mark").style.display="table";};
+ img.src="https://i.ytimg.com/vi/"+id+"/hqdefault.jpg";
+}
+function cancelWatch(){if(watchdog!==null){clearTimeout(watchdog);watchdog=null;}}
+function armWatch(){
+ cancelWatch();
+ watchdog=setTimeout(function(){
+  if(stateCode!==1&&stateCode!==2&&stateCode!==0){
+   status("A TV ainda não iniciou a reprodução. Selecione Reproduzir ou tente novamente.");
+   el("retry").style.display="inline-block";
+  }
+ },15000);
+}
+var initialId=query("v"),start=Math.min(86400,Math.max(0,Math.floor(Number(query("t"))||0)));
+function load(id,offset){
+ if(!valid(id)){status("Identificador inválido.");return;}
+ pending=id;stateCode=-1;updateControl();
+ if(id!==initialId){el("title").textContent="NERO Music";el("artist").textContent="Faixa selecionada";}
+ cover(id);
+ if(!ready){status("Conectando ao player…");return;}
+ try{
+  el("retry").style.display="none";
+  player.loadVideoById({videoId:id,startSeconds:offset||0});
+  status("Preparando reprodução…");armWatch();
+ }catch(e){status("Não foi possível iniciar a reprodução.");el("retry").style.display="inline-block";}
+}
+el("play").onclick=function(){
+ if(!ready||!pending)return;
+ try{if(stateCode===1){player.pauseVideo();}else{player.playVideo();status("Iniciando reprodução…");armWatch();}}
+ catch(e){status("O navegador não aceitou o comando.");el("retry").style.display="inline-block";}
 };
+el("retry").onclick=function(){
+ if(!ready){location.reload();return;}
+ if(pending)load(pending,pending===initialId?start:0);
+};
+el("form").onsubmit=function(e){if(e&&e.preventDefault)e.preventDefault();load(el("videoId").value,0);return false;};
+var root=d.documentElement,full=root.requestFullscreen||root.webkitRequestFullscreen||root.webkitRequestFullScreen;
+if(full){
+ el("fullscreen").style.display="inline-block";
+ el("fullscreen").onclick=function(){
+  try{
+   var result=full.call(root);
+   if(result&&typeof result.catch==="function")result.catch(function(){status("Tela cheia indisponível neste navegador.");});
+  }catch(e){status("Tela cheia indisponível neste navegador.");}
+ };
+}
+if(valid(initialId)){
+ el("title").textContent=query("title")||"NERO Music";
+ el("artist").textContent=query("artist")||"Faixa selecionada";
+ el("videoId").value=initialId;pending=initialId;cover(initialId);
+}else{el("form").style.display="block";status("Aguardando uma faixa do NERO Music.");}
 window.onYouTubeIframeAPIReady=function(){
- try {
- player=new YT.Player("player",{height:"480",width:"854",playerVars:{controls:1,autoplay:0,playsinline:1,origin:location.protocol+"//"+location.host},events:{
- onReady:function(){ready=true;status("Receptor pronto. Selecione o vídeo.");if(pending)load(pending);},
- onStateChange:function(e){
- var messages={"-1":"Aguardando reprodução.","0":"Reprodução encerrada.","1":"Reprodução confirmada pelo player.","2":"Pausado.","3":"Carregando…","5":"Vídeo preparado."};
- if(Object.prototype.hasOwnProperty.call(messages,String(e.data)))status(messages[String(e.data)]);
- },
- onError:function(e){status("O player oficial não conseguiu reproduzir este vídeo (código "+String(e.data)+").");},
- onAutoplayBlocked:function(){status("A TV bloqueou a reprodução automática. Use o botão do player.");}
- }});
- }catch(e){status("Player incompatível com este navegador.");}
+ try{
+  player=new YT.Player("player",{width:"100%",height:"100%",playerVars:{controls:1,autoplay:0,playsinline:1,origin:location.protocol+"//"+location.host},events:{
+   onReady:function(){
+    ready=true;updateControl();status("Receptor pronto.");
+    if(pending)load(pending,pending===initialId?start:0);
+   },
+   onStateChange:function(e){
+    stateCode=e.data;updateControl();updateProgress();
+    if(stateCode===1){cancelWatch();el("retry").style.display="none";status("Reproduzindo na TV");}
+    else if(stateCode===2){cancelWatch();status("Pausado");}
+    else if(stateCode===0){cancelWatch();status("Faixa encerrada");}
+    else if(stateCode===3){status("Carregando…");armWatch();}
+    else if(stateCode===5){status("Faixa preparada. Selecione Reproduzir.");armWatch();}
+   },
+   onError:function(e){cancelWatch();stateCode=-1;updateControl();status("O player não conseguiu reproduzir a faixa (código "+String(e.data)+").");el("retry").style.display="inline-block";},
+   onAutoplayBlocked:function(){cancelWatch();status("Selecione Reproduzir para iniciar na TV.");}
+  }});
+ }catch(e){status("Player incompatível com este navegador.");el("retry").style.display="inline-block";}
 };
-var initialId=query("v");
-if(valid(initialId)){document.getElementById("videoId").value=initialId;pending=initialId;document.getElementById("form").style.display="none";}
-var script=document.createElement("script");script.src="https://www.youtube.com/iframe_api";script.onerror=function(){status("Não foi possível carregar o player oficial. Verifique a compatibilidade do navegador e a rede.");};
-document.head.appendChild(script);
-setTimeout(function(){if(!ready)status("O player ainda não respondeu. Navegadores antigos podem ser incompatíveis.");},20000);
+var script=d.createElement("script");script.src="https://www.youtube.com/iframe_api";
+script.onerror=function(){status("Não foi possível carregar o player. Verifique a rede e o navegador.");el("retry").style.display="inline-block";};
+d.head.appendChild(script);
+setTimeout(function(){if(!ready){status("O player não respondeu. Este navegador antigo pode ser incompatível.");el("retry").style.display="inline-block";}},20000);
+setInterval(updateProgress,1000);
 })();
 </script></body></html>
