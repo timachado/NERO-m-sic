@@ -95,6 +95,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
         Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
         if(recent.isNotEmpty())OnlineDiscoveryRow(recent,canPlay,onQueue)
         else Text("As músicas do catálogo que você ouvir aparecerão aqui.",fontSize=13.sp,color=Color.LightGray)
+        NeroDjShelf(historyUid,artists,hidden,canPlay,onQueue)
         if(hidden.isNotEmpty())TextButton(onClick={resetHidden=true}){Text("Restaurar músicas ocultadas (${hidden.size})")}
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)

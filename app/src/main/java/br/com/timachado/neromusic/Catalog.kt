@@ -119,24 +119,25 @@ internal object DevCatalog {
 
     internal data class ReleaseSnapshot(val entries:List<CatalogEntry>,val fetchedAt:Long,val day:java.time.LocalDate)
     private val releaseLock=Mutex()
-    private val releaseCache=LinkedHashMap<Pair<Int,String?>,ReleaseSnapshot>()
-    suspend fun releaseSnapshot(days:Int,genre:String?,force:Boolean=false):ReleaseSnapshot=releaseLock.withLock{
-        val key=days to genre
+    private val releaseCache=LinkedHashMap<Triple<Int,String?,String?>,ReleaseSnapshot>()
+    suspend fun releaseSnapshot(days:Int,genre:String?,force:Boolean=false,artist:String?=null):ReleaseSnapshot=releaseLock.withLock{
+        val key=Triple(days,genre,artist)
         val previous=releaseCache[key]
         val today=java.time.LocalDate.now()
         if(!force&&previous!=null&&previous.day==today&&System.currentTimeMillis()-previous.fetchedAt in 0L..900000L)return@withLock previous
-        val fresh=ReleaseSnapshot(releases(days,genre),System.currentTimeMillis(),today)
+        val fresh=ReleaseSnapshot(releases(days,genre,artist),System.currentTimeMillis(),today)
         if(releaseCache.size>=24)releaseCache.remove(releaseCache.keys.first())
         releaseCache[key]=fresh
         fresh
     }
-    private suspend fun releases(days:Int,genre:String?):List<CatalogEntry>{
+    private suspend fun releases(days:Int,genre:String?,artist:String?):List<CatalogEntry>{
         require(days in setOf(7,30,90))
         require(genre==null || genre in setOf("pop","rock","jazz","gospel","samba","sertanejo","pagode","electronic","hip hop","mpb"))
         val today=java.time.LocalDate.now()
         val from=today.minusDays((days-1).toLong())
         val tags=genre?.let{" AND tag:\"$it\""} ?: ""
-        val query="firstreleasedate:[$from TO $today] AND (primarytype:album OR primarytype:single OR primarytype:ep) AND status:official"+tags
+        val performer=artist?.let{ " AND artist:\""+it.take(100).replace(Regex("[^\\p{L}\\p{N} ]")," ")+"\"" }.orEmpty()
+        val query="firstreleasedate:[$from TO $today] AND (primarytype:album OR primarytype:single OR primarytype:ep) AND status:official"+tags+performer
         val data=fetchDetails("release-group",mapOf("query" to query,"limit" to "50"))
         val rows=data.optJSONArray("release-groups")?:return emptyList()
         return (0 until rows.length()).mapNotNull { i ->

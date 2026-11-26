@@ -85,3 +85,6 @@ Tela de planos com identidade independente NERO, sem menção nominal a YouTube 
 
 ## 0.9.78-dev — consistência da marca
 Padroniza referências visíveis à marca principal NERO Music nas telas de conta, planos, descoberta, busca, playlists, transferência, compartilhamento e detalhes. Mantém submarcas NERO Premium, Free, Cloud, Transfer, Replay e Mixes; logo Aurora Neon e identificadores técnicos permanecem intactos. Informações sobre fontes externas, importação Spotify, destino de links e limitações de acesso/download permanecem explícitas onde pertinentes. Sem mudança funcional, pagamentos ou credenciais. Compilação e revisão visual em aparelho pendentes.
+
+## 0.9.79-dev — primeira etapa Radar e DJ
+NERO Radar gratuito na home, opt-in por conta/dispositivo, consultas de lançamentos datados em janela de sete dias por até seis artistas e dois gêneros inferidos. NERO DJ por busca e regras, degustação de cinco faixas e até 30 com verificação Premium existente; sem IA externa, sem ativação de cobrança. Testes sintéticos adicionados. Notificações em segundo plano, Together, Studio ampliado, Replay 365 e Smart Library permanecem pendentes. Sem alteração dos planos/preços ou do catálogo existente. Compilação e teste em Android pendentes.

@@ -37,7 +37,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Free",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Acesso gratuito",color=premiumCyan)
-            listOf("Player de música e busca","Login Google","Favoritos e playlists","Sincronização básica da biblioteca").forEach { PlanFeature(it,true) }
+            listOf("Player de música e busca","Login Google","Favoritos e playlists","Sincronização básica da biblioteca","NERO Radar","NERO DJ · degustação").forEach { PlanFeature(it,true) }
             PlanFeature("Smart Mix, Daily Mix e Discovery online",NativeMusicCatalog.enabled)
             if(!NativeMusicCatalog.enabled)Text("Recursos online indisponíveis nesta versão.",fontSize=12.sp,color=Color.LightGray)
             Text("Aproveite os recursos gratuitos do NERO.",fontSize=12.sp,color=Color.LightGray)
@@ -45,7 +45,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Benefícios previstos · contratação indisponível",fontWeight=FontWeight.Medium,color=Color.LightGray)
-            listOf("Tudo do Free","Temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
+            listOf("Tudo do Free","NERO DJ · mixes personalizados","Temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
             PlanFeature("Smart Mix e Daily Mix avançados",false)
             HorizontalDivider(color=Color(0xFF33434A))
             Text("Coleção de temas do player",fontWeight=FontWeight.Bold,color=premiumCyan)
