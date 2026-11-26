@@ -70,6 +70,30 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    private suspend fun updateCollections(context:Context,uid:String,change:(CloudLibrarySnapshot)->CloudLibrarySnapshot)=mutex.withLock{
+        require(NeroSupabase.activeUid.value==uid)
+        withContext(Dispatchers.IO){
+            val empty=CloudLibrarySnapshot(emptyList(),emptyList())
+            val current=NeroAccountLibraryStore.read(context,uid)?:NeroAccountLibraryState(0,empty,empty)
+            require(NeroSupabase.activeUid.value==uid)
+            NeroAccountLibraryStore.write(context,uid,current.copy(pending=change(current.pending)))
+        }
+        changesState.value++
+        editsState.value++
+    }
+    suspend fun toggleArtist(context:Context,uid:String,name:String)=updateCollections(context,uid){snapshot->
+        val value=NeroFollowedArtists.clean(name);require(value.isNotBlank())
+        val key=nativeArtistKey(value)
+        val next=if(snapshot.artists.any{nativeArtistKey(it)==key})snapshot.artists.filterNot{nativeArtistKey(it)==key}else snapshot.artists+value
+        snapshot.copy(artists=next)
+    }
+    suspend fun toggleAlbum(context:Context,uid:String,album:NativeCollection)=updateCollections(context,uid){snapshot->
+        require(album.kind==NativeCollectionKind.ALBUM&&album.title.isNotBlank())
+        val id=requireNotNull(savedAlbumKey(album.url))
+        val next=if(snapshot.albums.any{it.id==id})snapshot.albums.filterNot{it.id==id}
+            else listOf(CloudAlbum(id,album.title.take(250),album.credit.take(250)))+snapshot.albums
+        snapshot.copy(albums=next)
+    }
     suspend fun replacePlaylists(context:Context,uid:String,expected:List<OnlineList>,next:List<OnlineList>)=mutex.withLock{
         require(NeroSupabase.activeUid.value==uid)
         withContext(Dispatchers.IO){
