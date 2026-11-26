@@ -71,9 +71,12 @@ internal fun ImmersivePlayer(
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
     var showDevices by remember{mutableStateOf(false)}
-    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,onCast={
+    val preferWebVideoCaster=remember(castContext,mediaId,showDevices){
+        showDevices&&NeroWebVideoCaster.publicWatchUrl(mediaId)!=null&&NeroWebVideoCaster.available(castContext)
+    }
+    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,preferWebVideoCaster=preferWebVideoCaster,onCast={
         showDevices=false
-        runCatching{castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity"))}.onFailure{android.widget.Toast.makeText(castContext,"Transmissão indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
+        runCatching{castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity").putExtra(NeroWebVideoCaster.EXTRA_REQUEST,preferWebVideoCaster))}.onFailure{android.widget.Toast.makeText(castContext,"Transmissão indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
     },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     val hiddenSongs=rememberHiddenSongs()
