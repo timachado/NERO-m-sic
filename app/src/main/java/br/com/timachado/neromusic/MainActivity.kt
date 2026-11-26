@@ -350,7 +350,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     Text(displayArtistName(artist), color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
                 }
                 IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
-                IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
+                IconButton(onClick = { controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()} }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
             NavigationBar(containerColor = Color.Black) {
                 NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
@@ -424,7 +424,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={if(NeroPlaybackAccess.allowed())controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},
-                onPrevious={if(NeroPlaybackAccess.allowed())controller?.seekToPreviousMediaItem()},onNext={if(NeroPlaybackAccess.allowed())controller?.seekToNextMediaItem()},
+                onPrevious={if(NeroPlaybackAccess.allowed())controller?.seekToPreviousMediaItem()},onNext={controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()}} ,
                 onShuffle={if(NeroPlaybackAccess.allowed())controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
                 onRepeat={if(NeroPlaybackAccess.allowed())controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
                 onLyrics={showLyrics=true},onQueue={showQueue=true},onEqualizer={showEq=true},

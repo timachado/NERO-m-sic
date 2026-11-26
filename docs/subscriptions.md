@@ -50,3 +50,6 @@ A contratação abre a página pública do NERO Music no site, onde o próprio C
 
 ## Decisão aprovada 0.9.95-dev — reprodução Free
 Free mantém busca, biblioteca, favoritos e playlists; listas iniciam aleatoriamente, modo aleatório obrigatório; sem anterior/próxima manual, seek, repetição ou organização de fila. Uma faixa isolada continua pesquisável e reproduzível; iniciar outra seleção continua possível. Premium confirmado pelo servidor (incluindo trial ativo) restaura controles. Não cria anúncios, cotas ou limites de tempo. Comandos bloqueados no MediaSession e widget; interface exibe restrições. A política se aplica ao player NERO, inclusive arquivos locais; cast externo, controles de vídeo e recuperação precisam de homologação específica. Sem garantia de proteção contra APK modificado. Verificação periódica em memória; sem autorização confirmada, Free. Nenhum backend ou checkout alterado.
+
+## Decisão vigente 0.9.97-dev
+Substitui exclusivamente a restrição de avanço da 0.9.95/96: NERO Free permite próxima faixa na fila aleatória, sem limite de pulos estabelecido. Anterior, busca de posição, repetição, controle de fila e desligar aleatório permanecem Premium. Próxima branca no player, anterior cinza. Se não houver próxima faixa na fila, o comando não cria outra seleção nem altera a posição. Não altera preços, catálogo ou checkout.

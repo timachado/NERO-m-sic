@@ -193,7 +193,7 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,if(fullControls)"Aleatório" else "Aleatório obrigatório no Free",tint=if(shuffle||!fullControls)neon else Color.White,modifier=Modifier.size(26.dp))}
                 IconButton(onClick=onPrevious,enabled=ready&&fullControls){Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
                 FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)66.dp else 76.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color.White,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
-                IconButton(onClick=onNext,enabled=ready&&fullControls){Icon(Icons.Default.SkipNext,"Próxima",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
+                IconButton(onClick=onNext,enabled=ready){Icon(Icons.Default.SkipNext,"Próxima",tint=if(ready)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Timer,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White,modifier=Modifier.size(26.dp))}
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
@@ -204,7 +204,7 @@ internal fun ImmersivePlayer(
                 IconButton(onClick={sharing=true},enabled=title.isNotBlank()){Icon(Icons.Default.Share,"Compartilhar",tint=Color.White)}
                 IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=Color.White)}
             }
-            if(!fullControls)Text("NERO Free · ordem aleatória. Pular, repetir e ajustar a posição são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
+            if(!fullControls)Text("NERO Free · ordem aleatória. Próxima liberada; voltar, repetir e ajustar a posição são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id

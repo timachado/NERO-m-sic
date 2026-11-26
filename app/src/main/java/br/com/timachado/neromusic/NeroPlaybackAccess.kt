@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 
 // A short in-memory lease from the existing verified account endpoint.
 // Unknown, guest, expired or signed-out accounts use Free. Never persist a paid flag.
-@UnstableApi
 internal object NeroPlaybackAccess {
     private val state=MutableStateFlow(false)
     val premium=state.asStateFlow()
@@ -22,11 +21,13 @@ internal object NeroPlaybackAccess {
         deadline=if(verified&&uid!=null)android.os.SystemClock.elapsedRealtime()+60_000L else 0L
         state.value=verified&&uid!=null&&NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid
     }
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun commands():Player.Commands{
         val builder=MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
         if(!allowed())for(command in restrictedPlaybackCommands)builder.remove(command)
         return builder.build()
     }
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun sessionCommands():SessionCommands{
         val builder=MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon().add(NeroMediaActions.favorite)
         if(allowed())builder.add(NeroMediaActions.repeat)
@@ -36,7 +37,6 @@ internal object NeroPlaybackAccess {
 internal val restrictedPlaybackCommands=setOf(
     Player.COMMAND_SEEK_TO_DEFAULT_POSITION,Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
     Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,Player.COMMAND_SEEK_TO_PREVIOUS,
-    Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,Player.COMMAND_SEEK_TO_NEXT,
     Player.COMMAND_SEEK_TO_MEDIA_ITEM,Player.COMMAND_SEEK_BACK,Player.COMMAND_SEEK_FORWARD,
     Player.COMMAND_SET_SHUFFLE_MODE,Player.COMMAND_SET_REPEAT_MODE
 )

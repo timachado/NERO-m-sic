@@ -24,7 +24,7 @@ internal object NeroWidgetState {
             p.mediaMetadata.artist?.toString().orEmpty().ifBlank{item.mediaMetadata.artist?.toString().orEmpty()},
             neroPlayRequested(p.playWhenReady,p.playbackState),
             NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem(),
-            NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem(),
+            p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem(),
             true
         )
     }
@@ -36,7 +36,7 @@ internal object NeroWidgetState {
         when(action){
             NeroWidget.ACTION_TOGGLE->toggleNeroPlayback(p)
             NeroWidget.ACTION_PREVIOUS->if(NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem())p.seekToPreviousMediaItem()
-            NeroWidget.ACTION_NEXT->if(NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem())p.seekToNextMediaItem()
+            NeroWidget.ACTION_NEXT->if(p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem())p.seekToNextMediaItem()
         }
         refresh(context,true)
     }
