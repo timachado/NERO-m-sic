@@ -9,14 +9,13 @@ import android.app.AlertDialog
 import android.net.wifi.WifiManager
 import android.widget.ScrollView
 import android.view.View
-import com.google.android.gms.cast.framework.CastState
-import com.google.android.gms.cast.framework.CastStateListener
 import kotlinx.coroutines.*
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
-import androidx.mediarouter.app.MediaRouteButton
+import androidx.mediarouter.media.MediaRouter
+import androidx.mediarouter.media.MediaRouteSelector
 import androidx.core.content.ContextCompat
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -26,7 +25,6 @@ import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
-import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.OptionsProvider
@@ -56,13 +54,16 @@ class NeroCastActivity:FragmentActivity(){
     private var multicast:WifiManager.MulticastLock?=null
     private lateinit var devicesPanel:LinearLayout
     private lateinit var controls:LinearLayout
-    private lateinit var googleChoice:Button
+    private var router:MediaRouter?=null
+    private var selector:MediaRouteSelector?=null
+    private var dlnaDevices:List<NeroDlnaDevice> = emptyList()
+    private val routeCallback=object:MediaRouter.Callback(){
+        override fun onRouteAdded(router:MediaRouter,route:MediaRouter.RouteInfo){renderDevices()}
+        override fun onRouteRemoved(router:MediaRouter,route:MediaRouter.RouteInfo){renderDevices()}
+        override fun onRouteChanged(router:MediaRouter,route:MediaRouter.RouteInfo){renderDevices()}
+    }
     private var castPickerJob:Job?=null
     private lateinit var targetStatus:TextView
-    private val castListener=CastStateListener{state->
-        if(::googleChoice.isInitialized)googleChoice.visibility=
-            if(state==CastState.NOT_CONNECTED||state==CastState.CONNECTED||state==CastState.CONNECTING)View.VISIBLE else View.GONE
-    }
     private lateinit var status:TextView
     private fun message(value:String){
         if(!isFinishing&&!isDestroyed){
@@ -96,7 +97,6 @@ class NeroCastActivity:FragmentActivity(){
         panel.addView(targetStatus)
         devicesPanel=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         panel.addView(devicesPanel)
-        googleChoice=button("Dispositivos Google Cast"){}.apply{visibility=View.GONE}
         controls=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;visibility=View.GONE}
         panel.addView(controls)
         fun controlButton(label:String,action:()->Unit){
@@ -105,26 +105,9 @@ class NeroCastActivity:FragmentActivity(){
         setContentView(ScrollView(this).apply{addView(panel)})
         try{
             cast=CastContext.getSharedInstance(this)
-            val route=MediaRouteButton(this).apply{visibility=View.GONE}
-            panel.addView(route,LinearLayout.LayoutParams(1,1))
-            CastButtonFactory.setUpMediaRouteButton(this,route)
-            googleChoice.setOnClickListener{
-                if(sending||dlnaPlaying!=null||ours()!=null)return@setOnClickListener
-                castPickerJob?.cancel()
-                selectedDlna=null
-                if(client()!=null){send();return@setOnClickListener}
-                if(!route.showDialog()){message("Seletor de dispositivos indisponível.");return@setOnClickListener}
-                castPickerJob=scope.launch{
-                    val connected=withTimeoutOrNull(20000L){
-                        while(client()==null)delay(300L)
-                        true
-                    }==true
-                    if(connected&&!sending&&selectedDlna==null)send()
-                }
-            }
-            cast?.addCastStateListener(castListener)
-            cast?.let{castListener.onCastStateChanged(it.castState)}
-        }catch(_:Exception){googleChoice.visibility=View.GONE}
+            router=MediaRouter.getInstance(this)
+            selector=cast?.mergedSelector
+        }catch(_:Exception){router=null;selector=null}
         controlButton("Pausar"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()}
         controlButton("Continuar"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()}
         controlButton("Desconectar"){
@@ -144,12 +127,15 @@ class NeroCastActivity:FragmentActivity(){
     }
     override fun onStart(){
         super.onStart()
+        selector?.let{router?.addCallback(it,routeCallback,MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)}
+        renderDevices()
         runCatching{
             multicast=(applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
                 .createMulticastLock("nero-google-cast").apply{setReferenceCounted(false);acquire()}
         }
     }
     override fun onStop(){
+        router?.removeCallback(routeCallback)
         runCatching{multicast?.let{if(it.isHeld)it.release()}}
         multicast=null
         super.onStop()
@@ -171,29 +157,64 @@ class NeroCastActivity:FragmentActivity(){
         castPickerJob?.cancel()
         selectedDlna=null
         targetStatus.text=""
-        devicesPanel.removeAllViews()
+        dlnaDevices=emptyList()
+        renderDevices()
         scanning=true;message("Procurando dispositivos na rede Wi-Fi…")
         scope.launch{
             try{
                 val devices=withContext(Dispatchers.IO){NeroDlna.discover(applicationContext)}
                 if(isDestroyed||isFinishing)return@launch
                 scanning=false
-                message(if(devices.isEmpty())"Nenhum dispositivo DLNA encontrado." else "Selecione uma TV para transmitir.")
-                devices.forEach{device->
-                    devicesPanel.addView(Button(this@NeroCastActivity).apply{
-                        text=device.name
-                        isAllCaps=false
-                        setOnClickListener{
-                            if(sending||scanning||dlnaPlaying!=null||ours()!=null)return@setOnClickListener
-                            castPickerJob?.cancel()
-                            selectedDlna=device
-                            targetStatus.text=device.name
-                            send()
-                        }
-                    })
-                }
+                dlnaDevices=devices
+                renderDevices()
+                message(if(devices.isEmpty()&&castRoutes().isEmpty())"Nenhum dispositivo disponível encontrado." else "Selecione uma TV para transmitir.")
             }catch(e:CancellationException){throw e}catch(_:Exception){message("Não foi possível procurar TVs na rede. Confira o Wi-Fi.")}
             finally{scanning=false}
+        }
+    }
+    private fun castRoutes():List<MediaRouter.RouteInfo>{
+        val filter=selector?:return emptyList()
+        return router?.routes.orEmpty().filter{!it.isDefault&&it.isEnabled&&it.matchesSelector(filter)}
+    }
+    private fun renderDevices(){
+        if(!::devicesPanel.isInitialized||isFinishing||isDestroyed)return
+        devicesPanel.removeAllViews()
+        val routes=castRoutes()
+        fun choice(label:String,action:()->Unit){
+            devicesPanel.addView(Button(this).apply{
+                text=label;isAllCaps=false
+                setOnClickListener{if(controller!=null&&!sending&&dlnaPlaying==null&&ours()==null)action()}
+            })
+        }
+        routes.forEach{route->
+            choice(route.name.toString()+" · Cast"){
+                castPickerJob?.cancel()
+                selectedDlna=null
+                targetStatus.text=route.name.toString()
+                val item=controller?.currentMediaItem
+                val track=item?.let(::openRefFromItem)?.openAudio
+                if(track==null||!allowed(track)||track.mime !in setOf("audio/mpeg","audio/flac","audio/wav","audio/ogg")){
+                    send();return@choice
+                }
+                route.select()
+                message("Conectando à TV…")
+                castPickerJob=scope.launch{
+                    val connected=withTimeoutOrNull(20000L){
+                        while(client()==null||router?.selectedRoute?.id!=route.id)delay(300L)
+                        true
+                    }==true
+                    if(connected&&!sending&&selectedDlna==null)send()
+                    else if(!connected)message("Não foi possível conectar à TV.")
+                }
+            }
+        }
+        dlnaDevices.forEach{device->
+            choice(device.name){
+                castPickerJob?.cancel()
+                selectedDlna=device
+                targetStatus.text=device.name
+                send()
+            }
         }
     }
     private fun dlnaControl(action:String){
@@ -226,7 +247,7 @@ class NeroCastActivity:FragmentActivity(){
         if(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){message("Não foi possível pausar o player local.");return}
         val dlna=selectedDlna
         if(dlna!=null){
-            if(scanning||ours()!=null||dlnaPlaying!=null){message("Encerre a transmissão anterior primeiro.");return}
+            if(ours()!=null||dlnaPlaying!=null){message("Encerre a transmissão anterior primeiro.");return}
             sending=true;message("Enviando faixa à TV por DLNA…")
             scope.launch{
                 try{
@@ -300,7 +321,7 @@ class NeroCastActivity:FragmentActivity(){
     override fun onDestroy(){
         // This preview intentionally stops its own track when leaving.
         stopOwn()
-        cast?.removeCastStateListener(castListener)
+        router?.removeCallback(routeCallback)
         scope.cancel()
         future?.let{MediaController.releaseFuture(it)}
         future=null;controller=null
