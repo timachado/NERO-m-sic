@@ -67,7 +67,7 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
             if(artists.isNotEmpty()){
                 Text("Artistas mais ouvidos",fontWeight=FontWeight.Bold)
                 artists.take(5).forEachIndexed{i,(artist,ms)->
-                    Text("${i+1}. "+artist+" · "+replayTime(ms))
+                    Text("${i+1}. "+displayArtistName(artist)+" · "+replayTime(ms))
                 }
             }
             if(rows.isNotEmpty()){

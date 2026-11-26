@@ -14,6 +14,12 @@ class NeroArtistCreditTest{
         assertEquals("Hugo & Guilherme",displayArtistName("Hugo & Guilherme"))
         assertEquals("Hugo e Guilherme",displayArtistName("Hugo e Guilherme"))
     }
+    @Test fun mixLabelsNormalizeCachedArtistCredits(){
+        assertEquals("Daily Mix • Hugo e Guilherme feat. Zé Vaqueiro",artistMixLabel("Daily Mix","Hugo e Guilherme and Zé Vaqueiro"))
+        assertEquals("Daily Mix • Netto Brito feat. Luan Pereira LP",displayMixLabel("Daily Mix • Netto Brito and Luan Pereira LP"))
+        assertEquals("Daily Mix • Florence and the Machine",displayMixLabel("Daily Mix • Florence and the Machine"))
+        assertEquals("Meu mix NERO",displayMixLabel("Meu mix NERO"))
+    }
     @Test fun normalizedCreditIsIdempotent(){
         val value="A and B feat. C"
         assertEquals(displayArtistName(value),displayArtistName(displayArtistName(value)))

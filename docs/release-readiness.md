@@ -70,3 +70,6 @@ Vídeo mostra busca `pagode novidades` seguida de resultados de outros gêneros 
 
 ## 0.9.73-dev — créditos e fotos de artistas
 Créditos de colaboração são apresentados com feat.; nomes oficiais conhecidos com and são preservados, assim como duplas com e/&. Busca e armazenamento de referências conservam os créditos brutos no MediaItem. Perfil consulta artista principal e convidados separadamente, usa imagem de canal identificado ou thumbnail livre da Wikipédia com identificação musical; fallback de capa explicitamente rotulado. Botões de perfil abrem artista individual. Testes de normalização adicionados; compilação e imagem em aparelho pendentes. Nenhum catálogo, banco, assinatura ou checkout alterado.
+
+## 0.9.74-dev — títulos das coleções
+Normalização de colaboração nos títulos do Daily Mix básico e Premium, incluindo cache existente sem regeneração; títulos de origem do mix no player e artistas dos rankings Replay também padronizados. Preserva nomes oficiais conhecidos, chaves de cache, preferências, referências e catálogo. Testes de títulos adicionados. Workflow automático assina a nova versão após testes; validação no Android pendente.

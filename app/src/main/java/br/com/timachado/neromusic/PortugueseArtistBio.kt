@@ -31,6 +31,13 @@ internal fun artistCreditParts(value:String):List<String>{
 }
 internal fun displayArtistName(value:String):String=artistCreditParts(value).joinToString(" feat. ")
 internal fun primaryArtistName(value:String):String=artistCreditParts(value).firstOrNull().orEmpty()
+internal fun artistMixLabel(prefix:String,artist:String):String=prefix+" • "+displayArtistName(artist)
+// Legacy queue metadata may contain a raw artist credit after the separator.
+internal fun displayMixLabel(value:String):String {
+    val separator=" • "
+    if(separator !in value)return value
+    return artistMixLabel(value.substringBefore(separator),value.substringAfter(separator))
+}
 
 internal data class PortugueseBio(val text:String,val source:String,val avatar:String?=null)
 

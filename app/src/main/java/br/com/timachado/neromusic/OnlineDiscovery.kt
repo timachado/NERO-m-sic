@@ -157,7 +157,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                 else notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             }
             dailyVisible.forEach{collection->
-                val name="Daily Mix • "+collection.artist
+                val name=artistMixLabel("Daily Mix",collection.artist)
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f)){
                         Text(name,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis)

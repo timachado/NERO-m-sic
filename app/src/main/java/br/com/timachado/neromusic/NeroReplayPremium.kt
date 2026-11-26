@@ -137,7 +137,7 @@ internal fun NeroReplayPremium(days:Int){
             if(summary.total==0L)Text("Ainda não há registros desta conta. Ative a coleta e ouça músicas.",fontSize=12.sp)
             if(summary.artists.isNotEmpty()){
                 Text("Top 10 artistas",fontWeight=FontWeight.Bold)
-                summary.artists.take(10).forEachIndexed{i,(name,ms)->Text("${i+1}. "+name+" · "+premiumReplayTime(ms),fontSize=12.sp)}
+                summary.artists.take(10).forEachIndexed{i,(name,ms)->Text("${i+1}. "+displayArtistName(name)+" · "+premiumReplayTime(ms),fontSize=12.sp)}
             }
             if(summary.tracks.isNotEmpty()){
                 Text("Top 10 faixas",fontWeight=FontWeight.Bold)

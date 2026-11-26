@@ -106,7 +106,7 @@ internal fun NeroDailyMixPremium(uid:String,artists:List<String>,day:Long,exclud
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(moment in generated&&collections.isEmpty()&&!busy)Text("Nenhuma faixa adicional encontrada. Experimente outro momento.",fontSize=12.sp,color=Color.LightGray)
             collections.forEach{collection->
-                val label=moment.label+" • "+collection.artist
+                val label=artistMixLabel(moment.label,collection.artist)
                 val play:(List<MediaItem>,Int)->Unit={queue,index->
                     if(!busy&&active()){
                         busy=true;scope.launch{

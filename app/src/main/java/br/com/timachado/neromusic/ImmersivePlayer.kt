@@ -109,7 +109,7 @@ internal fun ImmersivePlayer(
                 Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
                     Row(verticalAlignment=Alignment.CenterVertically){Text("NER",fontSize=19.sp,fontWeight=FontWeight.ExtraBold,color=Color.White);Icon(Icons.Default.PlayCircle,null,tint=neon,modifier=Modifier.size(19.dp));Text(" Music",fontSize=19.sp,color=Color.White)}
                     Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
-                    Text(origin?.name?:"Reproduzindo",fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    Text(origin?.displayName?:"Reproduzindo",fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 Box{
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}

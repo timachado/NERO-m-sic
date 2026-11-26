@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 
 internal data class PlaybackOrigin(val kind:String,val name:String,val id:String,val artist:String="",val cover:String?=null){
+    val displayName:String get()=if(kind=="mix")displayMixLabel(name)else name
     val caption:String get()=when(kind){"album"->"Tocando do álbum";"playlist","local_playlist","imported","favorites"->"Tocando da playlist";"search"->"Tocando da pesquisa";"chart"->"Tocando das paradas";"artist"->"Tocando do artista";"related"->"Músicas relacionadas";else->"Reproduzindo"}
     fun album():NativeCollection?{
         if(kind!="album")return null
