@@ -81,6 +81,17 @@ internal object NeroAccountSync{
         changesState.value++
         editsState.value++
     }
+    fun historyEnabled(context:Context,uid:String):Boolean=
+        context.getSharedPreferences("nero_account_history",0).getBoolean(NeroAccountLibraryStore.fileName(uid),false)
+    fun setHistoryEnabled(context:Context,uid:String,enabled:Boolean){
+        require(NeroSupabase.activeUid.value==uid)
+        context.getSharedPreferences("nero_account_history",0).edit().putBoolean(NeroAccountLibraryStore.fileName(uid),enabled).apply()
+    }
+    suspend fun recordHistory(context:Context,uid:String,ref:OnlineRef,at:Long)=updateCollections(context,uid){snapshot->
+        if(!historyEnabled(context,uid)||!portableRef(ref))snapshot
+        else snapshot.copy(history=(listOf(CloudHeard(ref,at))+snapshot.history.filterNot{it.ref.id==ref.id}).sortedByDescending{it.at}.take(100))
+    }
+    suspend fun clearHistory(context:Context,uid:String)=updateCollections(context,uid){it.copy(history=emptyList())}
     suspend fun toggleArtist(context:Context,uid:String,name:String)=updateCollections(context,uid){snapshot->
         val value=NeroFollowedArtists.clean(name);require(value.isNotBlank())
         val key=nativeArtistKey(value)
