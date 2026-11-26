@@ -11,20 +11,38 @@
 <body><main>
 <header>NERO MUSIC / TV</header>
 <h1 id="title">Receptor experimental</h1>
-<p id="state" role="status">Informe o identificador do vídeo autorizado.</p>
+<p id="artist"></p><p id="state" role="status">Informe o identificador do vídeo autorizado.</p>
 <form id="form"><label for="videoId">ID do vídeo </label><input id="videoId" maxlength="11" autocomplete="off"><button type="submit">Reproduzir</button></form>
 <div id="screen"><div id="player"></div></div>
-<small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
+<p id="progress" aria-live="off">00:00 / 00:00</p><small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
 </main>
 <script>
 (function(){
 "use strict";
 var player=null, ready=false, pending=null, state=document.getElementById("state");
+function query(name){
+ var pattern=new RegExp("(?:^|[?&])"+name+"=([^&]*)");
+ var match=pattern.exec(location.search);
+ try{return match?decodeURIComponent(match[1].replace(/\+/g," ")).slice(0,180):"";}catch(e){return "";}
+}
+var title=query("title"), artist=query("artist");
+if(title)document.getElementById("title").textContent=title;
+if(artist)document.getElementById("artist").textContent=artist;
+function clock(value){
+ var sec=Math.max(0,Math.floor(Number(value)||0));
+ var min=Math.floor(sec/60), rem=sec%60;
+ return (min<10?"0":"")+min+":"+(rem<10?"0":"")+rem;
+}
+setInterval(function(){
+ if(!ready||!player)return;
+ try{document.getElementById("progress").textContent=clock(player.getCurrentTime())+" / "+clock(player.getDuration());}catch(e){}
+},1000);
 var valid=function(id){return /^[A-Za-z0-9_-]{11}$/.test(id);};
 function status(s){state.textContent=s;}
 function load(id){
  if(!valid(id)){status("Identificador inválido.");return;}
  pending=id;
+ if(id!==query("v")){document.getElementById("title").textContent="NERO Music TV";document.getElementById("artist").textContent="";}
  if(!ready){status("Aguardando o player oficial…");return;}
  try{player.loadVideoById(id);status("Solicitando reprodução…");}
  catch(e){status("Não foi possível solicitar reprodução.");}
