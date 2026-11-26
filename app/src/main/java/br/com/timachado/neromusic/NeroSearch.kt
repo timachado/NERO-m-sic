@@ -115,9 +115,9 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
             finally{openBusy=false}
         }
     }
-    LaunchedEffect(term,tab,revision){
+    LaunchedEffect(term,tab,revision,editing){
         nativeResults=emptyList();nativeBusy=false;nativeError=false
-        if(!NativeMusicCatalog.enabled||term.length<3||tab !in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.CLIPS))return@LaunchedEffect
+        if(editing||!NativeMusicCatalog.enabled||term.length<3||tab !in setOf(SearchTab.ALL,SearchTab.SONG,SearchTab.CLIPS))return@LaunchedEffect
         nativeBusy=true;delay(350)
         try{nativeResults=if(tab==SearchTab.CLIPS)NativeMusicCatalog.searchVideos(term)else NativeMusicCatalog.search(term)}
         catch(e:CancellationException){throw e}catch(_:Exception){nativeError=true}
@@ -256,7 +256,8 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                     if(nativeError)item{TextButton(onClick={revision++}){Text("Falha na busca. Tentar novamente")}}
                     if(!nativeBusy&&!nativeError&&nativeResults.isEmpty()&&term.length>=3)item{Text("Nenhuma faixa encontrada.",color=Color.LightGray)}
                     items(if(tab==SearchTab.ALL)nativeResults.take(8)else nativeResults,key={"native:"+it.id}){hit->
-                        Row(Modifier.fillMaxWidth().clickable(enabled=canPlay&&resolving==null){playNative(hit)}.padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.fillMaxWidth().padding(vertical=4.dp)){
+                            Row(Modifier.fillMaxWidth().clickable(enabled=canPlay&&resolving==null){playNative(hit)},verticalAlignment=Alignment.CenterVertically){
                             NeroArtwork(model=hit.thumbnail,contentDescription="Capa de "+hit.title,contentScale=ContentScale.Crop,modifier=Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)))
                             Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                                 Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))searchAccent else Color.Unspecified)
@@ -264,10 +265,13 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                                 Text(hit.artist,fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
                                 if(tab==SearchTab.CLIPS)Text("Videoclipe",fontSize=11.sp,color=searchAqua)
                             }
+                            IconButton(enabled=canPlay&&resolving==null,onClick={if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))onCurrentToggle()else playNative(hit)}){Icon(if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)"Pausar" else "Reproduzir no NERO",tint=searchAccent)}
+                            }
+                            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically){
                             IconButton(onClick={onFavorite(hit.reference())}){Icon(if(hit.reference().id in onlineFavoriteIds)Icons.Default.Favorite else Icons.Default.FavoriteBorder,"Favoritar",tint=if(hit.reference().id in onlineFavoriteIds)searchAccent else Color.LightGray)}
                             NativeDownloadIcon(hit,offlineState,onNativeSave,onOfflineOpen)
                             SearchTrackActions(onAdd={adding=hit.reference()},onShare={sharing=hit},canQueue=canPlay,onQueue={next->onEnqueue(nativeQueue(listOf(hit),hit,video=tab==SearchTab.CLIPS).first.first(),next)})
-                            IconButton(enabled=canPlay&&resolving==null,onClick={if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS))onCurrentToggle()else playNative(hit)}){Icon(if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)Icons.Default.Pause else Icons.Default.PlayArrow,if(currentId==hit.reference().id&&currentVideo==(tab==SearchTab.CLIPS)&&currentPlaying)"Pausar" else "Reproduzir no NERO",tint=searchAccent)}
+                            }
                         }
                     }
                     if(tab==SearchTab.ALL&&nativeResults.size>8)item{TextButton(onClick={tab=SearchTab.SONG}){Text("Ver todas as músicas")}}
@@ -285,7 +289,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
                         }}}
                     }
                 }
-                if(tab==SearchTab.ALL||tab==SearchTab.LOCAL){
+                if(tab==SearchTab.LOCAL||(tab==SearchTab.ALL&&local.isNotEmpty())){
                     item{Text("No aparelho",fontWeight=FontWeight.Bold,fontSize=19.sp)}
                     val rows=if(tab==SearchTab.ALL)local.take(5)else local
                     if(rows.isEmpty())item{Text(if(term.isBlank())"Nenhuma música local disponível. Verifique a permissão de acesso ao áudio e os arquivos do aparelho." else "Nenhuma faixa local encontrada.",fontSize=12.sp,color=Color.LightGray)}

@@ -34,6 +34,9 @@ class PlaybackService : MediaLibraryService() {
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+        val notificationProvider=androidx.media3.session.DefaultMediaNotificationProvider.Builder(this).build()
+        notificationProvider.setSmallIcon(R.drawable.ic_nero_notification)
+        setMediaNotificationProvider(notificationProvider)
         // Resolve online references on the playback loader, never on the UI thread.
         // Only short-lived resolved addresses are cached in memory.
         val resolved=object:LinkedHashMap<String,Pair<android.net.Uri,Long>>(16,0.75f,true){

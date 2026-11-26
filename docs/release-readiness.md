@@ -61,3 +61,6 @@ A pedido do proprietário, debug e release compartilham a implementação existe
 
 ## 0.9.70-dev — restauração Ouça novamente
 A seção passa a permanecer visível com estado vazio. Histórico recente local separado por conta, independente do opt-in de sincronização, com controle de pausa em NERO Cloud e limpeza pela tela de histórico. Registros locais e sincronizados são mesclados por data, sem importar automaticamente dados de visitante ou Replay de outra conta. Preserva catálogo e demais recursos. Sem mudanças em OAuth, banco ou assinatura; testes de mesclagem adicionados, compilação e homologação pendentes.
+
+## 0.9.71-dev — inspeção Android
+Gravação confirma busca com resultados e sessão Google conectada. Ajustes: ícone monocromático do símbolo NERO via DefaultMediaNotificationProvider.setSmallIcon; mantém capa e comandos de mídia. Busca completa após submissão em vez de disparar busca de faixas a cada digitação, sugestões permanecem; seção local vazia só no filtro local; títulos com mais espaço e ações em linha separada. Conta exibe carregamento durante recuperação da sessão, sem mostrar temporariamente botões de login. Perfil Google continua abrindo página oficial, identificado no texto. Sem alteração de assinatura, catálogo ou credenciais. Aparência do ícone depende da System UI; testes de aparelho pendentes.

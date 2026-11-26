@@ -30,6 +30,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
     val hidden=rememberHiddenSongs()
     var user by remember{mutableStateOf<NeroSession?>(null)}
     var busy by remember{mutableStateOf(true)}
+    var restoringSession by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
     var privacyPage by remember{mutableStateOf<NeroPrivacyPage?>(null)}
     var showPlans by remember{mutableStateOf(false)}
@@ -38,7 +39,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
     LaunchedEffect(Unit){
         try{user=NeroSupabase.session(context,false)}
         catch(e:CancellationException){throw e}catch(_:Exception){}
-        finally{busy=false}
+        finally{busy=false;restoringSession=false}
     }
     if(showPlans){PlansScreen(onBack={showPlans=false},modifier=modifier);return}
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
@@ -49,7 +50,10 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             Icon(Icons.Default.AccountCircle,"Foto do perfil",tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.fillMaxSize())
             user?.avatar?.let{photo->NeroArtwork(model=photo,contentDescription="Foto da conta Google",modifier=Modifier.fillMaxSize().clip(CircleShape),contentScale=ContentScale.Crop)}
         }
-        if(user==null){
+        if(restoringSession){
+            Text("Carregando sua conta…",fontSize=20.sp,fontWeight=FontWeight.Bold)
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }else if(user==null){
             Text("Bem-vindo ao NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
             Text("Entre ou crie sua conta com Google para compartilhar músicas e playlists.",color=Color.LightGray)
             if(!NeroSupabase.configured)Text("O login ainda não está habilitado nesta versão. Você pode usar a biblioteca sem conta.",color=Color.LightGray,fontSize=12.sp)
@@ -70,7 +74,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             Text(user?.email.orEmpty(),fontSize=14.sp,color=Color.LightGray,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text("Conta Google conectada",color=MaterialTheme.colorScheme.primary)
             Text("Nome e foto fornecidos pelo Google, quando disponíveis.",fontSize=12.sp,color=Color.LightGray)
-            TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://myaccount.google.com/personal-info")))notice="Não foi possível abrir a conta Google."}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Gerenciar perfil Google")}
+            TextButton(onClick={if(!openBrowser(context,android.net.Uri.parse("https://myaccount.google.com/personal-info")))notice="Não foi possível abrir a conta Google."}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Gerenciar perfil no Google")}
             OutlinedButton(enabled=!busy,onClick={busy=true;notice=null;scope.launch{
                 try{NeroSupabase.signOut(context);user=null}
                 catch(e:CancellationException){throw e}catch(_:Exception){user=null;notice="Sessão local encerrada; revogação remota não confirmada."}
@@ -81,7 +85,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         }
         }
         user?.let{key(it.uid){NeroAccountCloud(it,enabled=!busy,onPlans={showPlans=true})}}
-        if(user==null)OutlinedButton(onClick={showPlans=true},modifier=Modifier.fillMaxWidth()){Text("Conhecer os planos NERO")}
+        if(user==null&&!restoringSession)OutlinedButton(onClick={showPlans=true},modifier=Modifier.fillMaxWidth()){Text("Conhecer os planos NERO")}
         Text("Sua biblioteca",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
