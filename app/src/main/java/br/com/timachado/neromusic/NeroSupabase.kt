@@ -85,7 +85,14 @@ internal object NeroSupabase{
             NeroSession(row.getString("uid"),row.getString("email"),row.getString("access"),row.getString("refresh"),row.getLong("expiry"),displayName(row.optString("name")),avatarUrl(row.optString("avatar")))
         }.getOrNull()
     }
-    private fun clear(context:Context){prefs(context).edit().remove("session").commit();identity.value=null}
+    // Background Radar validates the stored owner without refreshing tokens or changing UI identity.
+    suspend fun matchesStoredRadarOwner(context:Context,owner:String?):Boolean=mutex.withLock{
+        withContext(Dispatchers.IO){
+            val hasSession=prefs(context).contains("session")
+            if(owner==null)!hasSession else hasSession&&load(context)?.uid==owner
+        }
+    }
+    private fun clear(context:Context){prefs(context).edit().remove("session").commit();identity.value=null;NeroRadarAlerts.stop(context)}
     private suspend fun request(path:String,body:JSONObject?,access:String?=null):String=withContext(Dispatchers.IO){
         if(!configured)throw ShareNotConfigured()
         val c=URL(BuildConfig.SUPABASE_URL+path).openConnection() as HttpURLConnection

@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 134
-        versionName = "0.9.79-dev"
+        versionCode = 135
+        versionName = "0.9.80-dev"
         buildConfigField("boolean", "FULL_FEATURES", "true")
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
@@ -65,6 +65,7 @@ dependencies {
     implementation("androidx.media3:media3-session:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }

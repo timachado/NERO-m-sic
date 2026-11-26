@@ -45,7 +45,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Benefícios previstos · contratação indisponível",fontWeight=FontWeight.Medium,color=Color.LightGray)
-            listOf("Tudo do Free","NERO DJ · mixes personalizados","Temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
+            listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
             PlanFeature("Smart Mix e Daily Mix avançados",false)
             HorizontalDivider(color=Color(0xFF33434A))
             Text("Coleção de temas do player",fontWeight=FontWeight.Bold,color=premiumCyan)

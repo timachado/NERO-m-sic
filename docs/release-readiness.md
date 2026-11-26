@@ -88,3 +88,6 @@ Padroniza referências visíveis à marca principal NERO Music nas telas de cont
 
 ## 0.9.79-dev — primeira etapa Radar e DJ
 NERO Radar gratuito na home, opt-in por conta/dispositivo, consultas de lançamentos datados em janela de sete dias por até seis artistas e dois gêneros inferidos. NERO DJ por busca e regras, degustação de cinco faixas e até 30 com verificação Premium existente; sem IA externa, sem ativação de cobrança. Testes sintéticos adicionados. Notificações em segundo plano, Together, Studio ampliado, Replay 365 e Smart Library permanecem pendentes. Sem alteração dos planos/preços ou do catálogo existente. Compilação e teste em Android pendentes.
+
+## 0.9.80-dev — Radar alerts e Studio
+Alertas gratuitos opt-in com permissão Android, WorkManager periódico diário sujeito ao sistema, validação local da identidade sem refresh de tokens, preferências por conta, primeiro levantamento silencioso e deduplicação. Notificação abre o aplicativo (não a faixa diretamente). Studio amplia temas Ruby Night e Glacier, atualiza preferência do player via listener e aplica cores às animações decorativas. Não há mudança de cobrança, catálogo ou outras funções. Testes de deduplicação adicionados; build e validação de notificações/temas em aparelho pendentes. Replay 365, Together e Smart Library continuam pendentes.

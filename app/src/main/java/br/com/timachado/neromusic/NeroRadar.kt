@@ -1,6 +1,10 @@
 package br.com.timachado.neromusic
 
 import androidx.compose.foundation.layout.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -49,6 +53,19 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
     val genres=remember(artists){radarGenres(artists)}
     val prefs=remember(uid){context.getSharedPreferences("nero_radar_"+(uid?.let{NeroAccountLibraryStore.fileName(it)}?:"guest"),0)}
     var enabled by remember(uid){mutableStateOf(prefs.getBoolean("enabled",false))}
+    var alerts by remember(uid){mutableStateOf(prefs.getBoolean("alerts",false))}
+    var alertNotice by remember(uid){mutableStateOf<String?>(null)}
+    val requestPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
+        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid){
+            alerts=granted&&NeroRadarAlerts.permitted(context)
+            prefs.edit().putBoolean("alerts",alerts).apply()
+            alertNotice=if(alerts)null else "Permissão de notificações não concedida."
+        }
+    }
+    LaunchedEffect(uid,enabled,alerts,artists,genres){
+        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+            NeroRadarAlerts.configure(context,uid,enabled&&alerts,artists,genres)
+    }
     var revision by remember(uid){mutableIntStateOf(0)}
     var busy by remember(uid){mutableStateOf(false)}
     var personal by remember(uid){mutableStateOf(emptyList<CatalogEntry>())}
@@ -87,6 +104,19 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
         }
         if(!enabled)Text("Ative para consultar novidades pelos nomes dos artistas seguidos, favoritos e ouvidos recentemente. Você pode desativar quando quiser.",fontSize=12.sp,color=Color.LightGray)
         else{
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Text("Alertas de lançamentos",modifier=Modifier.weight(1f))
+                Switch(checked=alerts&&NeroRadarAlerts.permitted(context),onCheckedChange={value->
+                    if(!value){alerts=false;prefs.edit().putBoolean("alerts",false).apply();NeroRadarAlerts.stop(context)}
+                    else if(Build.VERSION.SDK_INT>=33&&!NeroRadarAlerts.permitted(context))requestPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else{
+                        alerts=NeroRadarAlerts.permitted(context);prefs.edit().putBoolean("alerts",alerts).apply()
+                        alertNotice=if(alerts)null else "Ative notificações nas configurações do Android."
+                    }
+                })
+            }
+            Text("Consulta diária em segundo plano quando o Android permitir. O primeiro levantamento cria uma referência; somente novidades posteriores geram alertas.",fontSize=11.sp,color=Color.LightGray)
+            alertNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             OutlinedButton(enabled=!busy,onClick={revision++},modifier=Modifier.fillMaxWidth()){Text("Atualizar Radar")}
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}

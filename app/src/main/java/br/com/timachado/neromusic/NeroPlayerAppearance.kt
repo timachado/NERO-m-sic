@@ -21,14 +21,16 @@ internal enum class NeroPlayerTheme(val label:String,val primary:Long,val second
     OCEAN("Ocean Pulse",0xFF38CFFF,0xFF9AB6FF,0xFF14263D,0xFF080F20,"Azul oceânico, frescor e tranquilidade."),
     VIOLET("Violet Wave",0xFFC9A5FF,0xFFFF91D4,0xFF2B193F,0xFF120B21,"Violeta envolvente e personalidade moderna."),
     GOLD("Midnight Gold",0xFFFFD170,0xFFFFA66B,0xFF31271A,0xFF16100A,"Dourado noturno, brilho e elegância."),
-    CAFE("Midnight Café",0xFFE8BB87,0xFFE9A3B6,0xFF3B2028,0xFF170E0D,"Espresso, vinho e rosé: romance à meia-noite.")
+    CAFE("Midnight Café",0xFFE8BB87,0xFFE9A3B6,0xFF3B2028,0xFF170E0D,"Espresso, vinho e rosé: romance à meia-noite."),
+    RUBY("Ruby Night",0xFFFF6983,0xFFFFB37A,0xFF351922,0xFF17080F,"Vermelho intenso e brilho de palco."),
+    ICE("Glacier",0xFFB9F5FF,0xFF8AC1E6,0xFF172B35,0xFF090F16,"Gelo, azul e minimalismo.")
 }
 internal fun effectivePlayerTheme(stored:String?,verified:Boolean):NeroPlayerTheme {
     val theme=NeroPlayerTheme.entries.firstOrNull{it.name==stored}?:NeroPlayerTheme.AURORA
     return if(verified)theme else NeroPlayerTheme.AURORA
 }
 private object PlayerAppearanceStore{
-    private fun prefs(context:Context)=context.getSharedPreferences("nero_player_appearance",Context.MODE_PRIVATE)
+    fun prefs(context:Context)=context.getSharedPreferences("nero_player_appearance",Context.MODE_PRIVATE)
     private fun key(uid:String)=NeroAccountLibraryStore.fileName(uid)
     fun read(context:Context,uid:String)=prefs(context).getString(key(uid),null)
     fun write(context:Context,uid:String,theme:NeroPlayerTheme){
@@ -48,7 +50,14 @@ internal fun rememberNeroPlayerTheme():NeroPlayerTheme{
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
-    val stored=remember(uid,ready){if(ready&&uid!=null)PlayerAppearanceStore.read(context,requireNotNull(uid))else null}
+    val prefs=remember(context){PlayerAppearanceStore.prefs(context)}
+    var revision by remember{mutableIntStateOf(0)}
+    DisposableEffect(prefs){
+        val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,_->revision++}
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
+    }
+    val stored=remember(uid,ready,revision){if(ready&&uid!=null)PlayerAppearanceStore.read(context,requireNotNull(uid))else null}
     var verified by remember(uid,ready,stored){mutableStateOf(false)}
     LaunchedEffect(uid,ready,stored){
         val owner=uid
@@ -69,8 +78,8 @@ internal fun NeroPlayerAppearance(uid:String,enabled:Boolean){
     var selected by remember(uid){mutableStateOf(effectivePlayerTheme(PlayerAppearanceStore.read(context,uid),true))}
     var busy by remember(uid){mutableStateOf(false)}
     var notice by remember(uid){mutableStateOf<String?>(null)}
-    Text("Aparência do player",fontSize=18.sp)
-    Text("Aurora Neon é gratuito. Prévia de cores dos temas Premium; a aplicação depende da assinatura verificada.",fontSize=12.sp,color=Color.LightGray)
+    Text("NERO Studio",fontSize=20.sp,color=Color(0xFF39FF14))
+    Text("Personalize a aparência do player. Aurora Neon é gratuito; os temas exclusivos exigem Premium verificado.",fontSize=12.sp,color=Color.LightGray)
     NeroPlayerTheme.entries.forEach{theme->
         OutlinedButton(enabled=enabled&&!busy,onClick={
             if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid){

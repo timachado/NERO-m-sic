@@ -31,7 +31,7 @@ internal fun NeroPrivacyDialog(page:NeroPrivacyPage,onClose:()->Unit){
                     Text("Login e compartilhamento",fontWeight=FontWeight.Bold)
                     Text("Ao entrar com Google, o NERO usa o Supabase para autenticação e compartilhamento. Nome, e-mail e foto disponíveis podem ser exibidos no perfil. A sessão é armazenada com criptografia do Android.")
                     Text("Serviços externos",fontWeight=FontWeight.Bold)
-                    Text("Pesquisas, reprodução online, letras, imagens e biografias podem enviar consultas e dados de conexão às respectivas fontes de conteúdo. O acesso a arquivos locais depende da permissão de áudio do Android.")
+                    Text("Pesquisas, reprodução online, letras, imagens e biografias podem enviar consultas e dados de conexão às respectivas fontes de conteúdo. O acesso a arquivos locais depende da permissão de áudio do Android. O Radar opcional consulta nomes de artistas e gêneros; alertas em segundo plano dependem de autorização e podem ser desligados na home.")
                     Text("Controle dos seus dados",fontWeight=FontWeight.Bold)
                     Text("Você pode sair da conta, revogar permissões nas configurações do Android e solicitar atendimento sobre dados pessoais. Limpar os dados do aplicativo também remove a biblioteca local e os downloads; isso não exclui a conta remota.")
                     Text("Resumo informativo desta versão de teste. A política comercial definitiva ainda está em revisão.",fontSize=12.sp)

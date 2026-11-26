@@ -100,7 +100,7 @@ internal fun ImmersivePlayer(
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
     val tones=rememberPlayerTones(track,remoteCover)
     BoxWithConstraints(modifier.fillMaxSize().background(Color(appearance.background))){
-        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else if(appearance==NeroPlayerTheme.CAFE)Color(0xFF653044) else aqua,playing&&!videoMode,Modifier.matchParentSize())
+        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else if(appearance==NeroPlayerTheme.CAFE)Color(0xFF653044) else aqua,playing&&!videoMode,Modifier.matchParentSize(),primary=neon,secondary=aqua)
         val compact=maxHeight<780.dp
         val coverSize=minOf(maxWidth-36.dp,(maxHeight-(if(canVideo) 335.dp else 285.dp)).coerceAtLeast(150.dp),410.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
@@ -181,7 +181,7 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){
-                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(18.dp))
+                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(18.dp),primary=neon,secondary=aqua)
                 Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
