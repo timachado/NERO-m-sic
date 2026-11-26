@@ -84,7 +84,7 @@ private fun transferMediaRoute(router:MediaRouter2,id:String):Boolean=runCatchin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit,preferWebVideoCaster:Boolean=false){
+internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit){
     val context=LocalContext.current
     val green=MaterialTheme.colorScheme.primary
     var outputs by remember{mutableStateOf(readOutputs(context))}
@@ -182,9 +182,9 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
             Text("Se o Bluetooth sumir após voltar ao telefone, reconecte o acessório nas configurações do Android e escolha a saída novamente. O NERO não desconecta nem desemparelha o acessório.",fontSize=12.sp,color=Color.LightGray)
             if(BuildConfig.FULL_FEATURES){
                 HorizontalDivider()
-                Text("TV e Chromecast",fontWeight=FontWeight.Medium)
-                OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text(if(preferWebVideoCaster)"Transmitir para TV · Web Video Caster" else "Transmitir para dispositivo")}
-                Text(if(preferWebVideoCaster)"A faixa será encaminhada ao aplicativo Web Video Caster instalado. Selecione a TV nele; a reprodução depende da fonte." else "Use a mesma rede Wi-Fi. A transmissão depende da compatibilidade da mídia e da TV.",fontSize=12.sp,color=Color.LightGray)
+                Text("Transmissão para TV",fontWeight=FontWeight.Medium)
+                OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Transmitir para TV")}
+                Text("Via Web Video Caster. Selecione a TV no aplicativo; a reprodução depende da fonte.",fontSize=12.sp,color=Color.LightGray)
             }
 
         }
