@@ -9,7 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,26 +24,41 @@ private val panel=Color(0xFF10171C)
 
 @Composable
 internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
+    val context=LocalContext.current
+    var siteError by remember{mutableStateOf(false)}
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("Planos NERO",fontSize=24.sp,fontWeight=FontWeight.Bold)
         }
         Text("Sua música. Sua liberdade.",fontSize=18.sp,fontWeight=FontWeight.Medium,color=premiumCyan)
-        Text("Prévia dos planos. As assinaturas ainda não estão disponíveis para contratação.",fontSize=13.sp,color=Color.LightGray)
+        Text("Valores aprovados para o lançamento. Contratação ainda indisponível nesta versão.",fontSize=13.sp,color=Color.LightGray)
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Free",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Acesso gratuito",color=premiumCyan)
-            listOf("Player local","Biblioteca e favoritos","Playlists locais","Busca e descoberta musical").forEach { PlanFeature(it,true) }
+            listOf("Player local e busca autorizada","Login Google","Favoritos e playlists","Sincronização básica da biblioteca","Smart Mix, Daily Mix e Discovery básicos").forEach { PlanFeature(it,true) }
             Text("Continue usando os recursos atuais sem assinatura.",fontSize=12.sp,color=Color.LightGray)
         }
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Em desenvolvimento",fontWeight=FontWeight.Medium,color=Color.LightGray)
-            listOf("Equalizador avançado","Sincronização na nuvem","Playlists inteligentes","Personalização do player","Experiência sem anúncios próprios do NERO").forEach { PlanFeature(it,false) }
+            listOf("Tudo do Free","Smart Mix e Daily Mix avançados","Temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
             HorizontalDivider(color=Color(0xFF33434A))
-            Text("Planos mensal e anual previstos. Preços e condições serão divulgados antes da contratação.",color=Color.LightGray,fontSize=13.sp)
-            Button(onClick={},enabled=false,modifier=Modifier.fillMaxWidth()){Text("Assinaturas indisponíveis")}
+            NeroPlans.offers.forEach{offer->
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    Column(Modifier.weight(1f)){
+                        Text(offer.label,fontWeight=FontWeight.Bold)
+                        if(offer.savingsPercent>0)Text("Economia de aproximadamente "+offer.savingsPercent+"%",fontSize=12.sp,color=premiumCyan)
+                    }
+                    Text(offer.price,fontWeight=FontWeight.Bold,color=premiumGreen,fontSize=20.sp)
+                }
+                HorizontalDivider(color=Color(0xFF33434A))
+            }
+            Text("${NeroPlans.TRIAL_DAYS} dias de experiência previstos, sem cartão obrigatório ou cobrança automática ao término.",color=Color.LightGray,fontSize=13.sp)
+            Text("Contratação pelo site da T.I. Machado. Pix e cartão conforme disponibilidade. Renovação automática depende de homologação.",color=Color.LightGray,fontSize=13.sp)
+            Text("Os benefícios exclusivos ainda estão em desenvolvimento. Nenhuma cobrança está habilitada.",color=Color.LightGray,fontSize=12.sp)
+            OutlinedButton(onClick={siteError=!openBrowser(context,android.net.Uri.parse(NeroPlans.SITE))},modifier=Modifier.fillMaxWidth()){Text("Conhecer o site oficial")}
+            if(siteError)Text("Não foi possível abrir o site.",color=Color.LightGray,fontSize=12.sp)
         }
         Text("A assinatura NERO não inclui YouTube Music Premium e não concede direitos de download de catálogos de terceiros.",fontSize=12.sp,color=Color.LightGray)
         Text("Distribuição oficial prevista pelo site da T.I. Machado.",fontSize=12.sp,color=Color.LightGray)

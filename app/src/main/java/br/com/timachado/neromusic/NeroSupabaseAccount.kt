@@ -32,12 +32,15 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
     var busy by remember{mutableStateOf(true)}
     var notice by remember{mutableStateOf<String?>(null)}
     var privacyPage by remember{mutableStateOf<NeroPrivacyPage?>(null)}
+    var showPlans by remember{mutableStateOf(false)}
+    androidx.activity.compose.BackHandler(enabled=showPlans){showPlans=false}
     privacyPage?.let{NeroPrivacyDialog(it,onClose={privacyPage=null})}
     LaunchedEffect(Unit){
         try{user=NeroSupabase.session(context,false)}
         catch(e:CancellationException){throw e}catch(_:Exception){}
         finally{busy=false}
     }
+    if(showPlans){PlansScreen(onBack={showPlans=false},modifier=modifier);return}
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")};Text("Conta e configurações",fontSize=23.sp,fontWeight=FontWeight.Bold)}
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
@@ -77,7 +80,8 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         Text("Favoritos, playlists online, artistas seguidos e álbuns salvos ficam vinculados à conta conectada. O histórico online pode ser sincronizado mediante ativação. Arquivos locais, downloads e preferências do aparelho permanecem locais. A nuvem depende da disponibilidade do serviço.",color=Color.LightGray,fontSize=12.sp)
         }
         }
-        user?.let{NeroAccountCloud(it,enabled=!busy)}
+        user?.let{key(it.uid){NeroAccountCloud(it,enabled=!busy,onPlans={showPlans=true})}}
+        if(user==null)OutlinedButton(onClick={showPlans=true},modifier=Modifier.fillMaxWidth()){Text("Conhecer os planos NERO")}
         Text("Sua biblioteca",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){

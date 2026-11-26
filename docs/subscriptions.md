@@ -1,37 +1,40 @@
-# NERO Music — assinaturas (proposta de arquitetura)
-Status: planejamento. Decisão do proprietário: distribuição direta de APK pelo site da T.I. Machado (https://timachado.ifree.page/), seguindo o modelo dos demais aplicativos. Google Play não integra o plano de lançamento atual. Nenhuma cobrança habilitada, nenhum preço aprovado, nenhum produto comercial criado.
+# NERO Music — decisão comercial aprovada e arquitetura
+Status: preços e modelo aprovados pelo proprietário. Prévia no app; nenhum checkout, produto, cobrança ou alteração de produção habilitados.
 
-## Produto
-- NERO Free: player local, biblioteca, busca, favoritos e playlists básicas.
-- NERO Premium: benefícios próprios do NERO, como ausência de anúncios do NERO (se houver publicidade própria), equalizador avançado, sincronização, playlists inteligentes, personalização e downloads somente de fontes autorizadas.
-- Planos mensal e anual propostos. Preços, períodos de teste, impostos e condições de cancelamento a definir antes de publicação.
-- A assinatura NERO não concede acesso ao YouTube Music Premium, nem direitos de distribuição de catálogos de terceiros.
+## Oferta
+| Plano | ID estável | Preço BRL | Período |
+|---|---|---:|---|
+| Free | free | 0,00 | gratuito |
+| Premium mensal | premium_monthly | 9,90 | 1 mês |
+| Premium trimestral | premium_quarterly | 24,90 | 3 meses |
+| Premium anual | premium_annual | 89,90 | 12 meses |
 
-## Identidade e autenticação
-Firebase Authentication exclusivo do NERO, UID estável, login Google ou e-mail. Visitante pode utilizar funções gratuitas. Nenhum dado dos outros aplicativos deve ser modificado.
+- Experiência de 7 dias sem cartão obrigatório e sem cobrança automática no fim. Uma experiência por conta elegível, controlada pelo servidor; condições antifraude e elegibilidade precisam de homologação.
+- Carência proposta e aprovada de 48 horas para falhas de renovação; política definitiva deve distinguir expiração de revogação, reembolso e fraude. Não conceder carência apenas por relógio local.
+- Avisos de vencimento 3 e 1 dias antes, sujeitos a consentimento e implementação.
+- Free mantém todas as funcionalidades já aprovadas: login Google, biblioteca, favoritos, playlists, sincronização básica e descoberta/mixes básicos. Não bloquear recursos existentes.
+- Premium adicionará níveis avançados de Smart Mix/Daily Mix, temas exclusivos, personalização do player, estatísticas, backup/exportação avançada e suporte prioritário. Cada benefício deve estar implementado e validado antes da venda.
+- Duo e Family reservados para expansão futura.
+- Cancelamento sem apagar biblioteca e preferências. Termos, privacidade e direito de arrependimento aplicável devem ser documentados antes de produção.
+- NERO Premium é serviço próprio, não YouTube Music Premium; não cobra acesso a conteúdo de terceiros sem autorização, nem promete remover anúncios de terceiros ou downloads não autorizados.
+
+## Identidade
+Login Google via Supabase, UID autenticado estável como NERO ID interno; visitante separado. Não usar e-mail como prova de titularidade. Nenhum dado de outros aplicativos será alterado.
 
 ## Distribuição e cobrança
-- Canal de lançamento: página oficial do NERO Music no site da T.I. Machado, com APK release assinado, versão, requisitos Android, instruções de instalação, checksum SHA-256 e política de privacidade.
-- Google Sign-In continua sendo autenticação, independente da distribuição pela Google Play. Google Play Billing não faz parte do lançamento direto.
-- Checkout hospedado pelo provedor de pagamentos, associado à conta NERO autenticada pelo backend. Escolher provedor e condições comerciais antes de ativar cobrança. Pix e cartão são opções a avaliar; renovação automática depende do suporte real do provedor.
-- Não alterar o checkout nem as configurações dos pagamentos existentes da T.I. Machado. Nenhum produto ou cobrança real criado.
-- Atualizações por HTTPS, com metadados de versão e integridade e APK assinado pela mesma chave de release, preservando o applicationId. Instalação e atualização mediante confirmação do usuário no Android; não contornar proteções do sistema.
-- Nunca distribuir APK debug como release comercial. Guardar chave de assinatura com segurança e configurar SHA-1/SHA-256 no Firebase para o certificado de release.
+- APK comercial assinado pelo site https://timachado.ifree.page/; manter applicationId, assinatura e integridade do arquivo.
+- Contratação pela loja T.I. Machado, aproveitando a infraestrutura existente WooCommerce/Efí após verificar compatibilidade. Pix e cartão conforme meios habilitados; renovação automática apenas após homologação.
+- Não alterar produtos, checkout, credenciais ou configurações de pagamentos existentes. Nenhum produto criado nesta etapa.
+- Checkout deve vincular a conta autenticada por identificador opaco de uso limitado; preço e plano validados no servidor. Não enviar UID, token Google ou sessão em URLs externas.
+- Retorno de checkout não comprova pagamento. Processar eventos autenticados, verificar estado no provedor e tratar duplicidade, replay, reembolso, revogação, cancelamento, expiração e renovação.
+- Histórico, gerenciamento e cancelamento pelo canal oficial; integrar Portal do Cliente/MACH Care somente após autorização e validação.
+- A recuperação no app consulta o estado do servidor; não recria compras nem concede Premium localmente.
+- RPC nero_plan_read_v1 existente retorna somente status; detalhes de plano e vencimento dependem de contrato backend futuro. Nenhuma migração aplicada. A tela não inventa dados.
+- Não liberar benefício a partir de retorno, comprovante, status pendente ou preço informado pelo cliente. Testes de isolamento, idempotência e ciclo de vida em sandbox antes de produção.
 
-## Entitlement no backend
-- Validar o token Firebase no servidor e associar o UID à assinatura via checkout criado pelo backend. Não confiar em UID, preço, plano ou status enviados pelo cliente.
-- Processar webhooks com verificação de autenticidade, proteção contra replay e idempotência; confirmar estado pela API oficial do provedor. Tratar renovação, cancelamento, expiração, falha, reembolso e revogação.
-- Apenas o backend concede Premium. O estado local é cache com validade limitada, nunca fonte de autorização. Não liberar por comprovantes, retorno de checkout ou pagamentos pendentes.
-- Permitir acesso à conta e gerenciamento/cancelamento da assinatura pelo canal oficial; restaurar acesso após autenticação e consulta ao backend.
-- Nunca publicar credenciais administrativas, chaves privadas de assinatura ou dados privados. Antes de produção: LGPD, termos, privacidade, cancelamento, exclusão de conta, testes de isolamento e recuperação.
-
-## Dependências e próximos marcos
-1. Compilar e testar a versão de autenticação existente; configurar Firebase e certificado estável.
-2. Implementar benefícios premium reais, provedor de entitlement e tela de planos sem checkout ativo.
-3. Selecionar provedor de checkout recorrente, configurar sandbox isolado, backend seguro e testes de ciclo de vida.
-4. Validar direitos do catálogo comercial e distribuição offline antes de cobrar por esses conteúdos.
-5. Aprovar preços, assinar e validar APK release, preparar página de download e habilitar pagamentos apenas após validação.
-
-## Referências
-- https://developer.android.com/studio/publish/app-signing
-- https://firebase.google.com/docs/auth/android/google-signin
+## Portões de lançamento
+1. Implementar e testar benefícios próprios do NERO.
+2. Homologar fonte comercial autorizada do catálogo e downloads.
+3. Validar integração isolada da loja, backend de assinatura e segurança.
+4. Validar APK release assinado, termos, privacidade e fluxos de atendimento.
+5. Ativar oferta e publicação somente com autorização específica.
