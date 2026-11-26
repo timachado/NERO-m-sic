@@ -109,7 +109,12 @@ internal fun ImmersivePlayer(
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Minimizar player")}
                 Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
-                    Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=Color.LightGray)
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Text("NER",fontSize=22.sp,fontWeight=FontWeight.ExtraBold,color=Color.White)
+                        Icon(Icons.Default.PlayCircle,"O",tint=neon,modifier=Modifier.size(23.dp))
+                        Text(" Music",fontSize=20.sp,color=Color.White)
+                    }
+                    Text(origin?.caption?:"Tocando agora",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Medium)
                     Text(origin?.displayName?:"Reproduzindo",fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 Box{
@@ -162,8 +167,10 @@ internal fun ImmersivePlayer(
                 }
             }
             else {
-                val shape=RoundedCornerShape(12.dp)
-                Box(Modifier.size(coverSize).shadow(6.dp,shape).background(panel,shape).clip(shape),contentAlignment=Alignment.Center){
+                val shape=RoundedCornerShape(22.dp)
+                Box(Modifier.size(coverSize).shadow(10.dp,shape).background(panel,shape)
+                    .border(2.dp,Brush.linearGradient(listOf(neon,aqua,Color(0xFFFF68AA),neon)),shape)
+                    .clip(shape).padding(2.dp).clip(RoundedCornerShape(20.dp)),contentAlignment=Alignment.Center){
                     if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize(),large=true)
                     else LocalArtwork(track,Modifier.fillMaxSize(),large=true)
                 }
@@ -179,32 +186,43 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){
-                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(12.dp),primary=neon,secondary=aqua)
+                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(20.dp),primary=neon,secondary=aqua)
                 Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
-                    },enabled=ready&&duration>0&&fullControls,colors=SliderDefaults.colors(thumbColor=Color.White,activeTrackColor=Color.White,inactiveTrackColor=Color.White.copy(alpha=.25f),disabledThumbColor=Color.White,disabledActiveTrackColor=Color.White,disabledInactiveTrackColor=Color.White.copy(alpha=.25f)))
+                    },enabled=ready&&duration>0&&fullControls,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=aqua.copy(alpha=.25f),disabledThumbColor=neon,disabledActiveTrackColor=neon,disabledInactiveTrackColor=aqua.copy(alpha=.25f)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                     Text(clock(seekPreview?.let{(it*duration).toLong()}?:position),fontSize=12.sp,color=Color.LightGray)
                     Text(clock(duration),fontSize=12.sp,color=Color.LightGray)
                 }
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-                IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,if(fullControls)"Aleatório" else "Aleatório obrigatório no Free",tint=if(shuffle||!fullControls)neon else Color.White,modifier=Modifier.size(26.dp))}
-                IconButton(onClick=onPrevious,enabled=ready&&fullControls){Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
-                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)66.dp else 76.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color.White,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
-                IconButton(onClick=onNext,enabled=ready&&nextAvailable){Icon(Icons.Default.SkipNext,"Próxima",tint=if(ready&&nextAvailable)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
-                IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Timer,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White,modifier=Modifier.size(26.dp))}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
+                val skipShape=RoundedCornerShape(22.dp)
+                IconButton(onClick=onPrevious,enabled=ready&&fullControls,
+                    modifier=Modifier.size(60.dp).background(panel.copy(alpha=.85f),skipShape).border(1.dp,aqua.copy(alpha=.65f),skipShape)){
+                    Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.28f),modifier=Modifier.size(32.dp))
+                }
+                Box(Modifier.size(if(compact)84.dp else 94.dp).background(neon.copy(alpha=.12f),RoundedCornerShape(50)).border(1.dp,neon.copy(alpha=.5f),RoundedCornerShape(50)),contentAlignment=Alignment.Center){
+                    FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)72.dp else 82.dp)
+                        .shadow(10.dp,RoundedCornerShape(50)).border(1.dp,neon,RoundedCornerShape(50)),
+                        colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){
+                        Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(40.dp))
+                    }
+                }
+                IconButton(onClick=onNext,enabled=ready&&nextAvailable,
+                    modifier=Modifier.size(60.dp).background(panel.copy(alpha=.85f),skipShape).border(1.dp,aqua.copy(alpha=.65f),skipShape)){
+                    Icon(Icons.Default.SkipNext,"Próxima",tint=if(ready&&nextAvailable)Color.White else Color.White.copy(alpha=.28f),modifier=Modifier.size(32.dp))
+                }
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-                IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=Color.White)}
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick=onRepeat,enabled=ready&&fullControls){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(!fullControls)Color.White.copy(alpha=.32f) else if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
-                if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=Color.White)}
-                IconButton(onClick={sharing=true},enabled=title.isNotBlank()){Icon(Icons.Default.Share,"Compartilhar",tint=Color.White)}
-                IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=Color.White)}
+            Row(Modifier.fillMaxWidth().background(panel.copy(alpha=.65f),RoundedCornerShape(28.dp))
+                .border(1.dp,aqua.copy(alpha=.3f),RoundedCornerShape(28.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick={showDevices=true},modifier=Modifier.weight(1f)){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
+                IconButton(onClick=onQueue,enabled=ready,modifier=Modifier.weight(1f)){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
+                IconButton(onClick={showTimer=true},enabled=ready,modifier=Modifier.weight(1f)){Icon(Icons.Default.Timer,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
+                IconButton(onClick=onShuffle,enabled=ready&&fullControls,modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,"Aleatório",tint=if(shuffle||!fullControls)neon else Color.White)}
+                IconButton(onClick=onRepeat,enabled=ready&&fullControls,modifier=Modifier.weight(1f)){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(!fullControls)Color.White.copy(alpha=.32f) else if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
+                if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer,modifier=Modifier.weight(1f)){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
-            if(!fullControls)Text("NERO Free · ordem aleatória. Próxima liberada; voltar, repetir e ajustar a posição são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id
@@ -220,7 +238,7 @@ internal fun ImmersivePlayer(
             if(deadline!=null)Text("Pausar em "+clock(remaining),color=neon,fontSize=12.sp)
             if(canRadio)OutlinedButton(onClick=onRadio,enabled=ready&&!radioBusy){Icon(Icons.Default.Radio,null);Spacer(Modifier.width(8.dp));Text("Rádio desta faixa")}
             error?.let{
-                Text(if(videoMode)"Não foi possível reproduzir o vídeo. Tente novamente ou volte à música." else it,color=MaterialTheme.colorScheme.error)
+                Text(if(videoMode)"Vídeo indisponível. Tente novamente ou volte à música." else "Não foi possível tocar esta música. Tente novamente.",color=MaterialTheme.colorScheme.error)
                 OutlinedButton(enabled=ready,onClick=onRetry,modifier=Modifier.fillMaxWidth()){Text("Tentar novamente")}
                 if(videoMode)OutlinedButton(onClick=onVideoToggle){Text("Voltar para música")}
             }
