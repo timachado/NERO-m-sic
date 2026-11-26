@@ -2,10 +2,7 @@ package br.com.timachado.neromusic
 
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.provider.Settings
 import android.os.Bundle
-import android.app.AlertDialog
 import android.net.wifi.WifiManager
 import android.widget.ScrollView
 import android.view.View
@@ -69,6 +66,7 @@ class NeroCastActivity:FragmentActivity(){
         if(!isFinishing&&!isDestroyed){
             status.text=value
             if(::controls.isInitialized)controls.visibility=if(dlnaPlaying!=null||ours()!=null&&!sending)View.VISIBLE else View.GONE
+            if(::devicesPanel.isInitialized)devicesPanel.visibility=if(dlnaPlaying!=null||ours()!=null&&!sending)View.GONE else View.VISIBLE
         }
     }
     private fun client()=cast?.sessionManager?.currentCastSession?.takeIf{it.isConnected}?.remoteMediaClient
@@ -86,9 +84,6 @@ class NeroCastActivity:FragmentActivity(){
         }
         fun text(value:String,size:Float)=TextView(this).apply{
             text=value;textSize=size;setPadding(0,12,0,12)
-        }
-        fun button(label:String,action:()->Unit)=Button(this).apply{
-            text=label;setOnClickListener{action()};panel.addView(this)
         }
         panel.addView(text("Transmitir para dispositivo",24f))
         status=text("Procurando dispositivos na rede Wi-Fi…",16f)
@@ -108,15 +103,10 @@ class NeroCastActivity:FragmentActivity(){
             router=MediaRouter.getInstance(this)
             selector=cast?.mergedSelector
         }catch(_:Exception){router=null;selector=null}
-        controlButton("Pausar"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()}
-        controlButton("Continuar"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()}
         controlButton("Desconectar"){
             if(dlnaPlaying!=null)dlnaControl("Stop")
-            else if(!sending){stopOwn();message("Transmissão encerrada.")}
+            else if(!sending){stopOwn();cast?.sessionManager?.endCurrentSession(true);targetStatus.text="";message("Transmissão encerrada.");discoverDlna()}
         }
-        button("Buscar novamente"){discoverDlna()}
-        button("Espelhar tela (Android)"){openMirrorSettings()}
-        button("Voltar ao NERO"){if(sending||dlnaPlaying!=null||ours()!=null)message("Desconecte a transmissão antes de sair.") else finish()}
         val request=MediaController.Builder(this,SessionToken(this,ComponentName(this,PlaybackService::class.java))).buildAsync()
         future=request
         request.addListener({
@@ -127,7 +117,7 @@ class NeroCastActivity:FragmentActivity(){
     }
     override fun onStart(){
         super.onStart()
-        selector?.let{router?.addCallback(it,routeCallback,MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)}
+        selector?.let{router?.addCallback(it,routeCallback,MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN)}
         renderDevices()
         runCatching{
             multicast=(applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
@@ -140,26 +130,14 @@ class NeroCastActivity:FragmentActivity(){
         multicast=null
         super.onStop()
     }
-    private fun openMirrorSettings(){
-        castPickerJob?.cancel()
-        if(sending||dlnaPlaying!=null||ours()!=null){
-            message("Encerre a transmissão atual antes de espelhar.");return
-        }
-        try{
-            startActivity(Intent(Settings.ACTION_CAST_SETTINGS))
-            message("Escolha a TV nas configurações do Android. A conexão depende do suporte do celular e da TV.")
-        }catch(_:Exception){
-            message("Abra as configurações rápidas do celular e procure Transmitir, Smart View ou Smart Connect.")
-        }
-    }
     private fun discoverDlna(){
         if(scanning||sending||dlnaPlaying!=null||ours()!=null)return
         castPickerJob?.cancel()
         selectedDlna=null
         targetStatus.text=""
         dlnaDevices=emptyList()
-        renderDevices()
-        scanning=true;message("Procurando dispositivos na rede Wi-Fi…")
+        scanning=true
+        renderDevices();message("Procurando dispositivos na rede Wi-Fi…")
         scope.launch{
             try{
                 val devices=withContext(Dispatchers.IO){NeroDlna.discover(applicationContext)}
@@ -167,7 +145,7 @@ class NeroCastActivity:FragmentActivity(){
                 scanning=false
                 dlnaDevices=devices
                 renderDevices()
-                message(if(devices.isEmpty()&&castRoutes().isEmpty())"Nenhum dispositivo disponível encontrado." else "Selecione uma TV para transmitir.")
+                message(if(devices.isEmpty()&&castRoutes().isEmpty())"Nenhum dispositivo encontrado na rede Wi-Fi." else "Selecione um dispositivo.")
             }catch(e:CancellationException){throw e}catch(_:Exception){message("Não foi possível procurar TVs na rede. Confira o Wi-Fi.")}
             finally{scanning=false}
         }
@@ -180,6 +158,7 @@ class NeroCastActivity:FragmentActivity(){
         if(!::devicesPanel.isInitialized||isFinishing||isDestroyed)return
         devicesPanel.removeAllViews()
         val routes=castRoutes()
+        if(!scanning&&!sending&&dlnaPlaying==null&&ours()==null&&(routes.isNotEmpty()||dlnaDevices.isNotEmpty())&&targetStatus.text.isEmpty())message("Selecione um dispositivo.")
         fun choice(label:String,action:()->Unit){
             devicesPanel.addView(Button(this).apply{
                 text=label;isAllCaps=false
@@ -187,7 +166,7 @@ class NeroCastActivity:FragmentActivity(){
             })
         }
         routes.forEach{route->
-            choice(route.name.toString()+" · Cast"){
+            choice(route.name.toString()){
                 castPickerJob?.cancel()
                 selectedDlna=null
                 targetStatus.text=route.name.toString()
@@ -224,7 +203,7 @@ class NeroCastActivity:FragmentActivity(){
         scope.launch{
             try{
                 withContext(Dispatchers.IO){NeroDlna.control(applicationContext,active.first,active.second,action)}
-                if(action=="Stop")dlnaPlaying=null
+                if(action=="Stop"){dlnaPlaying=null;targetStatus.text=""}
                 message(when(action){"Pause"->"Transmissão DLNA pausada.";"Play"->"Transmissão DLNA retomada.";else->"Transmissão encerrada."})
             }catch(e:CancellationException){throw e}catch(_:Exception){if(action=="Stop")dlnaPlaying=null;message("A TV não confirmou o comando. Confira a reprodução diretamente na TV.")}
             finally{sending=false}
@@ -237,11 +216,7 @@ class NeroCastActivity:FragmentActivity(){
         val track=item?.let(::openRefFromItem)?.openAudio
         if(track==null||!allowed(track)||track.mime !in setOf("audio/mpeg","audio/flac","audio/wav","audio/ogg")){
             if(item==null){message("Inicie uma música no NERO antes de transmitir.");return}
-            message("A TV foi localizada, mas esta faixa não oferece uma fonte compatível para transmissão direta.")
-            AlertDialog.Builder(this).setTitle("Faixa incompatível com transmissão direta")
-                .setMessage("O NERO encontrou o dispositivo, mas não pode enviar esta faixa como áudio DLNA ou Google Cast. Se seu celular e sua TV oferecerem espelhamento, você pode utilizar a conexão nativa do Android.")
-                .setPositiveButton("Abrir espelhamento"){_,_->openMirrorSettings()}
-                .setNegativeButton("Continuar no celular",null).show()
+            message("Esta música não pode ser transmitida diretamente para a TV. O áudio continua no celular.")
             return
         }
         if(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){message("Não foi possível pausar o player local.");return}
