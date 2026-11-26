@@ -17,6 +17,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Verify Commerce Connect sandbox reference
+        working-directory: commerce/reference
+        run: python3 -m unittest -v
       - name: Verify Android SDK on hosted runner
         run: |
           echo "Android SDK: $ANDROID_HOME"

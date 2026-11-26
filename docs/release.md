@@ -1,6 +1,6 @@
 # Distribuição direta: candidato de release NERO Music
 
-Estado: pipeline preparado, não executado com chaves reais. Não é autorização de publicação comercial.
+Estado: pipeline preparado, não executado com chaves reais. Não é autorização de publicação comercial. O CI #299 confirmou compilação, lint e testes unitários debug e release sem assinatura. O catálogo online experimental não está disponível no release; ver docs/release-readiness.md. A referência Commerce Connect é independente de qualquer loja real.
 
 ## Configuração manual
 - Use um projeto Firebase exclusivo, com o certificado de release registrado. Não use chaves administrativas no APK.

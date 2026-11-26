@@ -1,6 +1,25 @@
 # NERO Music — critérios para 1.0.0-RC1
 
-Status: desenvolvimento. Não é aprovação de distribuição.
+Status: estabilização pré-RC, 0.9.63-dev. Não é aprovação de distribuição.
+
+## Evidência de CI
+Execução #299 (commit 708fc9a21e069280aa965eba8be1c7ac6b331c31): assembleDebug, lintDebug, testDebugUnitTest e verificação de release sem assinatura concluídos com sucesso. Execuções #292–298 também concluídas com sucesso. Isso não comprova testes em aparelho, configuração de produção ou assinatura comercial. A nova versão acrescenta teste Python da referência Commerce Connect ao CI; resultado ainda pendente.
+
+## Bloqueios atuais
+- NativeMusicCatalog no release retorna enabled=false; Smart Mix e Daily Mix online dependem dessa fonte. Não habilitar o extrator experimental em distribuição comercial. Definir fonte autorizada e verificar paridade de recursos antes de vender benefícios.
+- O checkout é uma prévia desativada. O responsável pela T.I. Machado configurará a loja manualmente; nenhum produto, gateway ou configuração de produção foi modificado. A integração servidor-servidor, ativação, trial, renovação, estorno e isolamento ainda exigem homologação.
+- SQL de assinatura é rascunho não aplicado. Verificar estado da assinatura com duas contas de teste, expiração e falhas de rede; não liberar Premium por resposta de checkout.
+- O pipeline de APK assinado é manual e restrito à main e ambiente nero-release. Não foi executado nesta revisão, não há APK comercial assinado verificado. Não mesclar nem publicar sem autorização.
+
+## Matriz Premium no Android
+- [ ] Temas: Aurora gratuito; validar Ocean, Violet, Gold e Midnight Café, logout e expiração.
+- [ ] Replay: consentimento, duas contas, pausa, limpeza, 7/30/90 dias e ausência de dados antigos de outra conta.
+- [ ] Backup: exportação JSON, importação na mesma conta, rejeitar outra conta e arquivo inválido, mesclar sem apagar dados, repetir sem duplicar.
+- [ ] Smart Mix: seleção de até seis artistas, modos, limite de faixas, exclusões, falhas de rede.
+- [ ] Daily Mix: quatro momentos, rotação diária, ausência de duplicatas e de resultados fictícios.
+- [ ] Assinatura: ausência, ativa, expirada, revogada, trial e carência; falhar de forma segura sem servidor.
+- [ ] Commerce: seletor de planos, botão de contratação desativado até homologação, nenhuma cobrança no teste.
+
 
 ## Testes de aceitação em Android
 - [ ] Atualização sobre APK anterior sem perda de biblioteca ou preferências.
