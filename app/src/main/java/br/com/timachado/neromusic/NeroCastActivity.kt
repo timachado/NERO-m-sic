@@ -54,6 +54,7 @@ class NeroCastActivity:FragmentActivity(){
     private var router:MediaRouter?=null
     private var selector:MediaRouteSelector?=null
     private var dlnaDevices:List<NeroDlnaDevice> = emptyList()
+    private var dialDevices:List<NeroDialDevice> = emptyList()
     private val routeCallback=object:MediaRouter.Callback(){
         override fun onRouteAdded(router:MediaRouter,route:MediaRouter.RouteInfo){renderDevices()}
         override fun onRouteRemoved(router:MediaRouter,route:MediaRouter.RouteInfo){renderDevices()}
@@ -136,16 +137,18 @@ class NeroCastActivity:FragmentActivity(){
         selectedDlna=null
         targetStatus.text=""
         dlnaDevices=emptyList()
+        dialDevices=emptyList()
         scanning=true
         renderDevices();message("Procurando dispositivos na rede Wi-Fi…")
         scope.launch{
             try{
-                val devices=withContext(Dispatchers.IO){NeroDlna.discover(applicationContext)}
+                val devices=withContext(Dispatchers.IO){NeroDlna.discoverTargets(applicationContext)}
                 if(isDestroyed||isFinishing)return@launch
                 scanning=false
-                dlnaDevices=devices
+                dlnaDevices=devices.dlna
+                dialDevices=devices.dial
                 renderDevices()
-                message(if(devices.isEmpty()&&castRoutes().isEmpty())"Nenhum dispositivo encontrado na rede Wi-Fi." else "Selecione um dispositivo.")
+                message(if(devices.dlna.isEmpty()&&devices.dial.isEmpty()&&castRoutes().isEmpty())"Nenhum dispositivo encontrado na rede Wi-Fi." else "Selecione um dispositivo.")
             }catch(e:CancellationException){throw e}catch(_:Exception){message("Não foi possível procurar TVs na rede. Confira o Wi-Fi.")}
             finally{scanning=false}
         }
@@ -158,7 +161,7 @@ class NeroCastActivity:FragmentActivity(){
         if(!::devicesPanel.isInitialized||isFinishing||isDestroyed)return
         devicesPanel.removeAllViews()
         val routes=castRoutes()
-        if(!scanning&&!sending&&dlnaPlaying==null&&ours()==null&&(routes.isNotEmpty()||dlnaDevices.isNotEmpty())&&targetStatus.text.isEmpty())message("Selecione um dispositivo.")
+        if(!scanning&&!sending&&dlnaPlaying==null&&ours()==null&&(routes.isNotEmpty()||dlnaDevices.isNotEmpty()||dialDevices.isNotEmpty())&&targetStatus.text.isEmpty())message("Selecione um dispositivo.")
         fun choice(label:String,action:()->Unit){
             devicesPanel.addView(Button(this).apply{
                 text=label;isAllCaps=false
@@ -187,13 +190,45 @@ class NeroCastActivity:FragmentActivity(){
                 }
             }
         }
-        dlnaDevices.forEach{device->
+        val nativeByHost=dialDevices.associateBy{it.endpoint.host}
+        dlnaDevices.distinctBy{it.endpoint.host}.forEach{device->
             choice(device.name){
                 castPickerJob?.cancel()
                 selectedDlna=device
                 targetStatus.text=device.name
-                send()
+                val native=nativeByHost[device.endpoint.host]
+                if(native!=null&&NeroDlna.nativeVideoId(controller?.currentMediaItem?.mediaId)!=null)launchNative(native)
+                else send()
             }
+        }
+        dialDevices.filter{native->dlnaDevices.none{it.endpoint.host==native.endpoint.host}}.forEach{device->
+            choice(device.name){
+                castPickerJob?.cancel()
+                selectedDlna=null
+                targetStatus.text=device.name
+                launchNative(device)
+            }
+        }
+    }
+    private fun launchNative(device:NeroDialDevice){
+        if(sending)return
+        val player=controller?:return
+        val item=player.currentMediaItem
+        val id=NeroDlna.nativeVideoId(item?.mediaId)
+        if(id==null){message("Esta faixa não está disponível no aplicativo receptor da TV.");return}
+        val position=player.currentPosition.coerceAtLeast(0L)/1000L
+        sending=true
+        message("Abrindo a música no aplicativo da TV…")
+        scope.launch{
+            try{
+                val opened=withContext(Dispatchers.IO){NeroDlna.launchNative(applicationContext,device,id,position)}
+                // DIAL does not report the actual playing video or transport state.
+                // Keep the phone audio until playback can be independently confirmed.
+                message(if(opened)"Aplicativo aberto na TV. Confira a reprodução; o áudio do celular foi mantido."
+                    else "A TV não confirmou a abertura da música. O áudio continua no celular.")
+            }catch(e:CancellationException){throw e}catch(_:Exception){
+                message("O aplicativo da TV não aceitou a solicitação. O áudio continua no celular.")
+            }finally{sending=false}
         }
     }
     private fun dlnaControl(action:String){
