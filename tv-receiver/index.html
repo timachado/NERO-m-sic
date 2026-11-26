@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NERO Music TV | Protótipo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#111;color:#fff;font:24px Arial,sans-serif}main{padding:5%}header{font-size:24px;letter-spacing:3px;color:#d7d7d7}h1{font-size:46px;margin:24px 0 8px}p{color:#bbb;line-height:1.5;margin:8px 0 18px}#screen{width:72%;max-width:960px;margin:28px 0;background:#050505}#screen iframe{display:block;width:100%;height:480px;border:0}#state{color:#c5d5ea;font-size:20px}button{padding:14px 22px;background:#e8e8e8;color:#111;border:0;font-size:22px}button:focus{outline:4px solid #80aaff}input{font-size:24px;padding:12px;width:280px}small{font-size:16px;color:#aaa}
+</style>
+</head>
+<body><main>
+<header>NERO MUSIC / TV</header>
+<h1 id="title">Receptor experimental</h1>
+<p id="state" role="status">Informe o identificador do vídeo autorizado.</p>
+<form id="form"><label for="videoId">ID do vídeo </label><input id="videoId" maxlength="11" autocomplete="off"><button type="submit">Reproduzir</button></form>
+<div id="screen"><div id="player"></div></div>
+<small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
+</main>
+<script>
+(function(){
+"use strict";
+var player=null, ready=false, pending=null, state=document.getElementById("state");
+var valid=function(id){return /^[A-Za-z0-9_-]{11}$/.test(id);};
+function status(s){state.textContent=s;}
+function load(id){
+ if(!valid(id)){status("Identificador inválido.");return;}
+ pending=id;
+ if(!ready){status("Aguardando o player oficial…");return;}
+ try{player.loadVideoById(id);status("Solicitando reprodução…");}
+ catch(e){status("Não foi possível solicitar reprodução.");}
+}
+document.getElementById("form").onsubmit=function(e){
+ if(e&&e.preventDefault)e.preventDefault();
+ load(document.getElementById("videoId").value);
+ return false;
+};
+window.onYouTubeIframeAPIReady=function(){
+ try {
+ player=new YT.Player("player",{height:"480",width:"854",playerVars:{controls:1,autoplay:0,playsinline:1},events:{
+ onReady:function(){ready=true;status("Receptor pronto. Selecione o vídeo.");if(pending)load(pending);},
+ onStateChange:function(e){
+ var messages={"-1":"Aguardando reprodução.","0":"Reprodução encerrada.","1":"Reprodução confirmada pelo player.","2":"Pausado.","3":"Carregando…","5":"Vídeo preparado."};
+ if(Object.prototype.hasOwnProperty.call(messages,String(e.data)))status(messages[String(e.data)]);
+ },
+ onError:function(e){status("O player oficial não conseguiu reproduzir este vídeo (código "+String(e.data)+").");},
+ onAutoplayBlocked:function(){status("A TV bloqueou a reprodução automática. Use o botão do player.");}
+ }});
+ }catch(e){status("Player incompatível com este navegador.");}
+};
+var match=/(?:^|[?&])v=([A-Za-z0-9_-]{11})(?:&|$)/.exec(location.search);
+if(match){document.getElementById("videoId").value=match[1];pending=match[1];}
+var script=document.createElement("script");script.src="https://www.youtube.com/iframe_api";script.onerror=function(){status("Não foi possível carregar o player oficial. Verifique a compatibilidade do navegador e a rede.");};
+document.head.appendChild(script);
+setTimeout(function(){if(!ready)status("O player ainda não respondeu. Navegadores antigos podem ser incompatíveis.");},20000);
+})();
+</script></body></html>
