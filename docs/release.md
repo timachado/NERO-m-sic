@@ -20,3 +20,6 @@ Estado: pipeline preparado, não executado com chaves reais. Não é autorizaç�
 
 Referências: https://developer.android.com/tools/apksigner
 https://developer.android.com/developer-verification/guides/faq
+
+## Homologação manual 0.9.67-dev
+O workflow na branch feat/nero-connect permite dispatch manual desta branch específica, além de main, mantendo o ambiente nero-release e sem publicação automática. A versão main ainda é anterior; selecionar feat/nero-connect no menu Run workflow. O ambiente deve permitir apenas branches confiáveis; manter aprovação manual quando disponível. A autenticação atual usa Supabase e Credential Manager, por isso o JSON Firebase legado é opcional; as três variáveis de Supabase e OAuth são obrigatórias e a compilação verifica testes unitários. Certificado comercial confirmado localmente: SHA-1 1F:CD:65:CD:46:DB:44:BD:5A:15:65:9F:14:58:C8:65:B7:0B:5C:10, SHA-256 4B:2F:7E:E7:76:73:96:52:29:41:3B:ED:42:64:D1:F6:52:39:66:BC:1E:14:63:BB:F1:2C:1D:0A:1E:59:A1:67. Cadastro dos segredos relatado pelo proprietário; confirmação só após assinatura e verificação do artefato. Não desinstalar a versão debug sem preservar dados locais; certificado distinto impede atualização direta. Candidato sem catálogo experimental, sem homologação comercial.

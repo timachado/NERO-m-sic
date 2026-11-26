@@ -5,7 +5,7 @@ permissions:
   contents: read
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/nero-connect')
     environment: nero-release
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -24,21 +24,27 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Require configured Firebase client
+      - name: Optional Firebase client (legacy)
         env:
           FIREBASE_CONFIG: ${{ secrets.NERO_GOOGLE_SERVICES_JSON }}
         run: |
           set -euo pipefail
-          test -n "$FIREBASE_CONFIG" || { echo "Firebase client configuration missing"; exit 1; }
-          umask 077
-          printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
-      - name: Build unsigned release and lint
+          if [ -n "$FIREBASE_CONFIG" ]; then
+            umask 077
+            printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
+          fi
+      - name: Build unsigned release, lint and unit tests
         env:
           NERO_SUPABASE_URL: ${{ vars.NERO_SUPABASE_URL }}
           NERO_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NERO_SUPABASE_PUBLISHABLE_KEY }}
           NERO_GOOGLE_CLIENT_ID: ${{ vars.NERO_GOOGLE_CLIENT_ID }}
           NERO_SHARE_HOST: ${{ vars.NERO_SHARE_HOST }}
-        run: gradle :app:assembleRelease :app:lintRelease --no-daemon
+        run: |
+          set -euo pipefail
+          for field in NERO_SUPABASE_URL NERO_SUPABASE_PUBLISHABLE_KEY NERO_GOOGLE_CLIENT_ID; do
+            test -n "${!field}" || { echo "::error::Missing auth configuration: $field"; exit 1; }
+          done
+          gradle :app:assembleRelease :app:lintRelease :app:testReleaseUnitTest --no-daemon
       - name: Sign and verify candidate
         env:
           NERO_STORE_B64: ${{ secrets.NERO_RELEASE_KEYSTORE_B64 }}
