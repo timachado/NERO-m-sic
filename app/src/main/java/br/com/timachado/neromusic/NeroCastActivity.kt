@@ -197,7 +197,9 @@ class NeroCastActivity:FragmentActivity(){
                 selectedDlna=device
                 targetStatus.text=device.name
                 val native=nativeByHost[device.endpoint.host]
-                if(native!=null&&NeroDlna.nativeVideoId(controller?.currentMediaItem?.mediaId)!=null)launchNative(native)
+                if(NeroWebOsReceiver.isWebOs(device.name)&&NeroDlna.nativeVideoId(controller?.currentMediaItem?.mediaId)!=null){
+                    launchWebOs(device.network,device.endpoint.host,device.name)
+                }else if(native!=null&&NeroDlna.nativeVideoId(controller?.currentMediaItem?.mediaId)!=null)launchNative(native)
                 else send()
             }
         }
@@ -206,8 +208,30 @@ class NeroCastActivity:FragmentActivity(){
                 castPickerJob?.cancel()
                 selectedDlna=null
                 targetStatus.text=device.name
-                launchNative(device)
+                if(NeroWebOsReceiver.isWebOs(device.name))launchWebOs(device.network,device.endpoint.host,device.name)
+                else launchNative(device)
             }
+        }
+    }
+    private fun launchWebOs(network:android.net.Network,host:String,name:String){
+        if(sending)return
+        val player=controller?:return
+        val item=player.currentMediaItem
+        val id=NeroDlna.nativeVideoId(item?.mediaId)
+        if(id==null){message("Inicie uma faixa do catálogo antes de transmitir.");return}
+        val title=player.mediaMetadata.title?.toString().orEmpty()
+        val artist=player.mediaMetadata.artist?.toString().orEmpty()
+        val position=player.currentPosition.coerceAtLeast(0L)/1000L
+        sending=true
+        message("Conectando ao NERO TV. Se a televisão solicitar autorização, confirme nela.")
+        scope.launch{
+            try{
+                val opened=withContext(Dispatchers.IO){NeroWebOsReceiver.open(applicationContext,network,host,id,title,artist,position)}
+                message(if(opened)"A TV aceitou abrir o NERO Music. Confira a tela; a reprodução ainda não foi confirmada."
+                    else "A TV não autorizou ou não aceitou abrir o NERO Music. O áudio continua no celular.")
+            }catch(e:CancellationException){throw e}catch(_:Exception){
+                message("Não foi possível abrir o NERO Music em "+name+". O áudio continua no celular.")
+            }finally{sending=false}
         }
     }
     private fun launchNative(device:NeroDialDevice){
