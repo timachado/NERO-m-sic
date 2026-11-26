@@ -1,0 +1,54 @@
+name: NERO single-device FCM homologation
+on:
+  push:
+    branches: [qa/nero-firebase-readiness]
+    paths: ['.github/workflows/nero-fcm-single-device.yml']
+permissions:
+  contents: read
+concurrency:
+  group: nero-fcm-private-single-test
+  cancel-in-progress: false
+jobs:
+  send:
+    if: github.run_attempt == 1
+    environment: nero-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Install authentication dependencies
+        run: python3 -m pip install --quiet 'google-auth==2.35.0' 'requests==2.32.3' 'cryptography==43.0.3'
+      - name: Send one diagnostic data message to encrypted registration token
+        env:
+          SERVER_CONFIG: ${{ secrets.NERO_FIREBASE_SERVICE_ACCOUNT_JSON }}
+          PROJECT: ${{ vars.NERO_FIREBASE_PROJECT_ID }}
+          ENCRYPTED_TOKEN: 'ocb1hKwDgYNsI8T7pGrqvg4z3oO3NUO/8FKa+/c9rqom7F7jzX3TbV2uxiDFKLTnO25WeiThjdmiW9DcfPoNUMjvzZ7KI8VCNquPReZyMcZbtGrCgoRPoBzopwwnIw96Sb0wJ3bCXGvujsS3nXW2+cCmYAa4la/xu7N1ktRxicpa+V+d9jZhPgQFmHVCaih7BuiAgH7DCh/20VXt/iQLIM6wOSq8BL4tqsA4TLhQow6DdywhpdIzx2JM9u1SOA/UQPcINhYn/39oFXHBEbPjsP8a3YNgIZWYzOptAjXAHZNyp7gW6eftvaUkWZjQ5qSlQoLIAA3bL/TqHFVKFC4QzQ=='
+        run: |
+          python3 - <<'PY'
+          import os, json, base64, re, sys
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
+          from cryptography.hazmat.primitives.asymmetric import padding
+          from cryptography.hazmat.primitives import hashes
+          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+          import requests
+          try:
+              project=os.environ["PROJECT"]
+              info=json.loads(os.environ["SERVER_CONFIG"])
+              assert project==info["project_id"]=="nero-music-c8654"
+              key=load_pem_private_key(info["private_key"].encode(),password=None)
+              token=key.decrypt(base64.b64decode(os.environ["ENCRYPTED_TOKEN"],validate=True),padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),algorithm=hashes.SHA256(),label=None)).decode()
+              assert re.fullmatch(r"[A-Za-z0-9_:-]{80,512}",token)
+              creds=service_account.Credentials.from_service_account_info(info,scopes=["https://www.googleapis.com/auth/firebase.messaging"])
+              creds.refresh(Request())
+          except Exception:
+              sys.exit("Private test setup failed; no notification sent.")
+          payload={"message":{"token":token,"data":{"kind":"nero_fcm_test_v1","applicationId":"br.com.timachado.neromusic"},"android":{"priority":"high","ttl":"300s"}}}
+          try:
+              response=requests.post("https://fcm.googleapis.com/v1/projects/"+project+"/messages:send",headers={"Authorization":"Bearer "+creds.token},json=payload,timeout=20)
+          except Exception:
+              sys.exit("FCM response uncertain; do not retry automatically.")
+          if response.status_code!=200:
+              sys.exit("FCM rejected request: HTTP "+str(response.status_code))
+          assert response.json()["name"].startswith("projects/"+project+"/messages/")
+          print("FCM accepted exactly one targeted diagnostic request. Device receipt not yet confirmed.")
+          PY
