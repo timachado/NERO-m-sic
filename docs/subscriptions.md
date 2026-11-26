@@ -44,3 +44,6 @@ Login Google via Supabase, UID autenticado estável como NERO ID interno; visita
 
 ## 0.9.85-dev — trial e estado de assinatura
 A tela de planos consulta a assinatura ativa e permite solicitar trial de sete dias somente para conta Free verificada pelo servidor. RPC de trial em `supabase/setup/nero_trial_start_draft.sql` para staging; ledger único, transação atômica, relógio do servidor e sem cobrança. O cliente reconsulta a assinatura após a solicitação. Ainda não aplicado, não homologado. A integração WooCommerce/Efí exige acesso administrativo autorizado, IDs de produtos NERO, confirmação do ambiente de teste e webhook verificado. Checkout pago continua desabilitado.
+
+## Decisão vigente 0.9.87-dev
+A contratação abre a página pública do NERO Music no site, onde o próprio Core oferece os planos e checkout. Sem vinculação manual de conta nem código na URL. Esta decisão substitui propostas anteriores de handoff manual. A publicação e a ativação comercial são administradas pelo proprietário. Não presumir que a página esteja publicada ou o backend em produção.

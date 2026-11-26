@@ -1,18 +1,17 @@
 package br.com.timachado.neromusic
 
+import java.net.URI
 import org.junit.Assert.*
 import org.junit.Test
 
 class NeroCommerceConnectTest {
-    @Test fun validCodeUsesOnlyOfficialHost(){
-        val code="a1".repeat(32)
-        assertEquals("https://timachado.ifree.page/?nero_connect="+code,neroCommerceBindingUrl(code))
-    }
-    @Test fun rejectsMalformedOrInjectedCode(){
-        for(code in listOf("", "a".repeat(63), "a".repeat(65), "A".repeat(64),
-            "https://example.com", "a".repeat(64)+"&redirect=https://example.com",
-            "a".repeat(63)+"\n", "a".repeat(63)+"%")){
-            assertNull(neroCommerceBindingUrl(code))
-        }
+    @Test fun opensOnlyPublicNeroPage(){
+        val url=URI(NERO_PUBLIC_APP_URL)
+        assertEquals("https",url.scheme)
+        assertEquals("timachado.ifree.page",url.host)
+        assertEquals("/aplicativos/nero-music/",url.path)
+        assertNull(url.rawQuery)
+        assertNull(url.rawFragment)
+        assertNull(url.rawUserInfo)
     }
 }
