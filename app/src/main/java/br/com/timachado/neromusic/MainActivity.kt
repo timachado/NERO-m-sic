@@ -86,6 +86,7 @@ private fun timestamp(ms: Long): String {
     val s = ms.coerceAtLeast(0) / 1000
     return "%d:%02d".format(s / 60, s % 60)
 }
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit,pipMode:Boolean,pipSupported:Boolean,onPip:()->Boolean) {
     val context = LocalContext.current
