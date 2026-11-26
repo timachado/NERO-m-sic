@@ -19,4 +19,19 @@ class NeroHistoryReconciliationTest{
         assertTrue(result.conflicts.isEmpty())
         assertEquals(listOf(b,a),result.snapshot.history)
     }
+    @Test fun sameSongOnTwoDevicesUsesLatestRecord(){
+        val base=CloudLibrarySnapshot(emptyList(),emptyList(),history=listOf(a))
+        val local=base.copy(history=listOf(a.copy(at=300L)))
+        val remote=base.copy(history=listOf(a.copy(at=500L)))
+        for((left,right) in listOf(local to remote,remote to local)){
+            val result=reconcileNeroLibrary(base,left,right)
+            assertTrue(result.conflicts.isEmpty())
+            assertEquals(listOf(a.copy(at=500L)),result.snapshot.history)
+        }
+    }
+    @Test fun deletionVersusNewListeningStillRequiresResolution(){
+        val base=CloudLibrarySnapshot(emptyList(),emptyList(),history=listOf(a))
+        val result=reconcileNeroLibrary(base,base.copy(history=emptyList()),base.copy(history=listOf(a.copy(at=300L))))
+        assertEquals(listOf(NeroSyncConflict("history",a.ref.id)),result.conflicts)
+    }
 }

@@ -8,7 +8,7 @@ internal data class NeroSyncResult(val snapshot:CloudLibrarySnapshot,val conflic
 
 internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySnapshot,remote:CloudLibrarySnapshot):NeroSyncResult{
     val conflicts=mutableListOf<NeroSyncConflict>()
-    fun <T> merge(kind:String,b:List<T>,l:List<T>,r:List<T>,key:(T)->String):List<T>{
+    fun <T> merge(kind:String,b:List<T>,l:List<T>,r:List<T>,resolve:((T,T)->T?)?=null,key:(T)->String):List<T>{
         val bm=b.associateBy(key);val lm=l.associateBy(key);val rm=r.associateBy(key)
         require(bm.size==b.size&&lm.size==l.size&&rm.size==r.size)
         return (lm.keys+rm.keys+bm.keys).mapNotNull{id->
@@ -17,7 +17,10 @@ internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySn
                 here==there->here
                 here==before->there
                 there==before->here
-                else->{conflicts+=NeroSyncConflict(kind,id);here}
+                else->{
+                    val resolved=if(here!=null&&there!=null)resolve?.invoke(here,there)else null
+                    if(resolved!=null)resolved else {conflicts+=NeroSyncConflict(kind,id);here}
+                }
             }
         }
     }
@@ -27,7 +30,15 @@ internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySn
     val playlists=merge("playlist",base.playlists,local.playlists,remote.playlists){it.id}
     val artists=merge("artist",base.artists,local.artists,remote.artists,::nativeArtistKey)
     val albums=merge("album",base.albums,local.albums,remote.albums){it.id}
-    val history=merge("history",base.history,local.history,remote.history){it.ref.id}.sortedByDescending{it.at}.take(100)
+    // Listening on two devices updates the same song's last-heard timestamp.
+    // Keep the newest actual record; equal-time incompatible metadata and
+    // delete-versus-new-listen remain conflicts rather than resurrecting data.
+    val history=merge("history",base.history,local.history,remote.history,
+        resolve={here,there->when{
+            here.at>there.at->here
+            there.at>here.at->there
+            else->null
+        }}){it.ref.id}.sortedByDescending{it.at}.take(100)
     val hidden=mergeHiddenSongs(base.hiddenSongs,local.hiddenSongs,remote.hiddenSongs)
     if(hidden.size>2000)conflicts+=NeroSyncConflict("hiddenSongs","limit")
     return NeroSyncResult(CloudLibrarySnapshot(favorites,playlists,artists,albums,history,hidden),conflicts)

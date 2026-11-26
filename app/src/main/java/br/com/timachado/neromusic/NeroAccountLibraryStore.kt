@@ -76,10 +76,16 @@ internal object NeroAccountSync{
             val empty=CloudLibrarySnapshot(emptyList(),emptyList())
             val current=NeroAccountLibraryStore.read(context,uid)?:NeroAccountLibraryState(0,empty,empty)
             require(NeroSupabase.activeUid.value==uid)
-            NeroAccountLibraryStore.write(context,uid,current.copy(pending=change(current.pending)))
+            val next=change(current.pending)
+            if(next==current.pending)false
+            else{
+                require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+                NeroAccountLibraryStore.write(context,uid,current.copy(pending=next))
+                true
+            }
+        }.let{changed->
+            if(changed){changesState.value++;editsState.value++}
         }
-        changesState.value++
-        editsState.value++
     }
     suspend fun restorePremiumBackup(context:Context,uid:String,backup:CloudLibrarySnapshot)=updateCollections(context,uid){snapshot->
         require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
@@ -160,17 +166,22 @@ internal object NeroAccountSync{
 
     // Foreground synchronization: serialized with local edits. Never mix guest data.
     suspend fun pull(context:Context,uid:String){
+        if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return
         pullState.value=NeroAccountPullStatus(uid,"loading")
         try{
             val outcome=reconcile(context,uid)
             val snapshot=outcome.state?.pending
+            if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return
             pullState.value=NeroAccountPullStatus(uid,when{
                 outcome.conflicts.isNotEmpty()->"conflict"
                 outcome.retry->"pending"
                 else->"ready"
             },snapshot?.favorites?.size?:0,snapshot?.playlists?.size?:0)
         }catch(e:kotlinx.coroutines.CancellationException){throw e}
-        catch(_:Exception){pullState.value=NeroAccountPullStatus(uid,"unavailable")}
+        catch(_:Exception){
+            if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+                pullState.value=NeroAccountPullStatus(uid,"unavailable")
+        }
     }
 
     // Only operates on isolated account cache; never imports the guest library.
@@ -179,6 +190,7 @@ internal object NeroAccountSync{
         require(NeroSupabase.activeUid.value==uid)
         val app=context.applicationContext
         val remote=readCloudLibrary(app,uid)
+        require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
         val stored=withContext(Dispatchers.IO){NeroAccountLibraryStore.read(app,uid)}
         if(stored!=null)require(remote.revision>=stored.revision)
         val result=stored?.let{reconcileNeroLibrary(it.baseline,it.pending,remote.snapshot)}
@@ -186,15 +198,21 @@ internal object NeroAccountSync{
         if(result.conflicts.isNotEmpty())return@withLock NeroAccountSyncOutcome(stored,result.conflicts)
         var revision=remote.revision
         if(result.snapshot!=remote.snapshot){
+            require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
             if(!writeCloudLibrary(app,uid,revision,result.snapshot))
                 return@withLock NeroAccountSyncOutcome(stored,emptyList(),retry=true)
             revision++
         }
         val session=NeroSupabase.session(app,false)
-        require(session.uid==uid)
+        require(session.uid==uid&&NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
         val next=NeroAccountLibraryState(revision,result.snapshot,result.snapshot)
-        withContext(Dispatchers.IO){NeroAccountLibraryStore.write(app,uid,next)}
-        changesState.value++
+        if(stored!=next){
+            withContext(Dispatchers.IO){
+                require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+                NeroAccountLibraryStore.write(app,uid,next)
+            }
+            changesState.value++
+        }
         NeroAccountSyncOutcome(next,emptyList())
     }
 }
