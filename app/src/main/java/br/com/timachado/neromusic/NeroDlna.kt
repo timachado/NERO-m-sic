@@ -13,6 +13,8 @@ import java.io.ByteArrayOutputStream
 import java.net.*
 
 internal data class NeroDlnaDevice(val name:String,val endpoint:URI,val service:String,val network:Network)
+internal data class NeroDialDevice(val name:String,val endpoint:URI,val network:Network)
+internal data class NeroTvDiscovery(val dlna:List<NeroDlnaDevice>,val dial:List<NeroDialDevice>)
 internal object NeroDlna {
     private const val LIMIT=256*1024
     private val servicePattern=Regex("urn:schemas-upnp-org:service:AVTransport:[1-9][0-9]?")
@@ -40,7 +42,8 @@ internal object NeroDlna {
         if(!privateV4(a)||cm.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)!=true)return false
         return cm.getLinkProperties(network)?.routes?.any{it.gateway?.isAnyLocalAddress!=false && it.destination.prefixLength>0 && it.destination.contains(a)}==true
     }
-    fun discover(context:Context):List<NeroDlnaDevice>{
+    fun discover(context:Context):List<NeroDlnaDevice> = discoverTargets(context).dlna
+    fun discoverTargets(context:Context):NeroTvDiscovery{
         val cm=manager(context)
         val network=cm.allNetworks.firstOrNull{cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)==true}
             ?:error("Conecte o celular ao Wi-Fi.")
@@ -52,7 +55,7 @@ internal object NeroDlna {
                 network.bindSocket(socket)
                 socket.soTimeout=400
                 val group=InetAddress.getByName("239.255.255.250")
-                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:device:MediaRenderer:2","urn:schemas-upnp-org:service:AVTransport:1","urn:schemas-upnp-org:service:AVTransport:2")){
+                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:device:MediaRenderer:2","urn:schemas-upnp-org:service:AVTransport:1","urn:schemas-upnp-org:service:AVTransport:2","urn:dial-multiscreen-org:service:dial:1")){
                     val bytes=("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: "+st+"\r\n\r\n").toByteArray(Charsets.US_ASCII)
                     socket.send(DatagramPacket(bytes,bytes.size,group,1900))
                 }
@@ -68,16 +71,50 @@ internal object NeroDlna {
                 }
             }
             val results=mutableListOf<NeroDlnaDevice>()
-            for((endpoint,peer) in found.entries.take(6)){
+            val dial=mutableListOf<NeroDialDevice>()
+            for((endpoint,peer) in found.entries.take(8)){
                 runCatching {
-                    val xml=http(context,network,endpoint,null,null)
-                    val values=description(xml)?:return@runCatching
-                    val control=safeEndpoint(endpoint.resolve(values.third).toString(),peer)?:return@runCatching
-                    results.add(NeroDlnaDevice(values.first,control,values.second,network))
+                    val response=request(context,network,endpoint,null,null)
+                    val xml=response.body
+                    description(xml)?.let{values->
+                        safeEndpoint(endpoint.resolve(values.third).toString(),peer)?.let{control->
+                            results.add(NeroDlnaDevice(values.first,control,values.second,network))
+                        }
+                    }
+                    val app=applicationEndpoint(response.headers["application-url"],peer)
+                    if(app!=null){
+                        val info=http(context,network,app,null,null)
+                        if(field(info,"state") in setOf("running","stopped")){
+                            val name=field(xml,"friendlyName")?.trim()?.take(100)?.ifBlank{"Smart TV"}?:"Smart TV"
+                            dial.add(NeroDialDevice(name,app,network))
+                        }
+                    }
                 }
             }
-            return results.distinctBy{it.endpoint}
+            return NeroTvDiscovery(results.distinctBy{it.endpoint},dial.distinctBy{it.endpoint.host})
         } finally {if(lock.isHeld)lock.release()}
+    }
+    internal fun applicationEndpoint(base:String?,peer:String):URI?{
+        val uri=safeEndpoint(base?:return null,peer)?:return null
+        if(uri.rawQuery!=null||uri.rawPath.orEmpty().split('/').any{it==".."||it=="."}||uri.rawPath.orEmpty().contains('%'))return null
+        return safeEndpoint(uri.toString().trimEnd('/')+"/YouTube",peer)
+    }
+    internal fun nativeVideoId(mediaId:String?):String? =
+        mediaId?.takeIf{it.startsWith("youtube:")}?.removePrefix("youtube:")?.takeIf{it.matches(Regex("[A-Za-z0-9_-]{11}"))}
+    internal fun launchParameters(id:String,seconds:Long,pairingCode:java.util.UUID):String{
+        require(id.matches(Regex("[A-Za-z0-9_-]{11}"))&&seconds>=0)
+        return "pairingCode="+pairingCode.toString()+"&v="+id+"&t="+seconds+".0"
+    }
+    // DIAL launches the TV's own app. Running state is NOT proof of playback.
+    fun launchNative(context:Context,d:NeroDialDevice,id:String,seconds:Long):Boolean{
+        request(context,d.network,d.endpoint,null,launchParameters(id,seconds,java.util.UUID.randomUUID()),true)
+        val deadline=SystemClock.elapsedRealtime()+8000L
+        while(SystemClock.elapsedRealtime()<deadline){
+            val state=runCatching{field(http(context,d.network,d.endpoint,null,null),"state")}.getOrNull()
+            if(state=="running")return true
+            Thread.sleep(500)
+        }
+        return false
     }
     private fun parser(xml:String):XmlPullParser {
         require(!xml.contains("<!DOCTYPE",true)&&!xml.contains("<!ENTITY",true))
@@ -151,7 +188,10 @@ internal object NeroDlna {
     }
     // Only local HTTP to the verified responder on Wi-Fi. No redirects, proxy or
     // global cleartext permission. Bounded response and time.
-    private fun http(context:Context,network:Network,uri:URI,action:String?,xml:String?):String {
+    private data class LocalResponse(val headers:Map<String,String>,val body:String)
+    private fun http(context:Context,network:Network,uri:URI,action:String?,xml:String?):String =
+        request(context,network,uri,action,xml).body
+    private fun request(context:Context,network:Network,uri:URI,action:String?,xml:String?,dialPost:Boolean=false):LocalResponse {
         val host=requireNotNull(uri.host)
         require(host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")))
         val address=InetAddress.getByName(host)
@@ -165,8 +205,9 @@ internal object NeroDlna {
             val deadline=SystemClock.elapsedRealtime()+3500
             val out=socket.getOutputStream()
             val headers=buildString{
-                append(if(action==null)"GET " else "POST ");append(path);append(" HTTP/1.1\r\nHost: $host:$port\r\nConnection: close\r\n")
+                append(if(action==null&&!dialPost)"GET " else "POST ");append(path);append(" HTTP/1.1\r\nHost: $host:$port\r\nConnection: close\r\n")
                 if(action!=null){append("Content-Type: text/xml; charset=utf-8\r\nSOAPAction: \"$action\"\r\nContent-Length: ");append(body.size);append("\r\n")}
+                if(dialPost){append("Content-Type: text/plain; charset=utf-8\r\nContent-Length: ");append(body.size);append("\r\n")}
                 append("\r\n")
             }
             out.write(headers.toByteArray(Charsets.US_ASCII));if(body.isNotEmpty())out.write(body);out.flush()
@@ -180,13 +221,14 @@ internal object NeroDlna {
             val status=line();require(status.matches(Regex("HTTP/1\\.[01] 2[0-9]{2}( .*)?")))
             val h=mutableMapOf<String,String>()
             for(i in 0..63){val l=line();if(l.isEmpty())break;check(i<63&&l.contains(':'));h[l.substringBefore(':').lowercase()]=l.substringAfter(':').trim()}
+            if(dialPost)return LocalResponse(h,"")
             val output=ByteArrayOutputStream()
             fun readN(n:Int){require(n>=0&&n<=LIMIT-output.size());repeat(n){val c=readByte();check(c>=0);output.write(c)}}
             if(h["transfer-encoding"]?.equals("chunked",true)==true){
                 while(true){val n=line().substringBefore(';').trim().toInt(16);if(n==0)break;readN(n);check(line().isEmpty())}
             }else if(h.containsKey("content-length"))readN(h.getValue("content-length").toInt())
             else while(true){val c=readByte();if(c<0)break;require(output.size()<LIMIT);output.write(c)}
-            return output.toString("UTF-8")
+            return LocalResponse(h,output.toString("UTF-8"))
         }
     }
 }
