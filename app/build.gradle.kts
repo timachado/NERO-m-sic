@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 137
-        versionName = "0.9.82-dev"
+        versionCode = 138
+        versionName = "0.9.83-dev"
         buildConfigField("boolean", "FULL_FEATURES", "true")
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()

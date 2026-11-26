@@ -159,13 +159,26 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
     }finally{bitmap.recycle()}
 }
 
+// A public caption contains only user-selected metadata, never source URLs or audio.
+internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String?):String=buildString{
+    append("🎧 NERO Music\n")
+    append(playlist.name.take(300))
+    if(single){
+        val artist=playlist.songs.firstOrNull()?.artist.orEmpty()
+        if(artist.isNotBlank())append("\n").append(displayArtistName(artist).take(300))
+    }else{
+        append("\n").append(playlist.songs.size).append(" faixas")
+    }
+    if(link!=null)append("\n").append(link).append("\nAbra o link e entre com sua conta Google.")
+    else append("\nCompartilhado no NERO Music")
+}
 @Composable
 internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:String?,onClose:()->Unit){
     val context=LocalContext.current
     val song=ref?.let(::sharedSong)?:SharedSong(title,artist)
     ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,cover=cover,
         send={link,card->
-            val message="🎧 NERO Music · música compartilhada\n"+link+"\nAbra o link e entre com sua conta Google."
+            val message=neroShareCaption(SharedPlaylist(song.title,listOf(song)),true,link)
             if(card){val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",message)}
             else sendText(context,"NERO Music",message)
         })
@@ -174,6 +187,6 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
     ProtectedShareDialog(playlist,single=false,onClose=onClose,send={link,_->
-        sendText(context,"Playlist NERO Music","🎧 Playlist compartilhada no NERO Music\n"+link+"\nAbra o link e entre com sua conta Google.")
+        sendText(context,"Playlist NERO Music",neroShareCaption(playlist,false,link))
     })
 }

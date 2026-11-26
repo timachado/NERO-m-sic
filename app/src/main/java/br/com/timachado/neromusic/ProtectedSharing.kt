@@ -3,6 +3,8 @@ package br.com.timachado.neromusic
 import android.content.Context
 import android.content.ClipboardManager
 import android.content.ClipData
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,20 +57,22 @@ private fun shareError(e:Exception):String=when(e){
     else->"Não foi possível concluir. Confira a conexão, o link e a validade do compartilhamento."
 }
 @Composable
-internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()->Unit,send:suspend(String,Boolean)->Unit,cover:String?=null){
+internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose:()->Unit,send:suspend(String?,Boolean)->Unit,cover:String?=null){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var busy by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
-    var link by remember{mutableStateOf<String?>(null)}
+    var link by remember(playlist){mutableStateOf<String?>(null)}
+    val linkConfigured=ShareLinks.configured&&NeroSupabase.configured
     fun share(action:String){
         busy=true;message=null
         scope.launch{
             try{
-                val url=link?:publishShare(context,playlist,single).also{link=it}
+                // Text and the public image must not depend on the protected link service.
+                val url=if(action=="copy"||action=="link")link?:publishShare(context,playlist,single).also{link=it} else null
                 if(action=="copy"){
                     val clipboard=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",url))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("NERO Music",requireNotNull(url)))
                     message="Link copiado."
                 }else{send(url,action=="card");onClose()}
             }catch(e:CancellationException){throw e}catch(e:Exception){message=shareError(e)}
@@ -76,7 +80,7 @@ internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose
         }
     }
     AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text(if(single)"Compartilhar música" else "Compartilhar playlist")},text={
-        Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Card(modifier=Modifier.fillMaxWidth()){
                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
                     val thumbnail=cover?:playlist.songs.firstOrNull()?.videoId?.takeIf{Regex("[A-Za-z0-9_-]{11}").matches(it)}?.let{"https://i.ytimg.com/vi/"+it+"/mqdefault.jpg"}
@@ -92,10 +96,11 @@ internal fun ProtectedShareDialog(playlist:SharedPlaylist,single:Boolean,onClose
                 }
             }
             Button(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("send")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("WhatsApp e redes sociais")}
-            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty(),onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text("Copiar link")}
+            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty()&&linkConfigured,onClick={share("link")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Link,null);Spacer(Modifier.width(8.dp));Text("Compartilhar link protegido")}
+            OutlinedButton(enabled=!busy&&playlist.songs.isNotEmpty()&&linkConfigured,onClick={share("copy")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.ContentCopy,null);Spacer(Modifier.width(8.dp));Text("Copiar link")}
             if(single)OutlinedButton(enabled=!busy,onClick={share("card")},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Image,null);Spacer(Modifier.width(8.dp));Text("Status e Stories")}
-            Text("Acesso com conta Google · link válido por 7 dias.",style=MaterialTheme.typography.bodySmall)
-            Text("Quem recebe o link pode ver o título, artista (música) e quantidade de faixas. A lista completa e a reprodução exigem Google. O card público não inclui áudio.",style=MaterialTheme.typography.bodySmall)
+            Text("WhatsApp e redes sociais compartilham o título e os artistas. O card para Status e Stories não inclui áudio.",style=MaterialTheme.typography.bodySmall)
+            Text(if(linkConfigured)"O link protegido exige Google para abrir o conteúdo e vale por 7 dias." else "Links protegidos indisponíveis nesta versão. Compartilhar texto e imagem continua disponível.",style=MaterialTheme.typography.bodySmall)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             message?.let{Text(it,color=if(it=="Link copiado.")Color(0xFF39FF14)else MaterialTheme.colorScheme.error)}
         }
