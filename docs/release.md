@@ -29,3 +29,6 @@ O workflow aceita `NERO_RELEASE_CERT_SHA256` em Environment secrets (prioridade)
 
 ## Paridade 0.9.69-dev
 A configuração anterior que desativava o catálogo experimental no release foi substituída por código compartilhado entre variantes. O candidato assinado preserva os recursos em vez de usar o stub vazio. A distribuição pública segue pendente de validação de direitos, funcionamento e aprovação explícita; o workflow apenas gera o APK privado.
+
+## Geração automática do candidato assinado
+Cada push em `feat/nero-connect` inicia automaticamente o workflow NERO signed release candidate, inclusive o commit que instala o gatilho. O dispatch manual permanece disponível para essa branch e main. Execuções anteriores da mesma branch são canceladas quando substituídas por novo commit. Mantém o ambiente nero-release, checagem de assinatura, lint, testes e artefato de 7 dias. Não há publicação automática, nem disparo por pull request. Restringir acesso de escrita à branch e ao ambiente de assinatura a pessoas/integrações confiáveis.

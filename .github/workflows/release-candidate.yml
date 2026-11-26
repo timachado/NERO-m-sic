@@ -1,16 +1,24 @@
 name: NERO signed release candidate
 on:
+  push:
+    branches:
+      - feat/nero-connect
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: nero-signed-candidate-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   release:
-    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/nero-connect')
+    if: github.ref == 'refs/heads/feat/nero-connect' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     environment: nero-release
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
