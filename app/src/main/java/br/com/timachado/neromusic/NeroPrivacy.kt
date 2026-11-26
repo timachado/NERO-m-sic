@@ -27,7 +27,7 @@ internal fun NeroPrivacyDialog(page:NeroPrivacyPage,onClose:()->Unit){
             when(page){
                 NeroPrivacyPage.DATA->{
                     Text("Dados no aparelho",fontWeight=FontWeight.Bold)
-                    Text("Favoritos online são armazenados por conta e podem ser enviados à nuvem quando o serviço estiver disponível. Playlists online também podem ser sincronizadas. Histórico, preferências e downloads continuam no aparelho nesta versão.")
+                    Text("Favoritos, playlists online, artistas seguidos e álbuns salvos são vinculados à conta e podem ser sincronizados quando o serviço estiver disponível. O histórico online (até 100 faixas) só é registrado para sincronização quando você ativa o recurso neste aparelho. Pausar o histórico não apaga os registros anteriores; use a opção de limpar histórico da conta. Preferências do aparelho, arquivos locais e downloads não são enviados à biblioteca na nuvem.")
                     Text("Login e compartilhamento",fontWeight=FontWeight.Bold)
                     Text("Ao entrar com Google, o NERO usa o Supabase para autenticação e compartilhamento. Nome, e-mail e foto disponíveis podem ser exibidos no perfil. A sessão é armazenada com criptografia do Android.")
                     Text("Serviços externos",fontWeight=FontWeight.Bold)

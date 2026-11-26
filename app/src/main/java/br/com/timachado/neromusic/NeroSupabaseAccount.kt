@@ -74,7 +74,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 finally{busy=false}
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
         }
-        Text("Favoritos e playlists online ficam vinculados à conta conectada. Arquivos locais, downloads e demais coleções continuam no aparelho. A nuvem depende da disponibilidade do serviço.",color=Color.LightGray,fontSize=12.sp)
+        Text("Favoritos, playlists online, artistas seguidos e álbuns salvos ficam vinculados à conta conectada. O histórico online pode ser sincronizado mediante ativação. Arquivos locais, downloads e preferências do aparelho permanecem locais. A nuvem depende da disponibilidade do serviço.",color=Color.LightGray,fontSize=12.sp)
         }
         }
         user?.let{NeroAccountCloud(it,enabled=!busy)}

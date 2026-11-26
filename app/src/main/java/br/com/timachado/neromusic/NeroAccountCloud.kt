@@ -41,7 +41,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean){
     Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Text("NERO Cloud",fontSize=20.sp,fontWeight=FontWeight.Bold)
-            Text("Favoritos online da conta ficam separados da biblioteca de visitante. Alterações locais são preservadas mesmo quando a conexão falha.",fontSize=12.sp,color=Color.LightGray)
+            Text("Favoritos, playlists, artistas e álbuns online da conta ficam separados da biblioteca de visitante. Alterações locais são preservadas mesmo quando a conexão falha.",fontSize=12.sp,color=Color.LightGray)
             val state=pull?.takeIf{it.uid==user.uid}?.state
             val pending=cached?.let{it.pending!=it.baseline}==true
             Text(when(state){
