@@ -21,10 +21,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit){
     val context=androidx.compose.ui.platform.LocalContext.current
+    val accountUid by NeroSupabase.activeUid.collectAsState()
+    val accountReady by NeroSupabase.identityReady.collectAsState()
+    val accountScope=rememberCoroutineScope()
     val savedAlbums=rememberSavedAlbums()
     val savedKey=savedAlbumKey(album.url)
     val saved=savedKey!=null&&savedAlbums.any{savedAlbumKey(it.url)==savedKey}
@@ -48,7 +52,16 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
             NeroArtwork(model=album.artwork,contentDescription="Capa do álbum",contentScale=ContentScale.Fit,modifier=Modifier.fillMaxWidth().aspectRatio(1f).heightIn(max=340.dp).clip(RoundedCornerShape(16.dp)))
             Text(album.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             Text(album.credit,color=Color.LightGray)
-            OutlinedButton(enabled=savedKey!=null,onClick={if(!NeroSavedAlbums.toggle(context,album))android.widget.Toast.makeText(context,"Não foi possível salvar o álbum.",android.widget.Toast.LENGTH_SHORT).show()}){
+            OutlinedButton(enabled=savedKey!=null,onClick={
+                val owner=accountUid
+                if(accountReady)accountScope.launch{
+                    try{
+                        require(NeroSupabase.activeUid.value==owner)
+                        if(owner!=null)NeroAccountSync.toggleAlbum(context,owner,album)
+                        else require(NeroSavedAlbums.toggle(context,album))
+                    }catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível salvar o álbum.",android.widget.Toast.LENGTH_SHORT).show()}
+                }
+            }){
                 Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(8.dp));Text(if(saved)"Álbum salvo · remover" else "Salvar álbum na biblioteca")
             }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
