@@ -172,6 +172,14 @@ internal object NeroSupabase{
         updateIdentity(signed)
         signed
     }
+    suspend fun checkoutHandoff(context:Context,plan:String):String {
+        require(neroCheckoutUrl(plan)!=null)
+        val current=session(context,true)
+        require(activeUid.value==current.uid && identityReady.value)
+        val response=JSONObject(request("/functions/v1/nero-checkout-handoff",JSONObject().put("plan_code",plan),current.access))
+        require(activeUid.value==current.uid && identityReady.value)
+        return requireNotNull(neroValidatedCheckoutHandoff(response.getString("checkout_url")))
+    }
     suspend fun rpc(name:String,body:JSONObject,access:String?=null):String{
         require(name in setOf("nero_share_preview","nero_share_create","nero_share_read","nero_cloud_read_v1","nero_cloud_write_v1","nero_plan_read_v1","nero_together_v1","nero_trial_start_v1"))
         return request("/rest/v1/rpc/"+name,body,access)
