@@ -46,6 +46,14 @@ internal object NeroSavedAlbums{
 @Composable
 internal fun rememberSavedAlbums():List<NativeCollection>{
     val context=LocalContext.current
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    val changes by NeroAccountSync.changes.collectAsState()
+    if(!ready)return emptyList()
+    if(uid!=null){
+        val owner=uid
+        return remember(owner,changes){runCatching{NeroAccountLibraryStore.read(context,requireNotNull(owner))?.pending?.albums.orEmpty().map{it.collection()}}.getOrDefault(emptyList<NativeCollection>())}
+    }
     val prefs=remember(context){NeroSavedAlbums.prefs(context)}
     var rows by remember(prefs){mutableStateOf(NeroSavedAlbums.read(context))}
     DisposableEffect(prefs){
