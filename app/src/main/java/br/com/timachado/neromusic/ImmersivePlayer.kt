@@ -71,12 +71,17 @@ internal fun ImmersivePlayer(
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
     var showDevices by remember{mutableStateOf(false)}
-    val preferWebVideoCaster=remember(castContext,mediaId,showDevices){
-        showDevices&&NeroWebVideoCaster.publicWatchUrl(mediaId)!=null&&NeroWebVideoCaster.available(castContext)
-    }
-    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,preferWebVideoCaster=preferWebVideoCaster,onCast={
+    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!videoMode,onCast={
         showDevices=false
-        runCatching{castContext.startActivity(android.content.Intent().setClassName(castContext,"br.com.timachado.neromusic.NeroCastActivity").putExtra(NeroWebVideoCaster.EXTRA_REQUEST,preferWebVideoCaster))}.onFailure{android.widget.Toast.makeText(castContext,"Transmissão indisponível.",android.widget.Toast.LENGTH_SHORT).show()}
+        when{
+            NeroWebVideoCaster.publicWatchUrl(mediaId)==null->android.widget.Toast.makeText(castContext,"Esta faixa não tem endereço público compatível para transmissão.",android.widget.Toast.LENGTH_LONG).show()
+            !NeroWebVideoCaster.available(castContext)->{
+                android.widget.Toast.makeText(castContext,"Instale o Web Video Caster para transmitir à TV.",android.widget.Toast.LENGTH_LONG).show()
+                runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}
+                    .onFailure{runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/apps/details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}}
+            }
+            !NeroWebVideoCaster.handoff(castContext,mediaId,title)->android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
+        }
     },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     val hiddenSongs=rememberHiddenSongs()
