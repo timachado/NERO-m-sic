@@ -115,3 +115,6 @@ Fila: salva com a identidade capturada na abertura do diálogo, fecha ao trocar 
 
 ## 0.9.92-dev — cancelamento de downloads
 A biblioteca Downloads agora oferece cancelamento explícito de uma transferência ou lote ativo, usando o Job da operação e bloqueando início concorrente pelo mesmo OfflineManager. O lote verifica cancelamento entre faixas. Operações existentes limpam temporários em finally; downloads já concluídos não são removidos. A leitura de rede bloqueante pode demorar até o timeout antes de encerrar; não é pausa/retomada de bytes. Nenhuma alteração na fonte de áudio, catálogo, checkout ou backend. Compilação e testes de cancelamento real no Android pendentes. A 0.9.91-dev passou no CI debug e assinatura release, run 45769474823.
+
+## 0.9.93-dev — recuperação explícita do player
+Botão Tentar novamente no player imersivo e na tela principal após erro. A ação verifica erro atual, estado idle, mídia atual e comandos Media3, prepara e reproduz a mesma fila, sem substituir itens ou programar repetição automática. A recuperação do vídeo em tela cheia continua com os controles existentes. Cancelamento explícito recarrega downloads concluídos antes de liberar outra operação; remoção bloqueada durante o Job. Sem mudanças em catálogo, checkout, produção ou credenciais. Compilação e testes de aparelho pendentes.

@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +43,11 @@ internal class OfflineManager(private val context:Context){
         val job=currentCoroutineContext()[Job]?:return
         downloadJob=job
         try{action()}
+        catch(e:CancellationException){
+            // A file may have finished just before cancellation; refresh the list.
+            if(_state.value.cancelling)withContext(NonCancellable){reload()}
+            throw e
+        }
         finally{
             if(downloadJob===job){
                 downloadJob=null
@@ -58,7 +65,7 @@ internal class OfflineManager(private val context:Context){
     }
     fun notify(message:String){_state.update{it.copy(notice=message)}}
     suspend fun remove(id:String){
-        if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
+        if(downloadJob!=null||_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
         _state.update{it.copy(removing=true,notice=null)}
         try{
             val native=_state.value.nativeSaved.firstOrNull{"youtube:"+it.hit.id==id}

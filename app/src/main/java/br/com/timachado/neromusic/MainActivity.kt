@@ -423,7 +423,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
-                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},
+                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},
                 onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
                 onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
                 onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
@@ -558,7 +558,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 Text("Falha na conexão com o player.", color = MaterialTheme.colorScheme.error)
                 TextButton(onClick={retries=0;connectionEpoch++}){Text("Reconectar player")}
             }
-            playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            playbackError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+                TextButton(enabled=controller!=null,onClick={controller?.let(::retryNeroPlayback)}){Text("Tentar novamente")}
+            }
         }
     }
     }

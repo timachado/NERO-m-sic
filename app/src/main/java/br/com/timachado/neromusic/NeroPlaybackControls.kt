@@ -38,3 +38,12 @@ internal fun neroPlaybackErrorMessage(code:Int):String=when(code){
     PlaybackException.ERROR_CODE_IO_NO_PERMISSION->"Sem permissão para acessar esta faixa. Confira as permissões de áudio do aplicativo."
     else->"Falha na reprodução. Toque em Play para tentar novamente."
 }
+
+// A retry is explicit, preserves the timeline and position and never starts a
+// different item after the original error has already cleared.
+internal fun retryNeroPlayback(player:Player){
+    if(player.playerError==null||player.playbackState!=Player.STATE_IDLE||player.currentMediaItem==null)return
+    if(!player.isCommandAvailable(Player.COMMAND_PREPARE)||!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE))return
+    player.prepare()
+    player.play()
+}
