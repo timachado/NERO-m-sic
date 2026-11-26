@@ -27,5 +27,6 @@ internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySn
     val playlists=merge("playlist",base.playlists,local.playlists,remote.playlists){it.id}
     val artists=merge("artist",base.artists,local.artists,remote.artists,::nativeArtistKey)
     val albums=merge("album",base.albums,local.albums,remote.albums){it.id}
-    return NeroSyncResult(CloudLibrarySnapshot(favorites,playlists,artists,albums),conflicts)
+    val history=merge("history",base.history,local.history,remote.history){it.ref.id}.sortedByDescending{it.at}.take(100)
+    return NeroSyncResult(CloudLibrarySnapshot(favorites,playlists,artists,albums,history),conflicts)
 }
