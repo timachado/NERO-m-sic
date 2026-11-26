@@ -110,6 +110,7 @@ class NeroCastActivity:FragmentActivity(){
             if(!sending&&dlnaPlaying==null){selectedDlna=null;targetStatus.text="Destino: Google Cast"}
             else message("Encerre a transmissão atual antes de trocar.")
         }
+        button("Testar comunicação com a TV"){testReceiver()}
         button("Transmitir faixa atual"){send()}
         button("Pausar na TV"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()?:message("Nenhuma transmissão NERO ativa.")}
         button("Continuar na TV"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()?:message("Nenhuma transmissão NERO ativa.")}
@@ -173,6 +174,32 @@ class NeroCastActivity:FragmentActivity(){
                 }
             }catch(e:CancellationException){throw e}catch(_:Exception){message("Busca DLNA indisponível. Confira se o Wi-Fi está conectado.")}
             finally{scanning=false}
+        }
+    }
+    private fun testReceiver(){
+        if(sending||scanning)return
+        val device=selectedDlna
+        if(device==null){
+            message(if(client()!=null)"Google Cast: sessão conectada. Inicie uma faixa compatível para testar a reprodução." else "Selecione primeiro a TV DLNA ou Google Cast.")
+            return
+        }
+        sending=true
+        message("Consultando receptor DLNA…")
+        scope.launch{
+            try{
+                val state=withContext(Dispatchers.IO){NeroDlna.transportState(applicationContext,device)}
+                val label=when(state){
+                    "PLAYING"->"reproduzindo"
+                    "STOPPED"->"parado"
+                    "NO_MEDIA_PRESENT"->"sem mídia"
+                    "PAUSED_PLAYBACK"->"pausado"
+                    "TRANSITIONING"->"carregando"
+                    else->null
+                }
+                message(if(label!=null)"TV respondeu ao comando DLNA: "+label+". A transmissão de uma faixa ainda precisa ser testada."
+                    else "A TV respondeu, mas não informou um estado de reprodução reconhecido.")
+            }catch(e:CancellationException){throw e}catch(_:Exception){message("TV encontrada, mas não respondeu ao controle DLNA. Verifique a autorização de dispositivos na TV.")}
+            finally{sending=false}
         }
     }
     private fun dlnaControl(action:String){
