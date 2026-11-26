@@ -84,7 +84,7 @@ internal fun ImmersivePlayer(
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
     var sharing by remember(title,artist){mutableStateOf(false)}
     if(sharing)TrackShareDialog(title,artist,shareRef,remoteCover,onClose={sharing=false})
-    var seekPreview by remember(title,artist,track?.id){mutableStateOf<Float?>(null)}
+    var seekPreview by remember(title,artist,track?.id,fullControls){mutableStateOf<Float?>(null)}
     LaunchedEffect(deadline){
         val end=deadline?:return@LaunchedEffect
         while(true){remaining=(end-SystemClock.elapsedRealtime()).coerceAtLeast(0);if(remaining==0L)break;delay(1000)}
@@ -104,13 +104,12 @@ internal fun ImmersivePlayer(
     BoxWithConstraints(modifier.fillMaxSize().background(Color(appearance.background))){
         NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else if(appearance==NeroPlayerTheme.CAFE)Color(0xFF653044) else aqua,playing&&!videoMode,Modifier.matchParentSize(),primary=neon,secondary=aqua)
         val compact=maxHeight<780.dp
-        val coverSize=minOf(maxWidth-36.dp,(maxHeight-(if(canVideo) 335.dp else 285.dp)).coerceAtLeast(150.dp),410.dp).coerceAtLeast(1.dp)
+        val coverSize=minOf(maxWidth-36.dp,480.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Minimizar player")}
                 Column(Modifier.weight(1f).then(if(origin!=null)Modifier.clickable{onOriginClick(origin)}else Modifier),horizontalAlignment=Alignment.CenterHorizontally){
-                    Row(verticalAlignment=Alignment.CenterVertically){Text("NER",fontSize=19.sp,fontWeight=FontWeight.ExtraBold,color=Color.White);Icon(Icons.Default.PlayCircle,null,tint=neon,modifier=Modifier.size(19.dp));Text(" Music",fontSize=19.sp,color=Color.White)}
-                    Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=aqua,fontWeight=FontWeight.Bold)
+                    Text(origin?.caption?:"NERO MUSIC",fontSize=12.sp,color=Color.LightGray)
                     Text(origin?.displayName?:"Reproduzindo",fontSize=14.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
                 Box{
@@ -163,11 +162,8 @@ internal fun ImmersivePlayer(
                 }
             }
             else {
-                val shape=RoundedCornerShape(24.dp)
-                Box(Modifier.size(coverSize).drawBehind{
-                    for(i in 4 downTo 1){val d=i*3.dp.toPx();drawRoundRect(Brush.linearGradient(listOf(neon.copy(alpha=.05f),aqua.copy(alpha=.09f),(if(appearance==NeroPlayerTheme.CAFE)aqua else Color(0xFFFF527D)).copy(alpha=.05f))),topLeft=Offset(-d,-d),size=Size(size.width+2*d,size.height+2*d),cornerRadius=CornerRadius(24.dp.toPx()+d),style=Stroke(3.dp.toPx()))}
-                }.shadow(10.dp,shape).background(if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF0C171A),shape)
-                    .border(1.5.dp,Brush.linearGradient(listOf(neon,aqua,tones.copy(alpha=.85f),neon)),shape).padding(2.dp).clip(shape),contentAlignment=Alignment.Center){
+                val shape=RoundedCornerShape(12.dp)
+                Box(Modifier.size(coverSize).shadow(6.dp,shape).background(panel,shape).clip(shape),contentAlignment=Alignment.Center){
                     if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize(),large=true)
                     else LocalArtwork(track,Modifier.fillMaxSize(),large=true)
                 }
@@ -183,28 +179,30 @@ internal fun ImmersivePlayer(
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
             Column(Modifier.fillMaxWidth()){
-                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(18.dp),primary=neon,secondary=aqua)
+                if(!videoMode)NeroMotionBars(playing,Modifier.fillMaxWidth().height(12.dp),primary=neon,secondary=aqua)
                 Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
-                    },enabled=ready&&duration>0&&fullControls,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF16434A)))
+                    },enabled=ready&&duration>0&&fullControls,colors=SliderDefaults.colors(thumbColor=Color.White,activeTrackColor=Color.White,inactiveTrackColor=Color.White.copy(alpha=.25f),disabledThumbColor=Color.White,disabledActiveTrackColor=Color.White,disabledInactiveTrackColor=Color.White.copy(alpha=.25f)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                     Text(clock(seekPreview?.let{(it*duration).toLong()}?:position),fontSize=12.sp,color=Color.LightGray)
                     Text(clock(duration),fontSize=12.sp,color=Color.LightGray)
                 }
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically){
-                FilledTonalIconButton(onClick=onPrevious,enabled=ready&&fullControls,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
-                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)72.dp else 80.dp).drawBehind{for(i in 3 downTo 1){drawCircle(neon.copy(alpha=.055f*i),radius=size.minDimension/2+i*3.dp.toPx(),style=Stroke(2.dp.toPx()))}}.border(2.dp,neon,androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
-                FilledTonalIconButton(onClick=onNext,enabled=ready&&fullControls,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,if(fullControls)"Aleatório" else "Aleatório obrigatório no Free",tint=if(shuffle||!fullControls)neon else Color.White,modifier=Modifier.size(26.dp))}
+                IconButton(onClick=onPrevious,enabled=ready&&fullControls){Icon(Icons.Default.SkipPrevious,"Anterior",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
+                FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)66.dp else 76.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Color.White,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
+                IconButton(onClick=onNext,enabled=ready&&fullControls){Icon(Icons.Default.SkipNext,"Próxima",tint=if(fullControls)Color.White else Color.White.copy(alpha=.32f),modifier=Modifier.size(34.dp))}
+                IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Timer,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White,modifier=Modifier.size(26.dp))}
             }
-            Row(Modifier.fillMaxWidth().background((if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF102B23)).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
-                IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
-                IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
-                IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Bedtime,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
-                IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,"Aleatório",tint=if(shuffle)neon else Color.White)}
-                IconButton(onClick=onRepeat,enabled=ready&&fullControls){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
-                if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+                IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=Color.White)}
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick=onRepeat,enabled=ready&&fullControls){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(!fullControls)Color.White.copy(alpha=.32f) else if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
+                if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=Color.White)}
+                IconButton(onClick={sharing=true},enabled=title.isNotBlank()){Icon(Icons.Default.Share,"Compartilhar",tint=Color.White)}
+                IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=Color.White)}
             }
             if(!fullControls)Text("NERO Free · ordem aleatória. Pular, repetir e ajustar a posição são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
             if(nativeHit!=null){

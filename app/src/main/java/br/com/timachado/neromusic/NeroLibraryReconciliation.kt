@@ -28,7 +28,7 @@ internal fun reconcileNeroLibrary(base:CloudLibrarySnapshot,local:CloudLibrarySn
     // A playlist is an ordered entity. Concurrent edits to the same playlist
     // are explicit conflicts rather than silently losing order or resurrecting tracks.
     val playlists=merge("playlist",base.playlists,local.playlists,remote.playlists){it.id}
-    val artists=merge("artist",base.artists,local.artists,remote.artists,::nativeArtistKey)
+    val artists=merge("artist",base.artists,local.artists,remote.artists,key=::nativeArtistKey)
     val albums=merge("album",base.albums,local.albums,remote.albums){it.id}
     // Listening on two devices updates the same song's last-heard timestamp.
     // Keep the newest actual record; equal-time incompatible metadata and
