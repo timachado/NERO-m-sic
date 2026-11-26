@@ -20,18 +20,21 @@ internal fun djGenre(prompt:String):NeroGenre?{
     val text=" "+genreKey(prompt)+" "
     return neroGenres.firstOrNull{(" "+genreKey(it.label)+" ") in text}
 }
+internal fun djCanCreate(prompt:String,mood:String)=prompt.isNotBlank()||mood in djMoods
+internal fun djToggleMood(current:String,option:String)=if(current==option)"" else option.takeIf{it in djMoods}.orEmpty()
 internal fun djQueries(prompt:String,mood:String,seeds:List<String>,premium:Boolean):List<String>{
+    if(!djCanCreate(prompt,mood))return emptyList()
     val phrase=prompt.trim().take(75)
     val genre=djGenre(phrase)
     val artists=genre?.artists?.take(4)?:seeds.take(4)
-    val terms=listOf(phrase.ifBlank{mood})+artists.map{(it+" "+mood).trim().take(100)}
+    val terms=listOf(phrase.ifBlank{mood})+artists.map{(it+" "+mood.ifBlank{phrase}).trim().take(100)}
     return terms.filter{it.length>=3}.distinct().take(if(premium)5 else 1)
 }
 @Composable
 internal fun NeroDjShelf(uid:String?,seeds:List<String>,hidden:Set<String>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
-    var mood by remember(uid){mutableStateOf("Romântico")}
+    var mood by remember(uid){mutableStateOf("")}
     var prompt by remember(uid){mutableStateOf("")}
     var busy by remember(uid){mutableStateOf(false)}
     var verified by remember(uid){mutableStateOf(false)}
@@ -42,11 +45,11 @@ internal fun NeroDjShelf(uid:String?,seeds:List<String>,hidden:Set<String>,canPl
         Text("NERO DJ",fontSize=22.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
         Text("Seu mix por momento e estilo · degustação Free de até 5 faixas, Premium de até 30.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
-            items(djMoods){option->FilterChip(selected=mood==option,enabled=!busy,onClick={mood=option;rows=emptyList()},label={Text(option)})}
+            items(djMoods){option->FilterChip(selected=mood==option,enabled=!busy,onClick={mood=djToggleMood(mood,option);rows=emptyList();notice=null},label={Text(option)})}
         }
-        OutlinedTextField(prompt,{prompt=it.take(100);rows=emptyList()},enabled=!busy,label={Text("Qual é a sua vibe hoje?")},placeholder={Text("Pagode romântico")},modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(prompt,{prompt=it.take(100);rows=emptyList();notice=null},enabled=!busy,label={Text("Qual é a sua vibe hoje?")},placeholder={Text("Ex.: pagode, rock, sertanejo")},modifier=Modifier.fillMaxWidth())
         Text("Seu pedido será usado como consulta musical. Esta versão usa busca e regras de personalização, não um modelo de IA.",fontSize=11.sp,color=Color.LightGray)
-        Button(enabled=!busy,onClick={
+        Button(enabled=!busy&&djCanCreate(prompt,mood),onClick={
             val requested=prompt;val moment=mood
             busy=true;rows=emptyList();notice=null
             scope.launch{

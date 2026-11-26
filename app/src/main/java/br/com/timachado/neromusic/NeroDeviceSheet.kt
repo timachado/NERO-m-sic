@@ -6,6 +6,12 @@ import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaRouter2
+import android.media.MediaRoute2Info
+import android.media.RouteDiscoveryPreference
+import android.media.AudioDeviceCallback
+import android.os.Handler
+import android.os.Looper
+import androidx.annotation.RequiresApi
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
@@ -61,6 +67,21 @@ private fun openOutputSettings(context:Context):Boolean{
     }
     return runCatching{context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS));true}.getOrDefault(false)
 }
+// Only use routes explicitly exposed by Android; never force the phone's call-audio path.
+private data class NeroMediaRoute(val id:String,val name:String,val selected:Boolean)
+@RequiresApi(30)
+private fun readMediaRoutes(router:MediaRouter2):List<NeroMediaRoute> = runCatching{
+    val selected=router.systemController.selectedRoutes.map{it.id}.toSet()
+    (router.systemController.selectedRoutes+router.routes).filter{it.isSystemRoute}
+        .distinctBy{it.id}.map{NeroMediaRoute(it.id,it.name.toString(),it.id in selected)}
+}.getOrDefault(emptyList())
+@RequiresApi(30)
+private fun transferMediaRoute(router:MediaRouter2,id:String):Boolean=runCatching{
+    val route=router.routes.firstOrNull{it.id==id&&it.isSystemRoute}?:return@runCatching false
+    router.transferTo(route)
+    true
+}.getOrDefault(false)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit){
@@ -70,6 +91,10 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
     val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
     val scope=rememberCoroutineScope()
     var opening by remember{mutableStateOf(false)}
+    val router=remember(context){if(Build.VERSION.SDK_INT>=30)runCatching{MediaRouter2.getInstance(context)}.getOrNull() else null}
+    var routes by remember{mutableStateOf(emptyList<NeroMediaRoute>())}
+    var pending by remember{mutableStateOf<String?>(null)}
+    var routeNotice by remember{mutableStateOf<String?>(null)}
     fun handoff(action:()->Boolean){
         if(opening)return
         opening=true
@@ -79,7 +104,36 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
             onClose()
         }
     }
-    LaunchedEffect(Unit){while(true){outputs=readOutputs(context);delay(2000L)}}
+    // Keep discovery active only while the sheet is visible; update after every connection change.
+    DisposableEffect(context,router){
+        val audio=context.getSystemService(AudioManager::class.java)
+        val callback=object:AudioDeviceCallback(){
+            override fun onAudioDevicesAdded(addedDevices:Array<out AudioDeviceInfo>){outputs=readOutputs(context)}
+            override fun onAudioDevicesRemoved(removedDevices:Array<out AudioDeviceInfo>){outputs=readOutputs(context)}
+        }
+        val registered=runCatching{audio.registerAudioDeviceCallback(callback,Handler(Looper.getMainLooper()))}.isSuccess
+        if(Build.VERSION.SDK_INT>=30&&router!=null){
+            val routeCallback=object:MediaRouter2.RouteCallback(){}
+            val preference=RouteDiscoveryPreference.Builder(listOf(MediaRoute2Info.FEATURE_LIVE_AUDIO),false).build()
+            val listening=runCatching{router.registerRouteCallback(context.mainExecutor,routeCallback,preference)}.isSuccess
+            onDispose{
+                if(listening)runCatching{router.unregisterRouteCallback(routeCallback)}
+                if(registered)runCatching{audio.unregisterAudioDeviceCallback(callback)}
+            }
+        }else onDispose{if(registered)runCatching{audio.unregisterAudioDeviceCallback(callback)}}
+    }
+    LaunchedEffect(router){while(true){
+        outputs=readOutputs(context)
+        if(Build.VERSION.SDK_INT>=30&&router!=null)routes=readMediaRoutes(router)
+        delay(800L)
+    }}
+    LaunchedEffect(pending,routes){
+        val id=pending?:return@LaunchedEffect
+        if(routes.any{it.id==id&&it.selected}){pending=null;routeNotice="Saída de áudio selecionada."}
+    }
+    LaunchedEffect(pending){
+        if(pending!=null){delay(4500L);pending=null;routeNotice="O Android não confirmou a troca. Use Escolher saída de áudio ou Reconectar Bluetooth."}
+    }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onBackground,sheetState=sheetState,dragHandle={Box(Modifier.fillMaxWidth().height(32.dp).neroSwipeDown(onClose),contentAlignment=Alignment.Center){BottomSheetDefaults.DragHandle(color=MaterialTheme.colorScheme.primary)}}){
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             Row(Modifier.fillMaxWidth().neroSwipeDown(onClose),verticalAlignment=Alignment.CenterVertically){Text("Dispositivos",fontSize=26.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));IconButton(onClick=onClose){Icon(Icons.Default.KeyboardArrowDown,"Fechar dispositivos",tint=green)}}
@@ -93,6 +147,21 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                     Icon(Icons.Default.Speaker,null,tint=green,modifier=Modifier.size(36.dp))
                 }
             }
+            if(routes.size>1){
+                Text("Escolher dispositivo de áudio",fontWeight=FontWeight.Medium)
+                routes.forEach{route->
+                    OutlinedButton(enabled=!opening&&pending==null&&!route.selected,onClick={
+                        if(Build.VERSION.SDK_INT>=30&&router!=null&&transferMediaRoute(router,route.id)){
+                            pending=route.id;routeNotice="Solicitando troca ao Android…"
+                        }else handoff{openOutputSettings(context)}
+                    },modifier=Modifier.fillMaxWidth()){
+                        Icon(if(route.selected)Icons.Default.Check else Icons.Default.Speaker,null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(route.name+if(route.selected)" · selecionado" else "",modifier=Modifier.weight(1f))
+                    }
+                }
+            }
+            routeNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             Text("Saídas conectadas ao telefone",fontWeight=FontWeight.Medium)
             val other=outputs.connected.filter{it.type!=AudioDeviceInfo.TYPE_BUILTIN_SPEAKER}
             if(other.isEmpty())Text("Nenhum acessório de áudio detectado.",color=Color.LightGray,fontSize=13.sp)
@@ -108,8 +177,9 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 Icon(Icons.Default.Devices,null);Spacer(Modifier.width(8.dp));Text(if(Build.VERSION.SDK_INT>=34)"Escolher saída de áudio" else "Dispositivos Bluetooth")
             }
             OutlinedButton(enabled=!opening,onClick={handoff{runCatching{context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS));true}.getOrDefault(false)}},modifier=Modifier.fillMaxWidth()){
-                Icon(Icons.Default.Bluetooth,null);Spacer(Modifier.width(8.dp));Text("Conectar dispositivo Bluetooth")
+                Icon(Icons.Default.Bluetooth,null);Spacer(Modifier.width(8.dp));Text("Conectar ou reconectar Bluetooth")
             }
+            Text("Se o Bluetooth sumir após voltar ao telefone, reconecte o acessório nas configurações do Android e escolha a saída novamente. O NERO não desconecta nem desemparelha o acessório.",fontSize=12.sp,color=Color.LightGray)
             if(BuildConfig.FULL_FEATURES){
                 HorizontalDivider()
                 Text("TV e Chromecast",fontWeight=FontWeight.Medium)
