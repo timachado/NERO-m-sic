@@ -12,6 +12,7 @@ import androidx.media3.session.SessionCommand
 internal object NeroMediaActions {
     val favorite=SessionCommand("nero.media.favorite",Bundle.EMPTY)
     val repeat=SessionCommand("nero.media.repeat",Bundle.EMPTY)
+    val switchVideo=SessionCommand("nero.media.switch_video",Bundle.EMPTY)
     fun reference(item:MediaItem?):OnlineRef?=item?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
     fun localId(item:MediaItem?):String?=item?.mediaId?.takeIf{it.toLongOrNull()!=null}
     fun canFavorite(item:MediaItem?)=reference(item)!=null||localId(item)!=null
