@@ -219,26 +219,47 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var shuffle by remember { mutableStateOf(false) }
     var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
     var playbackError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(controller) {
-        val p = controller
-        if(p==null){nowId="";nowOpenRef=null;nowOrigin=null;title="";artist="";playing=false;buffering=false;pos=0L;duration=0L;videoMode=false;playbackError=null;return@LaunchedEffect}
-        while (p.isConnected) {
-            val currentItem=p.currentMediaItem
-            nowId = currentItem?.mediaId.orEmpty()
-            nowOrigin=currentItem?.playbackOrigin()
-            videoMode=currentItem?.isNeroVideo()==true
-            videoQuality=currentItem?.videoQuality()?:0
-            nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
-            title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
-            artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
-            playing = p.isPlaying
-            buffering = p.playbackState==Player.STATE_BUFFERING
-            pos = p.currentPosition.coerceAtLeast(0)
-            duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
-            shuffle = p.shuffleModeEnabled
-            repeat = p.repeatMode
-            playbackError = p.playerError?.let { "Falha na reprodução ("+it.errorCodeName+"). Toque em Play para tentar novamente." }
-            delay(350)
+    // Metadata is event-driven. Only the visible progress indicator needs polling.
+    DisposableEffect(controller,foreground) {
+        val p=controller
+        if(p==null){
+            nowId="";nowOpenRef=null;nowOrigin=null;title="";artist="";playing=false;buffering=false;pos=0L;duration=0L;videoMode=false;playbackError=null
+            onDispose{}
+        }else if(!foreground||!p.isConnected){
+            onDispose{}
+        }else{
+            fun refresh(){
+                if(!p.isConnected)return
+                val currentItem=p.currentMediaItem
+                nowId = currentItem?.mediaId.orEmpty()
+                nowOrigin=currentItem?.playbackOrigin()
+                videoMode=currentItem?.isNeroVideo()==true
+                videoQuality=currentItem?.videoQuality()?:0
+                nowOpenRef = currentItem?.let{openRefFromItem(it)?:youtubeRefFromItem(it)}
+                title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
+                artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
+                playing = p.isPlaying
+                buffering = p.playbackState==Player.STATE_BUFFERING
+                pos = p.currentPosition.coerceAtLeast(0)
+                duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
+                shuffle = p.shuffleModeEnabled
+                repeat = p.repeatMode
+                playbackError = p.playerError?.let { "Falha na reprodução ("+it.errorCodeName+"). Toque em Play para tentar novamente." }
+            }
+            val listener=object:Player.Listener{
+                override fun onEvents(player:Player,events:Player.Events){refresh()}
+            }
+            p.addListener(listener)
+            refresh()
+            onDispose{p.removeListener(listener)}
+        }
+    }
+    LaunchedEffect(controller,foreground,playing){
+        val p=controller?:return@LaunchedEffect
+        if(!foreground||!playing)return@LaunchedEffect
+        while(p.isConnected&&p.isPlaying){
+            pos=p.currentPosition.coerceAtLeast(0L)
+            delay(350L)
         }
     }
     var tab by remember { mutableIntStateOf(3) }

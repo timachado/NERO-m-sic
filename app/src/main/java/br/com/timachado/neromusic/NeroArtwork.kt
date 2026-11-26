@@ -34,7 +34,7 @@ internal fun NeroArtwork(model:Any?,contentDescription:String?,modifier:Modifier
     }
     var index by remember(candidates){mutableIntStateOf(0)}
     val data=candidates[index]
-    val request=remember(context,data,large){ImageRequest.Builder(context).data(data).allowRgb565(false).crossfade(120).build()}
+    val request=remember(context,data,large){ImageRequest.Builder(context).data(data).allowRgb565(false).crossfade(if(large)120 else 0).build()}
     AsyncImage(model=request,contentDescription=contentDescription,modifier=modifier,contentScale=contentScale,
         filterQuality=FilterQuality.High,onError={if(index<candidates.lastIndex)index++},
         onSuccess={state->if(large&&index<candidates.lastIndex&&state.result.drawable.intrinsicWidth in 1..160)index++})
