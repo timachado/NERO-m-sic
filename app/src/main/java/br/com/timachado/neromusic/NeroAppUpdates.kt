@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.work.*
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
@@ -119,6 +120,10 @@ internal fun NeroUpdateNotificationPreference(){
     val context=LocalContext.current
     val resume=rememberNeroCommerceResume()
     var enabled by remember{mutableStateOf(NeroAppUpdates.notificationsEnabled(context))}
+    val scope=rememberCoroutineScope()
+    var checking by remember{mutableStateOf(false)}
+    var result by remember{mutableStateOf<NeroUpdate?>(null)}
+    var status by remember{mutableStateOf<String?>(null)}
     var allowed by remember(resume){mutableStateOf(NeroRadarAlerts.permitted(context))}
     val permission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()){
         allowed=NeroRadarAlerts.permitted(context)
@@ -131,6 +136,18 @@ internal fun NeroUpdateNotificationPreference(){
                 enabled=it;NeroAppUpdates.setNotifications(context,it)
                 if(it&&Build.VERSION.SDK_INT>=33&&!allowed)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
             })
+        }
+        OutlinedButton(enabled=!checking,onClick={
+            checking=true;status=null;result=null
+            scope.launch{
+                try{result=NeroAppUpdates.fetch();status=if(result==null)"Nenhuma atualização oficial disponível." else "Nova versão: "+result!!.name}
+                catch(e:CancellationException){throw e}catch(_:Exception){status="Não foi possível consultar atualizações. Tente novamente."}
+                finally{checking=false}
+            }
+        },modifier=Modifier.fillMaxWidth()){Text(if(checking)"Consultando…" else "Verificar atualizações")}
+        status?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
+        result?.let{update->
+            TextButton(onClick={try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(update.url)))}catch(_:Exception){status="Não foi possível abrir o download."}}){Text("Baixar NERO Music "+update.name)}
         }
         if(enabled&&!allowed){
             Text("Autorize notificações do Android para receber avisos com o app fechado.",style=MaterialTheme.typography.bodySmall)
