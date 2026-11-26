@@ -29,7 +29,7 @@ private fun snapshot(p:MediaController?):QueueSnapshot {
     if(p==null||!p.isCommandAvailable(Player.COMMAND_GET_TIMELINE))
         return QueueSnapshot(emptyList(),-1,false,false,false)
     return QueueSnapshot((0 until p.mediaItemCount).map{p.getMediaItemAt(it)},p.currentMediaItemIndex,p.shuffleModeEnabled,
-        p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS),p.isCommandAvailable(Player.COMMAND_SEEK_TO_MEDIA_ITEM))
+        NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS),NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_MEDIA_ITEM))
 }
 @Composable
 internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:()->Unit,modifier:Modifier=Modifier,sourceTitle:String?=null,onHome:(()->Unit)?=null){
@@ -137,7 +137,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                 }
             }
         }
-        if(queue.shuffle)Text("Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas.",color=Color(0xFF00E5FF),fontSize=12.sp)
+        if(queue.shuffle)Text(if(NeroPlaybackAccess.allowed())"Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas." else "NERO Free · reprodução aleatória. Controle da fila no Premium.",color=Color(0xFF00E5FF),fontSize=12.sp)
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
             OutlinedButton(enabled=ready&&!saving&&queue.items.isNotEmpty()&&queue.items.size<=1000,onClick={saveOwner=uid;saveItems=queue.items.toList()},modifier=Modifier.weight(1f)){Text("Salvar fila")}
             OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.weight(1f)){Text("Limpar próximas")}
@@ -177,6 +177,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
 }
 // Append/insert without replacing the current timeline or changing play intent.
 internal fun enqueueNeroItem(controller:MediaController?,item:MediaItem,next:Boolean):String{
+    if(!NeroPlaybackAccess.allowed())return "Organizar a fila é um recurso NERO Premium."
     val p=controller?:return "Player indisponível."
     val state=snapshot(p)
     if(!state.canEdit)return "Fila indisponível."
@@ -194,6 +195,7 @@ internal fun QueueAddMenu(controller:MediaController?,track:Track){
     var notice by remember{mutableStateOf<String?>(null)}
     val p=controller
     fun add(next:Boolean){
+        if(!NeroPlaybackAccess.allowed()){notice="Organizar a fila é um recurso NERO Premium.";return}
         val player=p?:return
         val state=snapshot(player)
         if(!state.canEdit){notice="Fila indisponível.";return}

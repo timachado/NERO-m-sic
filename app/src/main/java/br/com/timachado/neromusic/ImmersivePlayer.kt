@@ -53,6 +53,8 @@ internal fun ImmersivePlayer(
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
     shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier,onRetry:()->Unit=onPlayPause
 ){
+    val premiumSignal by NeroPlaybackAccess.premium.collectAsState()
+    val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
     var fullscreen by rememberSaveable{mutableStateOf(false)}
     LaunchedEffect(videoMode){if(!videoMode)fullscreen=false}
     if(fullscreen&&videoMode&&videoPlayer!=null){
@@ -185,25 +187,26 @@ internal fun ImmersivePlayer(
                 Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
-                    },enabled=ready&&duration>0,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF16434A)))
+                    },enabled=ready&&duration>0&&fullControls,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF16434A)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                     Text(clock(seekPreview?.let{(it*duration).toLong()}?:position),fontSize=12.sp,color=Color.LightGray)
                     Text(clock(duration),fontSize=12.sp,color=Color.LightGray)
                 }
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically){
-                FilledTonalIconButton(onClick=onPrevious,enabled=ready,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
+                FilledTonalIconButton(onClick=onPrevious,enabled=ready&&fullControls,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipPrevious,"Anterior",Modifier.size(30.dp))}
                 FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)72.dp else 80.dp).drawBehind{for(i in 3 downTo 1){drawCircle(neon.copy(alpha=.055f*i),radius=size.minDimension/2+i*3.dp.toPx(),style=Stroke(2.dp.toPx()))}}.border(2.dp,neon,androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
-                FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
+                FilledTonalIconButton(onClick=onNext,enabled=ready&&fullControls,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
             }
             Row(Modifier.fillMaxWidth().background((if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF102B23)).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
                 IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Bedtime,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
-                IconButton(onClick=onShuffle,enabled=ready){Icon(Icons.Default.Shuffle,"Aleatório",tint=if(shuffle)neon else Color.White)}
-                IconButton(onClick=onRepeat,enabled=ready){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
+                IconButton(onClick=onShuffle,enabled=ready&&fullControls){Icon(Icons.Default.Shuffle,"Aleatório",tint=if(shuffle)neon else Color.White)}
+                IconButton(onClick=onRepeat,enabled=ready&&fullControls){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
                 if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
+            if(!fullControls)Text("NERO Free · ordem aleatória. Pular, repetir e ajustar a posição são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id

@@ -70,6 +70,8 @@ private suspend fun importLyrics(context:Context,uri:Uri,key:String):List<LyricL
 internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Long,duration:Long,playing:Boolean,localUri:Uri?,
     onTogglePlay:()->Unit,onSeek:(Long)->Unit,onBack:()->Unit,modifier:Modifier=Modifier){
     val context=LocalContext.current
+    val premiumSignal by NeroPlaybackAccess.premium.collectAsState()
+    val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
     val scope=rememberCoroutineScope()
     val key=remember(mediaId,title,artist){lyricKey(mediaId,title,artist)}
     var lines by remember(key){mutableStateOf(emptyList<LyricLine>())}
@@ -164,10 +166,10 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             itemsIndexed(lines){index,line->
                 Text(line.text.ifBlank{"♪"},fontSize=if(index==active)26.sp else 21.sp,fontWeight=if(index==active)FontWeight.Bold else FontWeight.Normal,
                     color=if(index==active)Color(0xFF39FF14) else Color.LightGray,
-                    modifier=Modifier.fillMaxWidth().clickable(enabled=line.at!=null&&duration>0){line.at?.let{onSeek(it.coerceIn(0,duration))}})
+                    modifier=Modifier.fillMaxWidth().clickable(enabled=fullControls&&line.at!=null&&duration>0){line.at?.let{onSeek(it.coerceIn(0,duration))}})
             }
         }
-        Slider(value=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={if(duration>0)onSeek((it*duration).toLong())},enabled=duration>0)
+        Slider(value=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={if(duration>0)onSeek((it*duration).toLong())},enabled=duration>0&&fullControls)
         FilledIconButton(onClick=onTogglePlay,enabled=mediaId.isNotBlank(),modifier=Modifier.align(Alignment.CenterHorizontally).size(56.dp)){
             Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar")
         }

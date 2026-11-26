@@ -36,14 +36,20 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     override fun onConnect(session:MediaSession,controller:MediaSession.ControllerInfo):MediaSession.ConnectionResult{
         if(!trusted(controller))return MediaSession.ConnectionResult.reject()
         return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-            .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
-                .add(NeroMediaActions.favorite).add(NeroMediaActions.repeat).build())
+            .setAvailableSessionCommands(NeroPlaybackAccess.sessionCommands())
+            .setAvailablePlayerCommands(NeroPlaybackAccess.commands())
             .build()
+    }
+    override fun onPlayerCommandRequest(session:MediaSession,controller:MediaSession.ControllerInfo,playerCommand:Int):Int{
+        if(!trusted(controller)||!neroPlaybackCommandAllowed(NeroPlaybackAccess.allowed(),playerCommand))
+            return SessionError.ERROR_PERMISSION_DENIED
+        return androidx.media3.session.SessionResult.RESULT_SUCCESS
     }
     override fun onCustomCommand(session:MediaSession,controller:MediaSession.ControllerInfo,customCommand:androidx.media3.session.SessionCommand,args:android.os.Bundle):ListenableFuture<androidx.media3.session.SessionResult>{
         val result=when{
             !trusted(controller)->SessionError.ERROR_PERMISSION_DENIED
             customCommand==NeroMediaActions.favorite->if(NeroMediaActions.toggle(context,session.player.currentMediaItem))androidx.media3.session.SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE
+            customCommand==NeroMediaActions.repeat&&!NeroPlaybackAccess.allowed()->SessionError.ERROR_PERMISSION_DENIED
             customCommand==NeroMediaActions.repeat->{
                 val p=session.player
                 if(p.currentMediaItem==null)SessionError.ERROR_BAD_VALUE else{
@@ -97,7 +103,13 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     }
     override fun onSetMediaItems(mediaSession:MediaSession,controller:MediaSession.ControllerInfo,mediaItems:List<MediaItem>,startIndex:Int,startPositionMs:Long):ListenableFuture<MediaSession.MediaItemsWithStartPosition>{
         if(trusted(controller)&&mediaItems.size==1&&mediaItems.first().mediaId==resumeId)return onPlaybackResumption(mediaSession,controller)
-        return super.onSetMediaItems(mediaSession,controller,mediaItems,startIndex,startPositionMs)
+        val original=super.onSetMediaItems(mediaSession,controller,mediaItems,startIndex,startPositionMs)
+        return Futures.transform(original,{ result->
+            val resolved=requireNotNull(result)
+            if(NeroPlaybackAccess.allowed()||resolved.mediaItems.isEmpty())resolved
+            else MediaSession.MediaItemsWithStartPosition(resolved.mediaItems,
+                neroPlaybackStartIndex(resolved.mediaItems.size,resolved.startIndex,false),0L)
+        },java.util.concurrent.Executor{it.run()})
     }
     private fun <T> async(block:suspend ()->T):ListenableFuture<T>{
         val future=SettableFuture.create<T>()

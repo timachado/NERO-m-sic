@@ -84,10 +84,10 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Free",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Acesso gratuito",color=premiumCyan)
-            listOf("Player de música e busca","Login Google","Favoritos e playlists","Sincronização básica da biblioteca","NERO Radar","NERO DJ · degustação").forEach { PlanFeature(it,true) }
+            listOf("Player de música e busca","Reprodução aleatória","Login Google","Favoritos e playlists","Sincronização básica da biblioteca","NERO Radar","NERO DJ · degustação").forEach { PlanFeature(it,true) }
             PlanFeature("Smart Mix, Daily Mix e Discovery online",NativeMusicCatalog.enabled)
             if(!NativeMusicCatalog.enabled)Text("Recursos online indisponíveis nesta versão.",fontSize=12.sp,color=Color.LightGray)
-            Text("Aproveite os recursos gratuitos do NERO.",fontSize=12.sp,color=Color.LightGray)
+            Text("Ouça em modo aleatório, sem avançar, voltar ou arrastar a barra da música.",fontSize=12.sp,color=Color.LightGray)
         }
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Premium",color=premiumGreen,fontSize=23.sp,fontWeight=FontWeight.Bold)
@@ -105,7 +105,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             }
             subscription?.planLabel?.let{Text("Seu plano: "+it,fontSize=13.sp)}
             if(checking||activating)LinearProgressIndicator(Modifier.fillMaxWidth())
-            listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
+            listOf("Tudo do Free","Reprodução na ordem escolhida","Pular, repetir e ajustar posição","Controle da fila","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
             PlanFeature("NERO Together · integração em homologação",false)
             PlanFeature("Suporte prioritário · previsto",false)
             HorizontalDivider(color=Color(0xFF33434A))

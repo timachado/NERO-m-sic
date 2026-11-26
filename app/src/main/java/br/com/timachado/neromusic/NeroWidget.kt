@@ -23,8 +23,8 @@ internal object NeroWidgetState {
             p.mediaMetadata.title?.toString().orEmpty().ifBlank{item.mediaMetadata.title?.toString().orEmpty()}.ifBlank{"Faixa atual"},
             p.mediaMetadata.artist?.toString().orEmpty().ifBlank{item.mediaMetadata.artist?.toString().orEmpty()},
             neroPlayRequested(p.playWhenReady,p.playbackState),
-            p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem(),
-            p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem(),
+            NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem(),
+            NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem(),
             true
         )
     }
@@ -35,8 +35,8 @@ internal object NeroWidgetState {
         if(p.currentMediaItem==null)return
         when(action){
             NeroWidget.ACTION_TOGGLE->toggleNeroPlayback(p)
-            NeroWidget.ACTION_PREVIOUS->if(p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem())p.seekToPreviousMediaItem()
-            NeroWidget.ACTION_NEXT->if(p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem())p.seekToNextMediaItem()
+            NeroWidget.ACTION_PREVIOUS->if(NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem())p.seekToPreviousMediaItem()
+            NeroWidget.ACTION_NEXT->if(NeroPlaybackAccess.allowed()&&p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem())p.seekToNextMediaItem()
         }
         refresh(context,true)
     }

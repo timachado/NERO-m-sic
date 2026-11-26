@@ -41,6 +41,7 @@ internal object NeroMediaActions {
         val buttons=mutableListOf<CommandButton>()
         if(canFavorite(item))buttons+=CommandButton.Builder(if(liked)CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
             .setDisplayName(if(liked)"Remover dos favoritos" else "Curtir música").setSessionCommand(favorite).build()
+        if(!NeroPlaybackAccess.allowed())return buttons
         val mode=player.repeatMode
         buttons+=CommandButton.Builder(when(mode){Player.REPEAT_MODE_ONE->CommandButton.ICON_REPEAT_ONE;Player.REPEAT_MODE_ALL->CommandButton.ICON_REPEAT_ALL;else->CommandButton.ICON_REPEAT_OFF})
             .setDisplayName(when(mode){Player.REPEAT_MODE_ONE->"Repetir faixa";Player.REPEAT_MODE_ALL->"Repetir fila";else->"Repetição desligada"})

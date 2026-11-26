@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlaybackService : MediaLibraryService() {
@@ -64,10 +65,13 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         // Recovery: use the original Media3 renderer and audio sink.
+        NeroPlaybackAccess.update(null,false)
         val player = ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(dataSource)).build().apply {
             setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             setHandleAudioBecomingNoisy(true)
+            shuffleModeEnabled=true
+            repeatMode=Player.REPEAT_MODE_OFF
         }
         if(BuildConfig.FULL_FEATURES) {
             eq = SessionEqualizer(applicationContext)
@@ -167,9 +171,46 @@ class PlaybackService : MediaLibraryService() {
                 if(events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)||events.contains(Player.EVENT_REPEAT_MODE_CHANGED)||events.contains(Player.EVENT_TIMELINE_CHANGED))refreshLayout()
             }
         })
+        fun applyPlaybackPolicy(){
+            if(!NeroPlaybackAccess.allowed()){
+                if(!player.shuffleModeEnabled)player.shuffleModeEnabled=true
+                if(player.repeatMode!=Player.REPEAT_MODE_OFF)player.repeatMode=Player.REPEAT_MODE_OFF
+            }
+            session?.let{active->
+                active.connectedControllers.forEach{controller->
+                    active.setAvailableCommands(controller,NeroPlaybackAccess.sessionCommands(),NeroPlaybackAccess.commands())
+                }
+            }
+            refreshLayout()
+            NeroWidgetState.refresh(applicationContext,true)
+        }
+        // Recheck on identity changes and periodically while the media session exists.
+        // A failed verification leaves playback available in Free mode.
+        timerScope.launch{
+            combine(NeroSupabase.activeUid,NeroSupabase.identityReady){uid,ready->uid to ready}
+                .collectLatest{(uid,ready)->
+                    NeroPlaybackAccess.update(null,false)
+                    applyPlaybackPolicy()
+                    if(ready&&uid!=null){
+                        while(true){
+                            val verified=verifiedPremium(applicationContext,uid)
+                            if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)break
+                            NeroPlaybackAccess.update(uid,verified)
+                            applyPlaybackPolicy()
+                            delay(40_000L)
+                        }
+                    }
+                }
+        }
         NeroWidgetState.attach(applicationContext,player)
         player.addListener(object:Player.Listener{
-            override fun onEvents(player:Player,events:Player.Events){NeroWidgetState.refresh(applicationContext)}
+            override fun onEvents(p:Player,events:Player.Events){
+                if(!NeroPlaybackAccess.allowed()){
+                    if(!p.shuffleModeEnabled)p.shuffleModeEnabled=true
+                    if(p.repeatMode!=Player.REPEAT_MODE_OFF)p.repeatMode=Player.REPEAT_MODE_OFF
+                }
+                NeroWidgetState.refresh(applicationContext)
+            }
         })
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
@@ -192,7 +233,7 @@ class PlaybackService : MediaLibraryService() {
     private fun closePlayback() {
         favoriteListener?.let{getSharedPreferences("nero_library",0).unregisterOnSharedPreferenceChangeListener(it)};favoriteListener=null
         replaySampler?.close();replaySampler=null
-        timerScope.cancel(); NeroSleepTimer.cancel()
+        timerScope.cancel(); NeroPlaybackAccess.update(null,false); NeroSleepTimer.cancel()
         eq?.close(); eq = null
         NeroWidgetState.detach(applicationContext)
         val active=session

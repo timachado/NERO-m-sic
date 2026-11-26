@@ -374,7 +374,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playRequested,
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
                 onTogglePlay = { controller?.let(::toggleNeroPlayback) },
-                onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
+                onSeek = { if(NeroPlaybackAccess.allowed())controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
         } else if (showEq && BuildConfig.FULL_FEATURES) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
         } else if (showAccount) {
@@ -423,10 +423,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
-                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},
-                onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
-                onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
-                onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
+                onSeek={if(NeroPlaybackAccess.allowed())controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},
+                onPrevious={if(NeroPlaybackAccess.allowed())controller?.seekToPreviousMediaItem()},onNext={if(NeroPlaybackAccess.allowed())controller?.seekToNextMediaItem()},
+                onShuffle={if(NeroPlaybackAccess.allowed())controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
+                onRepeat={if(NeroPlaybackAccess.allowed())controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},
                 onLyrics={showLyrics=true},onQueue={showQueue=true},onEqualizer={showEq=true},
                 canRadio=currentTrack!=null||(NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null),radioBusy=radioBusy,autoplay=autoplay,
                 onToggleAutoplay={autoplay=!autoplay;NeroAutoplay.set(context,autoplay)},

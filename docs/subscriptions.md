@@ -47,3 +47,6 @@ A tela de planos consulta a assinatura ativa e permite solicitar trial de sete d
 
 ## Decisão vigente 0.9.87-dev
 A contratação abre a página pública do NERO Music no site, onde o próprio Core oferece os planos e checkout. Sem vinculação manual de conta nem código na URL. Esta decisão substitui propostas anteriores de handoff manual. A publicação e a ativação comercial são administradas pelo proprietário. Não presumir que a página esteja publicada ou o backend em produção.
+
+## Decisão aprovada 0.9.95-dev — reprodução Free
+Free mantém busca, biblioteca, favoritos e playlists; listas iniciam aleatoriamente, modo aleatório obrigatório; sem anterior/próxima manual, seek, repetição ou organização de fila. Uma faixa isolada continua pesquisável e reproduzível; iniciar outra seleção continua possível. Premium confirmado pelo servidor (incluindo trial ativo) restaura controles. Não cria anúncios, cotas ou limites de tempo. Comandos bloqueados no MediaSession e widget; interface exibe restrições. A política se aplica ao player NERO, inclusive arquivos locais; cast externo, controles de vídeo e recuperação precisam de homologação específica. Sem garantia de proteção contra APK modificado. Verificação periódica em memória; sem autorização confirmada, Free. Nenhum backend ou checkout alterado.
