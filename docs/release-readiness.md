@@ -82,3 +82,6 @@ O diálogo Salvar como playlist NERO preenche o nome original do Spotify (até o
 
 ## 0.9.77-dev — comunicação dos planos
 Tela de planos com identidade independente NERO, sem menção nominal a YouTube Music Premium e sem jargão de homologação. Mantém aviso de assinatura indisponível, benefícios previstos, ausência de cobrança, restrições de download e preços existentes. Alteração exclusivamente textual; nenhuma mudança de catálogo, direitos, pagamento, credenciais ou produção. Compilação e homologação visual pendentes.
+
+## 0.9.78-dev — consistência da marca
+Padroniza referências visíveis à marca principal NERO Music nas telas de conta, planos, descoberta, busca, playlists, transferência, compartilhamento e detalhes. Mantém submarcas NERO Premium, Free, Cloud, Transfer, Replay e Mixes; logo Aurora Neon e identificadores técnicos permanecem intactos. Informações sobre fontes externas, importação Spotify, destino de links e limitações de acesso/download permanecem explícitas onde pertinentes. Sem mudança funcional, pagamentos ou credenciais. Compilação e revisão visual em aparelho pendentes.

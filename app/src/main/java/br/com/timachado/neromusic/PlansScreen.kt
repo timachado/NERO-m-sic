@@ -30,7 +30,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("Planos NERO",fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text("Planos NERO Music",fontSize=24.sp,fontWeight=FontWeight.Bold)
         }
         Text("Sua música. Sua liberdade.",fontSize=18.sp,fontWeight=FontWeight.Medium,color=premiumCyan)
         Text("Escolha a experiência NERO que combina com você.",fontSize=13.sp,color=Color.LightGray)

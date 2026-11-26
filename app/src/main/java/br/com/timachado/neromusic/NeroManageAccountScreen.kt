@@ -23,7 +23,7 @@ internal fun NeroManageAccountScreen(user:NeroSession,modifier:Modifier=Modifier
     Column(modifier.fillMaxSize()){
         Row(Modifier.fillMaxWidth().padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("Minha conta NERO",fontSize=22.sp,fontWeight=FontWeight.Bold)
+            Text("Minha conta NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
         }
         TabRow(selectedTabIndex=tab){
             listOf("Perfil","Plano e nuvem","Privacidade").forEachIndexed{index,label->
@@ -48,7 +48,7 @@ internal fun NeroManageAccountScreen(user:NeroSession,modifier:Modifier=Modifier
                             HorizontalDivider()
                             Text("Método de acesso",style=MaterialTheme.typography.labelMedium)
                             Text("Google conectado",color=MaterialTheme.colorScheme.primary)
-                            Text("O Google autentica sua identidade. Os recursos da conta NERO são gerenciados aqui.",style=MaterialTheme.typography.bodySmall)
+                            Text("O Google autentica sua identidade. Gerencie sua conta NERO Music aqui.",style=MaterialTheme.typography.bodySmall)
                             Text("Nome, e-mail e foto são dados da identidade conectada, disponíveis para consulta nesta versão.",style=MaterialTheme.typography.bodySmall)
                         }
                     }
@@ -66,5 +66,5 @@ internal fun NeroManageAccountScreen(user:NeroSession,modifier:Modifier=Modifier
             }
         }
     }
-    if(confirmExit)AlertDialog(onDismissRequest={confirmExit=false},title={Text("Sair da conta NERO?")},text={Text("Sua conta e biblioteca não serão excluídas.")},confirmButton={TextButton(enabled=enabled,onClick={confirmExit=false;onSignOut()}){Text("Sair")}},dismissButton={TextButton(onClick={confirmExit=false}){Text("Cancelar")}})
+    if(confirmExit)AlertDialog(onDismissRequest={confirmExit=false},title={Text("Sair da conta NERO Music?")},text={Text("Sua conta e biblioteca não serão excluídas.")},confirmButton={TextButton(enabled=enabled,onClick={confirmExit=false;onSignOut()}){Text("Sair")}},dismissButton={TextButton(onClick={confirmExit=false}){Text("Cancelar")}})
 }

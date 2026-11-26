@@ -93,11 +93,11 @@ internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,onCloud:()->Unit,mod
         Icon(Icons.Default.AccountCircle,null,tint=accentAccount,modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
         if(auth==null) {
             Text("Acesso como visitante",fontSize=22.sp,fontWeight=FontWeight.Bold)
-            Text("A autenticação ainda não foi configurada neste build. Você pode continuar usando o NERO Music normalmente.",color=Color.LightGray)
+            Text("A autenticação está indisponível nesta versão. Você pode continuar usando o NERO Music normalmente.",color=Color.LightGray)
             Button(onClick=onBack,modifier=Modifier.fillMaxWidth()){Text("Continuar ouvindo")}
         } else if(user!=null) {
             val current=user!!
-            Text(current.displayName?.takeIf{it.isNotBlank()} ?: "Minha conta NERO",fontSize=22.sp,fontWeight=FontWeight.Bold)
+            Text(current.displayName?.takeIf{it.isNotBlank()} ?: "Minha conta NERO Music",fontSize=22.sp,fontWeight=FontWeight.Bold)
             Text(current.email.orEmpty(),color=Color.LightGray)
             if(!current.isEmailVerified) {
                 Text("E-mail ainda não verificado.",color=Color.LightGray)
@@ -112,7 +112,7 @@ internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,onCloud:()->Unit,mod
             }},modifier=Modifier.fillMaxWidth()){Text("Sair da conta")}
             TextButton(enabled=!busy,onClick={deleteConfirm=true}){Text("Excluir minha conta",color=MaterialTheme.colorScheme.error)}
         } else {
-            Text(if(creating)"Crie sua conta NERO" else "Bem-vindo ao NERO",fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text(if(creating)"Crie sua conta NERO Music" else "Bem-vindo ao NERO Music",fontSize=24.sp,fontWeight=FontWeight.Bold)
             Text("O som da sua liberdade.",color=Color.LightGray)
             if(clientId.isNotBlank()) OutlinedButton(enabled=!busy,onClick={execute {
                 val option=GetSignInWithGoogleOption.Builder(clientId).build()
@@ -142,7 +142,7 @@ internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,onCloud:()->Unit,mod
             TextButton(onClick=onBack){Text("Continuar como visitante")}
         }
         if(BuildConfig.DEBUG && user != null) OutlinedButton(enabled=!busy,onClick=onCloud,modifier=Modifier.fillMaxWidth()) { Text("Backup da biblioteca · teste") }
-        OutlinedButton(enabled=!busy,onClick=onPlans,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Star,null); Spacer(Modifier.width(8.dp)); Text("Conhecer planos NERO") }
+        OutlinedButton(enabled=!busy,onClick=onPlans,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Star,null); Spacer(Modifier.width(8.dp)); Text("Conhecer planos NERO Music") }
         if(busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let{Text(it,color=Color.LightGray)}
     }

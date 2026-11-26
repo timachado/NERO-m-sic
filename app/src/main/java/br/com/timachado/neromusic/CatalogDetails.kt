@@ -72,7 +72,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             Text(entry.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
             if(entry.credit.isNotBlank())Text(entry.credit,color=Color.LightGray)
             Text("MusicBrainz · metadados de avaliação",fontSize=12.sp,color=Color.LightGray)
-            OutlinedButton(onClick={onSearch(entry.searchText)},modifier=Modifier.fillMaxWidth()){Text("Encontrar músicas no NERO")}
+            OutlinedButton(onClick={onSearch(entry.searchText)},modifier=Modifier.fillMaxWidth()){Text("Encontrar músicas no NERO Music")}
         }
         if(busy||trackBusy)item{LinearProgressIndicator(Modifier.fillMaxWidth())}
         message?.let{msg->item{Text(msg,color=Color(0xFF00E5FF));TextButton(onClick={reload++}){Text("Tentar novamente")}}}

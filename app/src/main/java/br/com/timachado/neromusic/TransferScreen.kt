@@ -206,7 +206,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
         matchingJob?.cancel();matchingJob=null;matchProgress=null;selected=null;missingOnly=false
     }
     BackHandler(current!=null&&linkIndex==null&&onlinePosition==null){leavePlaylist()}
-    if(confirmMatch&&current!=null)AlertDialog(onDismissRequest={confirmMatch=false},title={Text("Localizar músicas no NERO?")},
+    if(confirmMatch&&current!=null)AlertDialog(onDismissRequest={confirmMatch=false},title={Text("Localizar músicas no NERO Music?")},
         text={Text("O NERO consultará somente título e artista das músicas desta playlist na fonte musical. Correspondências exatas e únicas serão vinculadas; versões ambíguas ficam disponíveis para revisão. Nenhum áudio será baixado.")},
         confirmButton={TextButton(onClick={
             confirmMatch=false
@@ -236,7 +236,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                 }finally{matchProgress=null;matchingJob=null}
             }
         }){Text("Buscar músicas")}},dismissButton={TextButton(onClick={confirmMatch=false}){Text("Cancelar")}})
-    if(confirmSave&&current!=null)AlertDialog(onDismissRequest={confirmSave=false},title={Text("Salvar playlist no NERO?")},
+    if(confirmSave&&current!=null)AlertDialog(onDismissRequest={confirmSave=false},title={Text("Salvar playlist no NERO Music?")},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
             Text("Nome original: "+current.name,fontSize=13.sp,color=Color.LightGray)
             OutlinedTextField(playlistName,{playlistName=it.take(100)},label={Text("Nome da playlist")},singleLine=true,modifier=Modifier.fillMaxWidth())
@@ -254,7 +254,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                     val next=importPortablePlaylists(existing,listOf(OnlineList(newId,name,rows)))
                     require(next.size<=100)
                     saveScopedOnlineLists(context,owner,existing,next)
-                    notice="Playlist \""+name+"\" disponível na biblioteca NERO."
+                    notice="Playlist \""+name+"\" disponível na biblioteca NERO Music."
                 }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível salvar a playlist. Confira os limites da biblioteca (100 playlists e 1.000 faixas por playlist); a importação original foi preservada."}
                 finally{saving=false}
             }
@@ -274,7 +274,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                         catch(e:CancellationException){throw e}catch(_:Exception){onlineNotice="Falha na consulta. Tente novamente."}
                         finally{onlineBusy=false}
                     }
-                }){Text("Buscar no NERO")}
+                }){Text("Buscar no NERO Music")}
                 if(onlineBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
                 onlineNotice?.let{Text(it,fontSize=12.sp)}
                 LazyColumn(Modifier.heightIn(max=280.dp)){
@@ -363,7 +363,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                 pending=null
                 scope.launch{
                     busy=true;notice=null
-                    try{lists=saveImport(context,preview);notice="Playlists importadas. Abra uma lista para localizar as músicas no catálogo NERO."}
+                    try{lists=saveImport(context,preview);notice="Playlists importadas. Abra uma lista para localizar as músicas no catálogo NERO Music."}
                     catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível salvar a importação. Os dados anteriores foram preservados."}
                     finally{busy=false}
                 }
@@ -385,8 +385,8 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                 Text("${catalogMatches.size} online · ${matchedByPosition.size} locais · ${current.items.size-queue.size} pendentes",fontSize=12.sp,color=Color.LightGray)
                 matchProgress?.let{Text(it,fontSize=13.sp,color=MaterialTheme.colorScheme.primary);LinearProgressIndicator(Modifier.fillMaxWidth())}
                 if(matchingJob!=null)OutlinedButton(onClick={matchingJob?.cancel()},modifier=Modifier.fillMaxWidth()){Text("Parar busca (preservar resultados)")}
-                else Button(enabled=!saving&&NativeMusicCatalog.enabled,onClick={confirmMatch=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Search,null);Text("Localizar músicas no NERO")}
-                OutlinedButton(enabled=ready&&!saving&&matchingJob==null&&onlineRefs.isNotEmpty(),onClick={playlistName=current.name.take(100);confirmSave=true},modifier=Modifier.fillMaxWidth()){Text("Salvar como playlist NERO")}
+                else Button(enabled=!saving&&NativeMusicCatalog.enabled,onClick={confirmMatch=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Search,null);Text("Localizar músicas no NERO Music")}
+                OutlinedButton(enabled=ready&&!saving&&matchingJob==null&&onlineRefs.isNotEmpty(),onClick={playlistName=current.name.take(100);confirmSave=true},modifier=Modifier.fillMaxWidth()){Text("Salvar como playlist NERO Music")}
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
                     OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}
@@ -419,7 +419,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                     Text(item.title,fontWeight=FontWeight.Medium)
                     if(item.artist.isNotBlank())Text(displayArtistName(item.artist),fontSize=12.sp,color=Color.LightGray)
                     val manual=links.getString(current.id+":"+i,null)?.let{trackByFingerprint[it]}!=null
-                    Text(if(manual)"Vinculada ao arquivo local" else if(local!=null)"Disponível no aparelho" else if(online!=null)"Disponível no NERO" else "Aguardando correspondência",fontSize=11.sp,color=if(i in playablePositions)Color(0xFF39FF14)else Color.LightGray)
+                    Text(if(manual)"Vinculada ao arquivo local" else if(local!=null)"Disponível no aparelho" else if(online!=null)"Disponível no NERO Music" else "Aguardando correspondência",fontSize=11.sp,color=if(i in playablePositions)Color(0xFF39FF14)else Color.LightGray)
                     if(item.kind=="track")TextButton(onClick={linkQuery=item.title;choice=null;linkIndex=i},contentPadding=PaddingValues(0.dp)){Text(if(manual)"Alterar vínculo" else "Vincular faixa local",fontSize=12.sp)}
                 }
                 if(i in playablePositions)IconButton(enabled=canPlay,onClick={val index=playable.indexOfFirst{it.first==i};if(index>=0)onPlay(queue,index,false,PlaybackOrigin("imported",current.name,current.id))}){Icon(Icons.Default.PlayArrow,"Reproduzir a partir desta faixa")}

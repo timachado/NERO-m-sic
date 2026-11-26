@@ -152,7 +152,7 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
         val titleHeight=layoutText(c,song.title.take(300),90f,1190f,900,68f,android.graphics.Color.WHITE,true,3)
         layoutText(c,song.artist.take(300),90f,1210f+titleHeight,900,42f,0xffc4d0d8.toInt(),false,2)
         paint.color=0xff39ff14.toInt();c.drawRoundRect(150f,1635f,930f,1651f,8f,8f,paint)
-        layoutText(c,"COMPARTILHADO NO NERO",80f,1740f,920,32f,0xff39ff14.toInt(),true,1)
+        layoutText(c,"COMPARTILHADO NO NERO MUSIC",80f,1740f,920,32f,0xff39ff14.toInt(),true,1)
         val file=File(shareDir(context),"nero-status-"+UUID.randomUUID()+".png")
         file.outputStream().use{require(bitmap.compress(Bitmap.CompressFormat.PNG,100,it))}
         file

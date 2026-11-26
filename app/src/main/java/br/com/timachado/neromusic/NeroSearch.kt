@@ -53,7 +53,7 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
     val scope=rememberCoroutineScope()
     var query by remember{mutableStateOf(initialQuery)}
     var showSource by remember{mutableStateOf(false)}
-    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre o catálogo")},text={Text("Interface NERO Music. Fonte musical experimental: YouTube Music. Disponibilidade depende do serviço de origem.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
+    if(showSource)AlertDialog(onDismissRequest={showSource=false},title={Text("Sobre o catálogo")},text={Text("O NERO Music oferece uma interface independente. A fonte musical utilizada nesta versão de testes é o YouTube Music. A disponibilidade depende da fonte de origem.")},confirmButton={TextButton(onClick={showSource=false}){Text("Fechar")}})
     val focusRequester=remember{FocusRequester()}
     val focusManager=LocalFocusManager.current
     val keyboard=LocalSoftwareKeyboardController.current

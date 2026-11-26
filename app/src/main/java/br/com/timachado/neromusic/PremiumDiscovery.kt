@@ -69,7 +69,7 @@ internal fun PremiumDiscovery(onSearch:(String)->Unit){
             Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF173F4B),Color(0xFF102B23),Color(0xFF10171C)))).padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
                 Text("NERO MUSIC",color=Color(0xFF00E5FF),fontSize=12.sp,fontWeight=FontWeight.Bold)
                 Text("Descubra seu próximo som",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Color.White)
-                Text("Explore músicas e novidades no NERO",fontSize=13.sp,color=Color.LightGray)
+                Text("Explore músicas e novidades no NERO Music",fontSize=13.sp,color=Color.LightGray)
             }
         }
         Text("Seleções para explorar",fontSize=20.sp,fontWeight=FontWeight.Bold)

@@ -56,7 +56,7 @@ class NeroCastActivity:FragmentActivity(){
             text=label;setOnClickListener{action()};panel.addView(this)
         }
         panel.addView(text("NERO Cast",24f))
-        panel.addView(text("Selecione uma TV na mesma rede e transmita a faixa atual de áudio livre. A fila do celular fica pausada; arquivos locais e o catálogo experimental não são transmitidos.",15f))
+        panel.addView(text("Selecione uma TV na mesma rede e transmita a faixa atual de áudio livre. A fila do celular fica pausada; arquivos locais e faixas online não compatíveis com a transmissão não são transmitidos.",15f))
         status=text("Conectando ao player…",16f)
         panel.addView(status)
         setContentView(panel)
