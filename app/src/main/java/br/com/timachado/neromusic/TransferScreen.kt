@@ -184,6 +184,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
     var onlineNotice by remember{mutableStateOf<String?>(null)}
     var confirmMatch by remember{mutableStateOf(false)}
     var confirmSave by remember{mutableStateOf(false)}
+    var playlistName by remember{mutableStateOf("")}
     var saving by remember{mutableStateOf(false)}
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
@@ -236,9 +237,13 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
             }
         }){Text("Buscar músicas")}},dismissButton={TextButton(onClick={confirmMatch=false}){Text("Cancelar")}})
     if(confirmSave&&current!=null)AlertDialog(onDismissRequest={confirmSave=false},title={Text("Salvar playlist no NERO?")},
-        text={Text("${onlineRefs.size} faixas online únicas serão copiadas na ordem original para "+(if(uid!=null)"a biblioteca da conta conectada, com sincronização quando disponível." else "a biblioteca de visitante deste aparelho.")+" Itens não localizados e duplicatas permanecem preservados na importação. Nenhuma playlist existente será sobrescrita.")},
-        confirmButton={TextButton(enabled=ready&&!saving,onClick={
-            val owner=uid;val list=current;val rows=onlineRefs
+        text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+            Text("Nome original: "+current.name,fontSize=13.sp,color=Color.LightGray)
+            OutlinedTextField(playlistName,{playlistName=it.take(100)},label={Text("Nome da playlist")},singleLine=true,modifier=Modifier.fillMaxWidth())
+            Text("${onlineRefs.size} faixas online únicas serão copiadas na ordem original para "+(if(uid!=null)"a biblioteca da conta conectada, com sincronização quando disponível." else "a biblioteca de visitante deste aparelho.")+" Itens não localizados e duplicatas permanecem preservados na importação. Nenhuma playlist existente será sobrescrita.")
+        }},
+        confirmButton={TextButton(enabled=ready&&!saving&&playlistName.isNotBlank(),onClick={
+            val owner=uid;val list=current;val rows=onlineRefs;val name=playlistName.trim()
             confirmSave=false;saving=true
             scope.launch{
                 try{
@@ -246,10 +251,10 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                     require(rows.isNotEmpty()&&rows.size<=1000)
                     val existing=withContext(Dispatchers.IO){scopedOnlineLists(context,owner)}
                     val newId=java.util.UUID.nameUUIDFromBytes(("spotify-transfer:"+list.id).toByteArray(Charsets.UTF_8)).toString()
-                    val next=importPortablePlaylists(existing,listOf(OnlineList(newId,list.name.take(100),rows)))
+                    val next=importPortablePlaylists(existing,listOf(OnlineList(newId,name,rows)))
                     require(next.size<=100)
                     saveScopedOnlineLists(context,owner,existing,next)
-                    notice="Playlist disponível na biblioteca NERO."
+                    notice="Playlist \""+name+"\" disponível na biblioteca NERO."
                 }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível salvar a playlist. Confira os limites da biblioteca (100 playlists e 1.000 faixas por playlist); a importação original foi preservada."}
                 finally{saving=false}
             }
@@ -381,7 +386,7 @@ internal fun TransferScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<Medi
                 matchProgress?.let{Text(it,fontSize=13.sp,color=MaterialTheme.colorScheme.primary);LinearProgressIndicator(Modifier.fillMaxWidth())}
                 if(matchingJob!=null)OutlinedButton(onClick={matchingJob?.cancel()},modifier=Modifier.fillMaxWidth()){Text("Parar busca (preservar resultados)")}
                 else Button(enabled=!saving&&NativeMusicCatalog.enabled,onClick={confirmMatch=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Search,null);Text("Localizar músicas no NERO")}
-                OutlinedButton(enabled=ready&&!saving&&matchingJob==null&&onlineRefs.isNotEmpty(),onClick={confirmSave=true},modifier=Modifier.fillMaxWidth()){Text("Salvar como playlist NERO")}
+                OutlinedButton(enabled=ready&&!saving&&matchingJob==null&&onlineRefs.isNotEmpty(),onClick={playlistName=current.name.take(100);confirmSave=true},modifier=Modifier.fillMaxWidth()){Text("Salvar como playlist NERO")}
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir")}
                     OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true,current?.let{PlaybackOrigin("imported",it.name,it.id)})},modifier=Modifier.weight(1f)){Icon(Icons.Default.Shuffle,null);Text("Aleatório")}

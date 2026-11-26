@@ -17,3 +17,11 @@ internal fun importPortablePlaylists(existing:List<OnlineList>,incoming:List<Onl
     }
     return next
 }
+
+// Rename only the selected playlist, preserving its identity, references and order.
+internal fun renameOnlinePlaylist(existing:List<OnlineList>,id:String,name:String):List<OnlineList>{
+    val clean=name.trim()
+    require(clean.isNotBlank()&&clean.length<=100)
+    require(existing.count{it.id==id}==1)
+    return existing.map{if(it.id==id)it.copy(name=clean)else it}
+}

@@ -76,3 +76,6 @@ Normalização de colaboração nos títulos do Daily Mix básico e Premium, inc
 
 ## 0.9.75-dev — NERO Transfer online
 Importador existente mantém ZIP/JSON, metadados e ordem original. Busca explícita por playlist usa somente título/artista, com vinculação automática conservadora de correspondências únicas, revisão manual no próprio NERO, progresso e cancelamento com preservação dos resultados. Fila mista local/online na ordem original. Ação explícita copia referências online únicas para biblioteca de visitante ou conta, sem sobrescrever playlists; itens faltantes e duplicatas permanecem na importação. Limites existentes da biblioteca preservados. Nenhuma transferência de áudio/assinatura Spotify ou envio do ZIP. Testes sintéticos adicionados; exportação real do usuário e homologação pendentes. Sem alteração de credenciais, pagamentos ou banco de produção.
+
+## 0.9.76-dev — nomes das playlists importadas
+O diálogo Salvar como playlist NERO preenche o nome original do Spotify (até o limite existente de 100 caracteres) e permite editar antes de salvar. Playlists online da conta ou visitante também podem ser renomeadas depois, preservando ID, ordem e referências; alterações usam a sincronização existente. Testes de nome e preservação adicionados. Sem alteração de catálogo, credenciais, banco ou assinatura. Compilação e teste em aparelho pendentes.

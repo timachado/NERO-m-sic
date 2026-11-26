@@ -130,6 +130,29 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             else {val first=incoming.songs.first();openShared=false;onSearch(first.title+" "+first.artist)}
         } else null)
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
+    var renameTarget by remember(uid,selected){mutableStateOf<String?>(null)}
+    var renameName by remember(uid,selected){mutableStateOf("")}
+    var renaming by remember(uid){mutableStateOf(false)}
+    val renameId=renameTarget
+    if(renameId!=null&&active?.id==renameId)AlertDialog(
+        onDismissRequest={if(!renaming)renameTarget=null},
+        title={Text("Renomear playlist")},
+        text={OutlinedTextField(renameName,{renameName=it.take(100)},singleLine=true,label={Text("Nome da playlist")},modifier=Modifier.fillMaxWidth())},
+        confirmButton={TextButton(enabled=ready&&!renaming&&renameName.isNotBlank(),onClick={
+            val owner=uid;val name=renameName.trim();renaming=true
+            scope.launch{
+                try{
+                    val current=scopedOnlineLists(context,owner)
+                    val next=renameOnlinePlaylist(current,renameId,name)
+                    saveScopedOnlineLists(context,owner,current,next)
+                    if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){
+                        lists=Result.success(next);renameTarget=null;notice="Nome da playlist atualizado."
+                    }
+                }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível renomear a playlist."}
+                finally{renaming=false}
+            }
+        }){Text("Salvar")}},dismissButton={TextButton(enabled=!renaming,onClick={renameTarget=null}){Text("Cancelar")}})
+
     var suggestions by remember(active?.id){mutableStateOf(emptyList<NativeMusicHit>())}
     var suggestionsBusy by remember(active?.id){mutableStateOf(false)}
     var suggestionsNotice by remember(active?.id){mutableStateOf<String?>(null)}
@@ -182,6 +205,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO.",fontSize=12.sp,color=Color.LightGray)
             if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
             if(active!=null){
+                TextButton(enabled=ready&&!renaming,onClick={renameName=active.name;renameTarget=active.id}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Renomear playlist")}
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
                 if(NativeMusicCatalog.enabled&&active.songs.any{it.artist.trim().length>=3}){
