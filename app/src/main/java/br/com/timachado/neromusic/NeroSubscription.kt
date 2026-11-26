@@ -60,3 +60,19 @@ internal suspend fun startNeroTrial(context:Context,uid:String):String=withTimeo
     require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
     result
 }?:error("Trial service timed out")
+
+// Informational only. Never use the device clock to grant Premium.
+internal fun neroExpiryNotice(phase:NeroSubscriptionPhase,until:Long?,now:Long):String? {
+    if(!phase.premium||until==null||until<=now||now<0)return null
+    val remaining=until-now
+    if(remaining>259200L)return null
+    val subject=when(phase){
+        NeroSubscriptionPhase.TRIAL->"Sua experiência Premium"
+        NeroSubscriptionPhase.GRACE->"Seu período de carência"
+        else->"Sua assinatura Premium"
+    }
+    return when{
+        remaining<=86400L->"$subject termina em até 24 horas."
+        else->"$subject termina em até 3 dias."
+    }
+}

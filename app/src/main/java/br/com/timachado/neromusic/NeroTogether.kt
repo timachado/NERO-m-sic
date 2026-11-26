@@ -45,19 +45,35 @@ private suspend fun togetherCommand(context:Context,uid:String,action:String,cod
     require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
     return if(row.optBoolean("closed"))null else decodeTogether(row)
 }
+// Process-only bookmark, not a persistent credential. Never reuse another account's room.
+private object TogetherBookmark {
+    private var owner:String?=null
+    private var code:String?=null
+    fun forOwner(uid:String?):String? {
+        if(owner!=uid){owner=uid;code=null}
+        return if(uid!=null)code else null
+    }
+    fun update(uid:String,room:String?){
+        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid){
+            owner=uid;code=room?.let(::togetherCode)
+        }
+    }
+}
 @Composable
 internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
     if(!ready)return
+    val bookmark=TogetherBookmark.forOwner(uid)
     key(uid){
         val scope=rememberCoroutineScope()
         var open by remember{mutableStateOf(false)}
         var room by remember{mutableStateOf<TogetherRoom?>(null)}
         var busy by remember{mutableStateOf(false)}
         var title by remember{mutableStateOf("")}
-        var code by remember{mutableStateOf("")}
+        var code by remember{mutableStateOf(bookmark.orEmpty())}
+        var resumeCode by remember{mutableStateOf(bookmark)}
         var query by remember{mutableStateOf("")}
         var results by remember{mutableStateOf(emptyList<NativeMusicHit>())}
         var notice by remember{mutableStateOf<String?>(null)}
@@ -70,7 +86,11 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                 try{
                     if(action=="create"&&!verifiedPremium(context,owner)){notice="Para criar uma sala, confirme seu NERO Premium.";return@launch}
                     val updated=togetherCommand(context,owner,action,id,name,video,artist)
-                    if(active())room=updated
+                    if(active()){
+                        room=updated
+                        resumeCode=updated?.id
+                        TogetherBookmark.update(owner,resumeCode)
+                    }
                 }catch(e:CancellationException){throw e}catch(_:Exception){notice="Sala ou serviço indisponível. Confira o código e tente novamente."}
                 finally{busy=false}
             }
@@ -82,18 +102,28 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                 delay(15000)
                 if(!busy){
                     busy=true
-                    try{room=togetherCommand(context,owner,"read",id);notice=null}
+                    try{
+                        val updated=togetherCommand(context,owner,"read",id)
+                        if(active()){room=updated;resumeCode=updated?.id;TogetherBookmark.update(owner,resumeCode);notice=null}
+                    }
                     catch(e:CancellationException){throw e}catch(_:Exception){notice="Atualização da sala indisponível."}
                     finally{busy=false}
                 }
             }
         }
         OutlinedButton(onClick={open=true},modifier=Modifier.fillMaxWidth()){Text("NERO Together")}
+        LaunchedEffect(open,uid){
+            if(open&&room==null&&resumeCode!=null&&active())resumeCode?.let{command("read",it)}
+        }
         if(open)AlertDialog(onDismissRequest={if(!busy)open=false},title={Text("NERO Together")},text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
                 if(uid==null)Text("Entre com Google para participar de salas privadas.")
                 else if(room==null){
                     Text("Crie uma sala com Premium. Amigos com conta NERO podem entrar gratuitamente pelo código.",fontSize=12.sp)
+                    resumeCode?.let{saved->
+                        OutlinedButton(enabled=!busy,onClick={command("read",saved)}){Text("Retomar minha sala")}
+                        TextButton(enabled=!busy,onClick={uid?.let{TogetherBookmark.update(it,null)};resumeCode=null;code=""}){Text("Esquecer sala neste aparelho")}
+                    }
                     OutlinedTextField(title,{title=it.take(80)},label={Text("Nome da sala")},singleLine=true,enabled=!busy)
                     Button(enabled=!busy&&title.isNotBlank(),onClick={command("create",UUID.randomUUID().toString().replace("-",""),title.trim())}){Text("Criar sala")}
                     OutlinedTextField(code,{code=it.take(32)},label={Text("Código de convite")},singleLine=true,enabled=!busy)

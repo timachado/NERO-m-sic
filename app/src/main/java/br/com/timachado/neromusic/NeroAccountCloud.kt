@@ -91,6 +91,7 @@ internal fun NeroAccountCloud(user:NeroSession,enabled:Boolean,onPlans:()->Unit=
             Text(when{planBusy->"Consultando assinatura…";planError->"Serviço de planos ainda indisponível";else->plan?.phase?.label?:"Não verificado"},color=MaterialTheme.colorScheme.primary)
             plan?.let{details->
                 details.planLabel?.let{Text("Plano: "+it,fontSize=13.sp)}
+                neroExpiryNotice(details.phase,details.until,System.currentTimeMillis()/1000L)?.let{Text(it,fontSize=13.sp,color=MaterialTheme.colorScheme.primary)}
                 details.dateLabel()?.let{Text("Acesso até: "+it,fontSize=13.sp)}
                 details.autoRenew?.let{Text(if(it)"Renovação automática informada pelo servidor" else "Sem renovação automática",fontSize=12.sp,color=Color.LightGray)}
             }

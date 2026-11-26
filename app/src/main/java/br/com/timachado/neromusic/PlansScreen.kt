@@ -98,6 +98,11 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
                 else->"Serviço de assinaturas ainda indisponível"
             },fontWeight=FontWeight.Medium,color=if(premium)premiumGreen else Color.LightGray)
             subscription?.dateLabel()?.let{Text("Acesso até: "+it,fontSize=12.sp,color=Color.LightGray)}
+            subscription?.let{details->
+                neroExpiryNotice(details.phase,details.until,System.currentTimeMillis()/1000L)?.let{
+                    Text(it,fontSize=13.sp,color=premiumCyan)
+                }
+            }
             subscription?.planLabel?.let{Text("Seu plano: "+it,fontSize=13.sp)}
             if(checking||activating)LinearProgressIndicator(Modifier.fillMaxWidth())
             listOf("Tudo do Free","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }

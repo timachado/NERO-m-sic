@@ -30,7 +30,7 @@ internal object NeroRadarAlerts{
         val active=enabled&&permitted(context)
         prefs.edit().putStringSet("alertArtists",artists.take(6).toSet()).putStringSet("alertGenres",genres.take(2).toSet()).apply()
         val manager=WorkManager.getInstance(context)
-        if(!active){manager.cancelUniqueWork(work);return}
+        if(!active){manager.cancelUniqueWork(work);NotificationManagerCompat.from(context).cancel(7819);return}
         val request=PeriodicWorkRequestBuilder<NeroRadarWorker>(24,TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setInputData(workDataOf("owner" to (owner?:"guest")))
@@ -81,7 +81,10 @@ class NeroRadarWorker(context:Context,params:WorkerParameters):CoroutineWorker(c
                 try{rows+=DevCatalog.releaseSnapshot(7,genre).entries;completed++}
                 catch(e:CancellationException){throw e}catch(_:Exception){}
             }
-            if(completed==0)return if(artists.isEmpty()&&genres.isEmpty())Result.success() else Result.retry()
+            // Do not initialize a partial baseline: a failed artist query would otherwise
+            // generate false "new release" alerts on the next successful scan.
+            if(completed<artists.size+genres.size)return Result.retry()
+            if(completed==0)return Result.success()
             if(!allowed()||!NeroSupabase.matchesStoredRadarOwner(context,owner))return Result.success()
             val fresh=radarWeekly(rows,LocalDate.now())
             val seen=prefs.getStringSet("alertSeen",emptySet()).orEmpty()
