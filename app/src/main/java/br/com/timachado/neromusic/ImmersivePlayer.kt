@@ -81,6 +81,7 @@ internal fun ImmersivePlayer(
                     .onFailure{runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/apps/details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}}
             }
             !NeroWebVideoCaster.handoff(castContext,mediaId,title)->android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
+            else->Unit
         }
     },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
