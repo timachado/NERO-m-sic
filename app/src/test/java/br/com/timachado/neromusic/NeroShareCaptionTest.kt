@@ -22,4 +22,13 @@ class NeroShareCaptionTest{
         }
         assertFalse(neroShareCaption(p,true,native,"").contains("https://"))
     }
+    @Test fun statusAndCaptionNormalizeArtistAndRemoveDuplicatePrefix(){
+        val track=SharedSong("Hugo e Guilherme, Zé Vaqueiro - Flash (Minha Mente)","Hugo e Guilherme and Zé Vaqueiro","abcdefghijk")
+        assertEquals("Flash (Minha Mente)",shareDisplayTitle(track))
+        val caption=neroShareCaption(SharedPlaylist(track.title,listOf(track)),true,native,host)
+        assertTrue(caption.contains("Hugo e Guilherme feat. Zé Vaqueiro"))
+        assertFalse(caption.contains(" and "))
+        assertTrue(caption.contains(native))
+        assertEquals("A - B",shareDisplayTitle(SharedSong("A - B","Different Artist")))
+    }
 }

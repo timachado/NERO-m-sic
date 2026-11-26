@@ -48,6 +48,15 @@ internal fun sharedSong(ref:OnlineRef):SharedSong{
     val open=ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}
     return SharedSong(ref.title,ref.artist,native?.id,open?.source)
 }
+// Keep source metadata in the share payload; normalize only the public presentation.
+internal fun shareDisplayTitle(song:SharedSong):String{
+    val separator=Regex("\\s+[-–—]\\s+").find(song.title)?:return song.title
+    val prefix=song.title.substring(0,separator.range.first).trim()
+    val parts=artistCreditParts(song.artist)
+    val labels=listOf(song.artist,displayArtistName(song.artist),parts.joinToString(", "),parts.joinToString(" and "),parts.joinToString(" feat. "))
+    val rest=song.title.substring(separator.range.last+1).trim()
+    return if(rest.isNotBlank()&&labels.any{it.isNotBlank()&&it.trim().equals(prefix,ignoreCase=true)})rest else song.title
+}
 internal fun sharedPlaylistRefs(playlist:SharedPlaylist):List<OnlineRef> =
     playlist.songs.map{song->
         val id=song.videoId?.takeIf{shareVideoId.matches(it)}?.let{"youtube:"+it} ?: "shared:"+UUID.randomUUID().toString()
@@ -132,8 +141,8 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
             paint.color=0xff10252c.toInt();c.drawCircle(540f,765f,200f,paint)
             paint.color=0xff39ff14.toInt();c.drawCircle(540f,765f,64f,paint)
         }
-        val titleHeight=layoutText(c,song.title.take(300),90f,1190f,900,68f,android.graphics.Color.WHITE,true,3)
-        layoutText(c,song.artist.take(300),90f,1210f+titleHeight,900,42f,0xffc4d0d8.toInt(),false,2)
+        val titleHeight=layoutText(c,shareDisplayTitle(song).take(300),90f,1190f,900,68f,android.graphics.Color.WHITE,true,3)
+        layoutText(c,displayArtistName(song.artist).take(300),90f,1210f+titleHeight,900,42f,0xffc4d0d8.toInt(),false,2)
         paint.color=0xff39ff14.toInt();c.drawRoundRect(150f,1635f,930f,1651f,8f,8f,paint)
         layoutText(c,"COMPARTILHADO NO NERO MUSIC",80f,1740f,920,32f,0xff39ff14.toInt(),true,1)
         val file=File(shareDir(context),"nero-status-"+UUID.randomUUID()+".png")
@@ -145,7 +154,7 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
 // Public sharing contains selected metadata and only a validated NERO HTTPS link, never a source URL or credentials.
 internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String?,host:String=BuildConfig.SHARE_HOST):String=buildString{
     append("🎧 NERO Music\n")
-    append(playlist.name.take(300))
+    append((if(single)playlist.songs.firstOrNull()?.let(::shareDisplayTitle)?:playlist.name else playlist.name).take(300))
     if(single){
         val artist=playlist.songs.firstOrNull()?.artist.orEmpty()
         if(artist.isNotBlank())append("\n").append(displayArtistName(artist).take(300))
@@ -170,12 +179,6 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
     MusicShareDialog(playlist,single=false,onClose=onClose,send={link,_->
-        if(link!=null)sendText(context,"NERO Music",neroShareCaption(playlist,false,link))
-        else {
-            val file=withContext(Dispatchers.IO){
-                File(shareDir(context),"nero-playlist-"+UUID.randomUUID()+".json").apply{writeBytes(encodePlaylist(playlist))}
-            }
-            sendFile(context,file,"application/json",neroShareCaption(playlist,false,null))
-        }
+        sendText(context,"NERO Music",neroShareCaption(playlist,false,link))
     })
 }
