@@ -34,14 +34,12 @@ internal fun discoveryAlbums(rows:List<NativeCollection>,artists:List<String>,sa
         row.copy(url="https://music.youtube.com/playlist?list="+id,artwork=cloudAlbumArtwork(row.artwork))
     }.distinctBy{savedAlbumKey(it.url)}.take(12)
 }
-internal fun discoveryReleases(rows:List<CatalogEntry>,artists:List<String>,today:LocalDate):List<CatalogEntry>{
-    val keys=artists.map(::nativeArtistKey).toSet()
-    return rows.filter{row->
-        val date=runCatching{LocalDate.parse(row.releaseDate)}.getOrNull()
-        row.kind==CatalogKind.ALBUM&&nativeArtistKey(row.credit) in keys&&date!=null&&
-            !date.isBefore(today.minusDays(29))&&!date.isAfter(today)
-    }.distinctBy{it.id}.sortedByDescending{it.releaseDate}.take(10)
-}
+// The existing music-album search has no verified release date field.
+internal fun discoveryReleaseQuery(artist:String,year:Int):String =
+    "lançamentos "+year+" "+NeroFollowedArtists.clean(artist).take(75)
+
+internal fun discoveryReleaseCandidates(rows:List<NativeCollection>,artists:List<String>,excluded:Set<String>):List<NativeCollection> =
+    discoveryAlbums(rows,artists,excluded).take(10)
 
 @Composable
 internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,tracks:List<NativeMusicHit>,hidden:Set<String>,uid:String?,onSearch:(String)->Unit,onAlbum:(NativeCollection)->Unit){
@@ -51,12 +49,15 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
     key(uid,seeds){
         val scope=rememberCoroutineScope()
         var rawAlbums by remember{mutableStateOf(emptyList<NativeCollection>())}
-        var releases by remember{mutableStateOf(emptyList<CatalogEntry>())}
+        var rawReleases by remember{mutableStateOf(emptyList<NativeCollection>())}
+        var releaseBusy by remember{mutableStateOf(false)}
+        var releaseQueried by remember{mutableStateOf(false)}
         var busy by remember{mutableStateOf(false)}
         var queried by remember{mutableStateOf(false)}
         var albumError by remember{mutableStateOf(false)}
         var releaseError by remember{mutableStateOf(false)}
         val albums=remember(rawAlbums,seeds,saved){discoveryAlbums(rawAlbums,seeds,saved)}
+        val releases=remember(rawReleases,seeds,saved,albums){discoveryReleaseCandidates(rawReleases,seeds,saved+albums.mapNotNull{savedAlbumKey(it.url)})}
         fun active()=NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid
         Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)){
             Text("NERO Discovery",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -69,9 +70,9 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
                     }
                 }
             }
-            OutlinedButton(enabled=!busy&&seeds.isNotEmpty(),onClick={
+            OutlinedButton(enabled=!busy&&!releaseBusy&&seeds.isNotEmpty(),onClick={
                 if(active()){
-                    busy=true;albumError=false;releaseError=false
+                    busy=true;albumError=false
                     scope.launch{
                         try{
                             val rows=mutableListOf<NativeCollection>()
@@ -82,11 +83,6 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
                             }
                             if(!active())return@launch
                             if(rows.isNotEmpty()||!albumError)rawAlbums=rows
-                            try{
-                                val result=DevCatalog.releaseSnapshot(30,null,false)
-                                if(!active())return@launch
-                                releases=discoveryReleases(result.entries,seeds,LocalDate.now())
-                            }catch(e:CancellationException){throw e}catch(_:Exception){releaseError=true}
                             queried=true
                         }finally{busy=false}
                     }
@@ -100,13 +96,33 @@ internal fun NeroPersonalDiscovery(artists:List<String>,known:List<String>,track
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     items(albums,key={it.url}){album->DiscoveryTile(album.title,album.credit,album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
                 }
-                Text("Lançamentos dos últimos 30 dias",fontWeight=FontWeight.Medium)
-                Text("Datas registradas no MusicBrainz. A consulta cobre apenas a amostra disponível no catálogo.",fontSize=11.sp,color=Color.LightGray)
-                if(releaseError)Text("Não foi possível consultar lançamentos.",fontSize=12.sp,color=Color.LightGray)
-                if(releases.isEmpty()&&!busy&&!releaseError)Text("Nenhum lançamento dos seus artistas encontrado nesta consulta.",fontSize=12.sp,color=Color.LightGray)
-                LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                    items(releases,key={it.id}){entry->DiscoveryTile(entry.title,entry.credit+" · "+entry.releaseDate,entry.coverUrl,"Capa de "+entry.title){if(active())onSearch(entry.searchText)}}
+            }
+            Text("Explorar lançamentos",fontWeight=FontWeight.Medium)
+            Text("Busca de álbuns no mesmo catálogo musical do NERO. Os resultados podem incluir álbuns antigos; datas de lançamento não verificadas.",fontSize=11.sp,color=Color.LightGray)
+            OutlinedButton(enabled=!releaseBusy&&!busy&&seeds.isNotEmpty(),onClick={
+                if(active()){
+                    releaseBusy=true;releaseError=false
+                    scope.launch{
+                        try{
+                            val rows=mutableListOf<NativeCollection>()
+                            val year=LocalDate.now().year
+                            for(artist in seeds){
+                                if(!active())return@launch
+                                try{rows+=NativeMusicCatalog.collections(discoveryReleaseQuery(artist,year),NativeCollectionKind.ALBUM).take(15)}
+                                catch(e:CancellationException){throw e}catch(_:Exception){releaseError=true}
+                            }
+                            if(!active())return@launch
+                            if(rows.isNotEmpty()||!releaseError)rawReleases=rows
+                            releaseQueried=true
+                        }finally{releaseBusy=false}
+                    }
                 }
+            }){Text(if(releaseBusy)"Consultando…" else if(releaseQueried)"Atualizar busca de lançamentos" else "Buscar lançamentos dos meus artistas")}
+            if(releaseBusy)LinearProgressIndicator(Modifier.fillMaxWidth())
+            if(releaseError)Text("Algumas consultas ficaram indisponíveis.",fontSize=12.sp,color=Color.LightGray)
+            if(releaseQueried&&releases.isEmpty()&&!releaseBusy&&!releaseError)Text("Nenhum resultado adicional encontrado nesta busca.",fontSize=12.sp,color=Color.LightGray)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                items(releases,key={it.url}){album->DiscoveryTile(album.title,album.credit,album.artwork,"Capa de "+album.title){if(active())onAlbum(album)}}
             }
         }
     }
