@@ -150,6 +150,7 @@ internal fun NeroUpdateNotificationPreference(){
         result?.let{update->
             TextButton(onClick={try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(update.url)))}catch(_:Exception){status="Não foi possível abrir o download."}}){Text("Baixar NERO Music "+update.name)}
         }
+        if(BuildConfig.NERO_FCM_DIAGNOSTIC)NeroFcmDiagnosticPanel()
         if(enabled&&!allowed){
             Text("Autorize notificações do Android para receber avisos com o app fechado.",style=MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick={

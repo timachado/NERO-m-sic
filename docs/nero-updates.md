@@ -13,3 +13,6 @@ Adiciona consulta manual e recuperação do download na conta mesmo após dispen
 
 ## Build 168 — identificação da importação
 Padroniza o título e o acesso da biblioteca como “Importar do Spotify”, preserva NERO Transfer como identificação secundária e explicita o botão de importação. O seletor ZIP/JSON, os nomes originais das playlists e toda a lógica de correspondência permanecem intactos. Sem alteração de Firebase, comércio ou publicação. Compilação pendente.
+
+## Build 169 — homologação privada Firebase
+O proprietário cadastrou o secret NERO_GOOGLE_SERVICES_JSON. O CI assinado agora exige e valida o projeto, pacote e app ID esperados sem imprimir o JSON. Diagnóstico temporário na Conta permite copiar token diretamente para o Console Firebase, testar mensagem direcionada exclusivamente ao aparelho e aceitar payload kind=nero_fcm_test_v1 durante janela local de 15 minutos. Não enviar token ao chat nem ao GitHub. Workflow comercial rejeita qualquer APK cujo código-fonte tenha NERO_FCM_DIAGNOSTIC diferente de false. Nenhum envio foi realizado; após teste desabilitar diagnóstico e recompilar com versionCode superior. Supabase e pagamentos intactos.

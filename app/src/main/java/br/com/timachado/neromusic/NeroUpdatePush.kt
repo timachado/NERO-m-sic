@@ -14,6 +14,7 @@ internal fun neroPushVersion(data:Map<String,String>,installed:Int):Int?{
 }
 internal object NeroUpdatePush{
     fun sync(context:Context){
+        if(FirebaseApp.getApps(context).none{it.options.projectId=="nero-music-c8654"})return
         if(!NeroAppUpdates.notificationsEnabled(context)||!NeroRadarAlerts.permitted(context)){
             if(FirebaseApp.getApps(context).isNotEmpty())
                 runCatching{FirebaseMessaging.getInstance().unsubscribeFromTopic(NERO_UPDATE_TOPIC)}
@@ -33,6 +34,10 @@ internal object NeroUpdatePush{
 class NeroUpdateMessagingService:FirebaseMessagingService(){
     override fun onNewToken(token:String){NeroUpdatePush.sync(applicationContext)}
     override fun onMessageReceived(message:RemoteMessage){
+        if(BuildConfig.NERO_FCM_DIAGNOSTIC&&message.data["kind"]=="nero_fcm_test_v1"){
+            NeroFcmDiagnostic.receive(applicationContext)
+            return
+        }
         val code=neroPushVersion(message.data,BuildConfig.VERSION_CODE)?:return
         // Never trust an FCM title, URL or entitlement. Re-read the official stable feed.
         NeroUpdatePush.requestCheck(applicationContext,code)

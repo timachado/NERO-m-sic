@@ -32,15 +32,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Optional Firebase client (legacy)
+      - name: Verify and install exclusive NERO Firebase client
         env:
           FIREBASE_CONFIG: ${{ secrets.NERO_GOOGLE_SERVICES_JSON }}
         run: |
           set -euo pipefail
-          if [ -n "$FIREBASE_CONFIG" ]; then
-            umask 077
-            printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
-          fi
+          test -n "$FIREBASE_CONFIG" || { echo "::error::NERO_GOOGLE_SERVICES_JSON missing"; exit 1; }
+          umask 077
+          printf '%s' "$FIREBASE_CONFIG" > app/google-services.json
+          python3 - <<'PY'
+          import json
+          with open('app/google-services.json') as f: row=json.load(f)
+          assert row['project_info']['project_id']=='nero-music-c8654', 'Wrong Firebase project'
+          clients=[c for c in row['client'] if c['client_info']['android_client_info']['package_name']=='br.com.timachado.neromusic']
+          assert len(clients)==1, 'Wrong Firebase Android package'
+          assert clients[0]['client_info']['mobilesdk_app_id']=='1:199789455133:android:0505ae7096dec9a9d263f4', 'Wrong Firebase app'
+          print('NERO Firebase project and Android application verified.')
+          PY
       - name: Build unsigned release, lint and unit tests
         env:
           NERO_SUPABASE_URL: ${{ vars.NERO_SUPABASE_URL }}

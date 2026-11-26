@@ -42,6 +42,7 @@ jobs:
           jq -e '.status=="completed" and .conclusion=="success" and .path==".github/workflows/release-candidate.yml" and (.head_branch=="feat/nero-connect" or .head_branch=="main")' /tmp/run.json
           sha="$(jq -r .head_sha /tmp/run.json)"
           git merge-base --is-ancestor "$sha" HEAD
+          git show "$sha:app/build.gradle.kts" | grep -Fq 'buildConfigField("boolean", "NERO_FCM_DIAGNOSTIC", "false")' || { echo "::error::Diagnostic build cannot be published."; exit 1; }
           gh run download "$RUN" --name nero-signed-release-candidate --dir dist
           (cd dist && sha256sum -c SHA256SUMS.txt)
           grep -Fx "commit=$sha" dist/version.txt
