@@ -184,7 +184,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 HorizontalDivider()
                 Text("Transmissão para TV",fontWeight=FontWeight.Medium)
                 OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Transmitir para TV")}
-                Text("Via Web Video Caster. Selecione a TV no aplicativo; a reprodução depende da fonte.",fontSize=12.sp,color=Color.LightGray)
+                Text("Web Video Caster: somente arquivos de áudio com endereço direto autorizado. O catálogo não pode ser encaminhado como página.",fontSize=12.sp,color=Color.LightGray)
             }
 
         }
