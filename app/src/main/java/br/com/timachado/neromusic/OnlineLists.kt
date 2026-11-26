@@ -108,7 +108,6 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
     val scope=rememberCoroutineScope()
     var resolving by remember{mutableStateOf<String?>(null)}
     var sharing by remember(uid){mutableStateOf<SharedPlaylist?>(null)}
-    var openShared by remember(uid){mutableStateOf(false)}
     var create by remember(uid){mutableStateOf(createOnOpen)}
     var newName by remember{mutableStateOf("")}
     if(create)AlertDialog(onDismissRequest={create=false;onCreated()},title={Text("Nova playlist")},text={OutlinedTextField(newName,{newName=it.take(80)},label={Text("Nome da playlist")},singleLine=true)},confirmButton={TextButton(enabled=ready&&newName.isNotBlank(),onClick={
@@ -116,19 +115,25 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
         catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível criar a playlist.";create=false;onCreated()}}
     }){Text("Criar")}},dismissButton={TextButton(onClick={create=false;onCreated()}){Text("Cancelar")}})
     sharing?.let{PlaylistShareDialog(it,onClose={sharing=null})}
-    if(openShared)ReceiveShareDialog(onClose={openShared=false},
-        onImport={incoming->
-            val owner=uid;scope.launch{try{
-                val current=scopedOnlineLists(context,owner)
-                val next=current+OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
-                saveScopedOnlineLists(context,owner,current,next);lists=Result.success(next);selected=next.last().id;openShared=false
-            }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível importar a playlist.";openShared=false}}
-        },
-        onPlay=if(canPlay) { incoming:SharedPlaylist ->
-            val queue=sharedPlaylistRefs(incoming).mapNotNull{if(NativeMusicCatalog.enabled)musicHitFromRef(it)?.queueItem() else null}
-            if(queue.isNotEmpty()){onPlay(queue,0,false);openShared=false}
-            else {val first=incoming.songs.first();openShared=false;onSearch(first.title+" "+first.artist)}
-        } else null)
+    var importingShared by remember(uid){mutableStateOf(false)}
+    val importShared=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
+        if(uri!=null&&ready&&!importingShared){
+            val owner=uid
+            importingShared=true
+            scope.launch{
+                try{
+                    val incoming=readSharedPlaylist(context,uri)
+                    if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
+                    val current=scopedOnlineLists(context,owner)
+                    val copy=OnlineList(UUID.randomUUID().toString(),incoming.name,sharedPlaylistRefs(incoming))
+                    val next=importPortablePlaylists(current,listOf(copy))
+                    saveScopedOnlineLists(context,owner,current,next)
+                    if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){lists=Result.success(next);notice="Playlist importada."}
+                }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível importar este arquivo NERO."}
+                finally{importingShared=false}
+            }
+        }
+    }
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
     var renameTarget by remember(uid,selected){mutableStateOf<String?>(null)}
     var renameName by remember(uid,selected){mutableStateOf("")}
@@ -203,7 +208,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO Music.",fontSize=12.sp,color=Color.LightGray)
-            if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(onClick={openShared=true},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.LockOpen,null);Spacer(Modifier.width(8.dp));Text("Abrir compartilhamento")}}
+            if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(enabled=ready&&!importingShared,onClick={importShared.launch(arrayOf("application/json","application/octet-stream","text/plain"))},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.FileOpen,null);Spacer(Modifier.width(8.dp));Text(if(importingShared)"Importando…" else "Importar playlist NERO")}}
             if(active==null)NeroSmartLibrary(uid,ready,lists.getOrDefault(emptyList())){next->lists=Result.success(next);notice="Coleções inteligentes salvas."}
             if(active!=null){
                 TextButton(enabled=ready&&!renaming,onClick={renameName=active.name;renameTarget=active.id}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Renomear playlist")}

@@ -77,7 +77,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
             Box{
                 IconButton(onClick={more=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                 DropdownMenu(expanded=more,onDismissRequest={more=false}){
-                    DropdownMenuItem(text={Text("Abrir compartilhamento")},onClick={more=false;onOpen(7,null)})
+                    DropdownMenuItem(text={Text("Playlists NERO")},onClick={more=false;onOpen(7,null)})
                     DropdownMenuItem(text={Text("Importar do Spotify")},onClick={more=false;onOpen(6,null)})
                     DropdownMenuItem(text={Text("Músicas do aparelho")},onClick={more=false;onOpen(0,null)})
                     DropdownMenuItem(text={Text("Playlists locais")},onClick={more=false;onOpen(1,null)})

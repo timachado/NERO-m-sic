@@ -159,7 +159,7 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
     }finally{bitmap.recycle()}
 }
 
-// A public caption contains only user-selected metadata, never source URLs or audio.
+// Public sharing contains selected metadata and the actual public source link, never audio or login tokens.
 internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String?):String=buildString{
     append("🎧 NERO Music\n")
     append(playlist.name.take(300))
@@ -169,14 +169,14 @@ internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String
     }else{
         append("\n").append(playlist.songs.size).append(" faixas")
     }
-    if(link!=null)append("\n").append(link).append("\nAbra o link e entre com sua conta Google.")
+    if(link!=null)append("\n").append(link)
     else append("\nCompartilhado no NERO Music")
 }
 @Composable
 internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:String?,onClose:()->Unit){
     val context=LocalContext.current
     val song=ref?.let(::sharedSong)?:SharedSong(title,artist)
-    ProtectedShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,cover=cover,
+    MusicShareDialog(SharedPlaylist(song.title,listOf(song)),single=true,onClose=onClose,cover=cover,
         send={link,card->
             val message=neroShareCaption(SharedPlaylist(song.title,listOf(song)),true,link)
             if(card){val file=createTrackCard(context,song,cover);sendFile(context,file,"image/png",message)}
@@ -186,7 +186,10 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
 @Composable
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
-    ProtectedShareDialog(playlist,single=false,onClose=onClose,send={link,_->
-        sendText(context,"Playlist NERO Music",neroShareCaption(playlist,false,link))
+    MusicShareDialog(playlist,single=false,onClose=onClose,send={_,_->
+        val file=withContext(Dispatchers.IO){
+            File(shareDir(context),"nero-playlist-"+UUID.randomUUID()+".json").apply{writeBytes(encodePlaylist(playlist))}
+        }
+        sendFile(context,file,"application/json",neroShareCaption(playlist,false,null))
     })
 }

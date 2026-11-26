@@ -8,10 +8,14 @@ class NeroShareCaptionTest{
         assertTrue(caption.contains("Música"));assertTrue(caption.contains("Artista"))
         assertFalse(caption.contains("http"));assertFalse(caption.contains("Google"))
     }
-    @Test fun protectedLinkRemainsExplicit(){
-        val p=SharedPlaylist("Playlist",listOf(SharedSong("Música","Artista")))
-        val link="https://nero-test.example/s/0123456789abcdef0123456789abcdef"
-        assertTrue(neroShareCaption(p,false,link).contains(link))
-        assertTrue(neroShareCaption(p,false,link).contains("Google"))
+    @Test fun normalTrackLinkNeedsNoLogin(){
+        val song=SharedSong("Música","Artista","abcdefghijk")
+        val link=shareLink(song)
+        assertEquals("https://music.youtube.com/watch?v=abcdefghijk",link)
+        val caption=neroShareCaption(SharedPlaylist(song.title,listOf(song)),true,link)
+        assertTrue(caption.contains(requireNotNull(link)));assertFalse(caption.contains("Google"))
+    }
+    @Test fun localSongHasNoFabricatedUrl(){
+        assertNull(shareLink(SharedSong("Local","Artista")))
     }
 }
