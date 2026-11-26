@@ -213,6 +213,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     var title by remember { mutableStateOf("") }
     var artist by remember { mutableStateOf("") }
     var playing by remember { mutableStateOf(false) }
+    var playRequested by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
@@ -223,7 +224,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
     DisposableEffect(controller,foreground) {
         val p=controller
         if(p==null){
-            nowId="";nowOpenRef=null;nowOrigin=null;title="";artist="";playing=false;buffering=false;pos=0L;duration=0L;videoMode=false;playbackError=null
+            nowId="";nowOpenRef=null;nowOrigin=null;title="";artist="";playing=false;playRequested=false;buffering=false;pos=0L;duration=0L;videoMode=false;playbackError=null
             onDispose{}
         }else if(!foreground||!p.isConnected){
             onDispose{}
@@ -239,12 +240,13 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 title = p.mediaMetadata.title?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.title?.toString().orEmpty()}
                 artist = p.mediaMetadata.artist?.toString().orEmpty().ifBlank{currentItem?.mediaMetadata?.artist?.toString().orEmpty()}
                 playing = p.isPlaying
+                playRequested = neroPlayRequested(p.playWhenReady,p.playbackState)
                 buffering = p.playbackState==Player.STATE_BUFFERING
                 pos = p.currentPosition.coerceAtLeast(0)
                 duration = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L
                 shuffle = p.shuffleModeEnabled
                 repeat = p.repeatMode
-                playbackError = p.playerError?.let { "Falha na reprodução ("+it.errorCodeName+"). Toque em Play para tentar novamente." }
+                playbackError = p.playerError?.let { neroPlaybackErrorMessage(it.errorCode) }
             }
             val listener=object:Player.Listener{
                 override fun onEvents(player:Player,events:Player.Events){refresh()}
@@ -347,7 +349,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                     Text(artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
                 }
-                IconButton(onClick = { controller?.let { if (it.isPlaying) it.pause() else it.play() } }) { Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Reproduzir ou pausar", tint = Green) }
+                IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
                 IconButton(onClick = { controller?.seekToNextMediaItem() }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
             NavigationBar(containerColor = Color.Black) {
@@ -369,9 +371,9 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (showQueue) {
             QueueScreen(controller = controller, tracks = tracks, onBack = { showQueue = false;fullPlayer=true }, modifier = Modifier.padding(padding),sourceTitle=nowOrigin?.name?.takeIf{it.isNotBlank()},onHome={showQueue=false;fullPlayer=false;tab=3})
         } else if (showLyrics) {
-            LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playing,
+            LyricsScreen(mediaId = nowId, title = title, artist = artist, position = pos, duration = duration, playing = playRequested,
                 localUri = tracks.firstOrNull { it.id.toString() == nowId }?.uri,
-                onTogglePlay = { controller?.let { if(it.isPlaying) it.pause() else { if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play() } } },
+                onTogglePlay = { controller?.let(::toggleNeroPlayback) },
                 onSeek = { controller?.seekTo(it) }, onBack = { showLyrics = false }, modifier = Modifier.padding(padding))
         } else if (showEq && BuildConfig.DEBUG) {
             EqualizerScreen(onBack = { showEq = false }, modifier = Modifier.padding(padding))
@@ -387,7 +389,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(
-                track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playing,mediaId=nowId,origin=nowOrigin,
+                track=currentTrack,remoteCover=nowOpenRef?.coverUrl,shareRef=nowOpenRef,title=title,artist=artist,position=pos,duration=duration,playing=playRequested,mediaId=nowId,origin=nowOrigin,
                 offlineTrack=nowOpenRef?.openAudio,offlineState=offlineState,onNativeSave={hit->radioScope.launch{offlineManager.saveNative(hit)}},onOfflineSave={t->radioScope.launch{offlineManager.save(t)}},onOfflineOpen={fullPlayer=false;tab=4},
                 videoPlayer=controller,videoMode=videoMode,pipSupported=pipSupported,onPip={if(!onPip())android.widget.Toast.makeText(context,"Janela flutuante indisponível. Confira a permissão no Android.",android.widget.Toast.LENGTH_SHORT).show()},canVideo=NativeMusicCatalog.enabled&&nowOpenRef?.let(::musicHitFromRef)!=null,
                 videoQuality=videoQuality,onVideoQuality={quality->controller?.let{p->
@@ -421,7 +423,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
                 canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
-                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let{if(it.isPlaying)it.pause()else {if(it.playbackState==Player.STATE_IDLE)it.prepare();it.play()}}},
+                onSeek={controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},
                 onPrevious={controller?.seekToPreviousMediaItem()},onNext={controller?.seekToNextMediaItem()},
                 onShuffle={controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
                 onRepeat={controller?.let{it.repeatMode=when(it.repeatMode){Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ALL;Player.REPEAT_MODE_ALL->Player.REPEAT_MODE_ONE;else->Player.REPEAT_MODE_OFF}}},

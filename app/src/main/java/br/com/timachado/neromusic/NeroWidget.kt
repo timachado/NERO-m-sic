@@ -22,7 +22,7 @@ internal object NeroWidgetState {
         return WidgetSnapshot(
             p.mediaMetadata.title?.toString().orEmpty().ifBlank{item.mediaMetadata.title?.toString().orEmpty()}.ifBlank{"Faixa atual"},
             p.mediaMetadata.artist?.toString().orEmpty().ifBlank{item.mediaMetadata.artist?.toString().orEmpty()},
-            p.playWhenReady&&p.playbackState!=Player.STATE_ENDED&&p.playbackState!=Player.STATE_IDLE,
+            neroPlayRequested(p.playWhenReady,p.playbackState),
             p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem(),
             p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem(),
             true
@@ -34,14 +34,7 @@ internal object NeroWidgetState {
         val p=player?:return
         if(p.currentMediaItem==null)return
         when(action){
-            NeroWidget.ACTION_TOGGLE->if(p.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){
-                if(p.playWhenReady&&p.playbackState!=Player.STATE_ENDED&&p.playbackState!=Player.STATE_IDLE)p.pause()
-                else{
-                    if(p.playbackState==Player.STATE_ENDED&&p.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM))p.seekTo(0L)
-                    if(p.playbackState==Player.STATE_IDLE&&p.isCommandAvailable(Player.COMMAND_PREPARE))p.prepare()
-                    p.play()
-                }
-            }
+            NeroWidget.ACTION_TOGGLE->toggleNeroPlayback(p)
             NeroWidget.ACTION_PREVIOUS->if(p.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)&&p.hasPreviousMediaItem())p.seekToPreviousMediaItem()
             NeroWidget.ACTION_NEXT->if(p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&p.hasNextMediaItem())p.seekToNextMediaItem()
         }

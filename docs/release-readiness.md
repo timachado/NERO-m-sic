@@ -1,6 +1,8 @@
 # NERO Music — critérios para 1.0.0-RC1
 
-Status: estabilização pré-RC, 0.9.65-dev. Não é aprovação de distribuição.
+Status: estabilização pré-RC, 0.9.66-dev. Não é aprovação de distribuição.
+
+Correções 0.9.66: unificação dos comandos de reprodução do miniplayer, player, letras e widget; pausa durante buffering, nova preparação após erro e reinício após fim da faixa por ação explícita. Mensagens para falhas de rede, HTTP, arquivo e permissão. Sem novas tentativas automáticas, sem alteração da fila ou fonte de streaming. Testes de estados adicionados; teste físico de rede móvel, Wi-Fi, modo avião, retorno da conexão e segundo plano pendente.
 
 Correções 0.9.65: metadados do MediaController por eventos, atualização de posição somente em primeiro plano durante reprodução; atualização inicial ao retomar, listener removido ao sair. Transição de imagem preservada no player grande e desativada em miniaturas. Sem alterações de tamanho, qualidade, cache ou serviço de reprodução. Medições de CPU, memória, fluidez e validação de PiP/segundo plano ainda pendentes em aparelho.
 
