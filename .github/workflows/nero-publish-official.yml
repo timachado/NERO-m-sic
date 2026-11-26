@@ -98,3 +98,32 @@ jobs:
           git add updates/stable.json
           git commit -m "release(ota): NERO $version"
           git push origin HEAD:main
+      - name: Reserve one push announcement after verified publication
+        if: vars.NERO_FCM_ENABLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          code="$(jq -r .versionCode updates/stable.json)"
+          path="updates/notifications/fcm-$code.json"
+          mkdir -p updates/notifications
+          test ! -e "$path" || { echo "::error::Push ja reservado; auditar antes de reenviar."; exit 1; }
+          jq -n --argjson code "$code" '{versionCode:$code,status:"reserved"}' > "$path"
+          git add "$path"
+          git commit -m "release(push): reserve NERO version $code"
+          git push origin HEAD:main
+      - name: Send exclusive NERO FCM announcement
+        if: vars.NERO_FCM_ENABLED == 'true'
+        env:
+          NERO_FIREBASE_PROJECT_ID: ${{ vars.NERO_FIREBASE_PROJECT_ID }}
+          NERO_FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.NERO_FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$NERO_FIREBASE_PROJECT_ID" && test -n "$NERO_FIREBASE_SERVICE_ACCOUNT_JSON"
+          python3 -m pip install --quiet 'google-auth==2.35.0' 'requests==2.32.3'
+          code="$(jq -r .versionCode updates/stable.json)"
+          export NERO_PUSH_RECEIPT="updates/notifications/fcm-$code.json"
+          python3 scripts/nero_send_update.py
+          git add "$NERO_PUSH_RECEIPT"
+          git commit -m "release(push): record FCM acceptance for NERO $code"
+          git push origin HEAD:main

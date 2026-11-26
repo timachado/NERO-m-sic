@@ -41,6 +41,8 @@ internal object NeroAppUpdates{
     private const val feed="https://raw.githubusercontent.com/timachado/NERO-m-sic/main/updates/stable.json"
     private const val channel="nero_app_updates"
     private fun prefs(c:Context)=c.getSharedPreferences("nero_official_updates",Context.MODE_PRIVATE)
+    fun notificationsEnabled(c:Context)=prefs(c).getBoolean("notifications",true)
+    fun setNotifications(c:Context,enabled:Boolean){prefs(c).edit().putBoolean("notifications",enabled).apply();NeroUpdatePush.sync(c);if(!enabled)c.getSystemService(NotificationManager::class.java).cancel(7820)}
     fun schedule(c:Context){
         WorkManager.getInstance(c).enqueueUniquePeriodicWork("nero_official_update",ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<NeroUpdateWorker>(12,TimeUnit.HOURS)
@@ -62,7 +64,7 @@ internal object NeroAppUpdates{
     }
     @Synchronized fun notify(c:Context,u:NeroUpdate){
         val p=prefs(c)
-        if(u.code<=p.getInt("notified",0)||!NeroRadarAlerts.permitted(c))return
+        if(!notificationsEnabled(c)||u.code<=p.getInt("notified",0)||!NeroRadarAlerts.permitted(c))return
         val manager=c.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(channel,"Atualizações do NERO",NotificationManager.IMPORTANCE_DEFAULT))
         val pending=PendingIntent.getActivity(c,7820,Intent(c,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -76,10 +78,16 @@ internal object NeroAppUpdates{
     fun dismiss(c:Context,code:Int){prefs(c).edit().putInt("dismissed",code).apply()}
 }
 class NeroUpdateWorker(c:Context,p:WorkerParameters):CoroutineWorker(c,p){
-    override suspend fun doWork():Result=try{
-        NeroAppUpdates.fetch()?.let{NeroAppUpdates.notify(applicationContext,it)}
-        Result.success()
+    override suspend fun doWork():Result{
+        return try{
+        val expected=inputData.getInt("expectedCode",0)
+        if(expected>BuildConfig.VERSION_CODE&&!NeroAppUpdates.notificationsEnabled(applicationContext))return Result.success()
+        val update=NeroAppUpdates.fetch()
+        if(expected>BuildConfig.VERSION_CODE&&(update==null||update.code<expected)){
+            if(runAttemptCount<3)Result.retry() else Result.success()
+        }else{update?.let{NeroAppUpdates.notify(applicationContext,it)};Result.success()}
     }catch(e:CancellationException){throw e}catch(_:Exception){Result.retry()}
+    }
 }
 @Composable
 internal fun NeroUpdateNotice(){
@@ -88,6 +96,7 @@ internal fun NeroUpdateNotice(){
     var update by remember{mutableStateOf<NeroUpdate?>(null)}
     LaunchedEffect(resume){
         NeroAppUpdates.schedule(context)
+        NeroUpdatePush.sync(context)
         try{update=NeroAppUpdates.fetch()?.takeUnless{NeroAppUpdates.dismissed(context,it.code)}}
         catch(e:CancellationException){throw e}catch(_:Exception){}
     }
@@ -102,5 +111,34 @@ internal fun NeroUpdateNotice(){
                 try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(u.url)));NeroAppUpdates.dismiss(context,u.code);update=null}catch(_:Exception){}
             }){Text("Baixar atualização")}},
             dismissButton={TextButton(onClick={NeroAppUpdates.dismiss(context,u.code);update=null}){Text("Agora não")}})
+    }
+}
+
+@Composable
+internal fun NeroUpdateNotificationPreference(){
+    val context=LocalContext.current
+    val resume=rememberNeroCommerceResume()
+    var enabled by remember{mutableStateOf(NeroAppUpdates.notificationsEnabled(context))}
+    var allowed by remember(resume){mutableStateOf(NeroRadarAlerts.permitted(context))}
+    val permission=androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()){
+        allowed=NeroRadarAlerts.permitted(context)
+        NeroUpdatePush.sync(context)
+    }
+    Column(verticalArrangement=Arrangement.spacedBy(4.dp)){
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            Text("Avisos de atualização do NERO",modifier=Modifier.weight(1f))
+            Switch(checked=enabled,onCheckedChange={
+                enabled=it;NeroAppUpdates.setNotifications(context,it)
+                if(it&&Build.VERSION.SDK_INT>=33&&!allowed)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            })
+        }
+        if(enabled&&!allowed){
+            Text("Autorize notificações do Android para receber avisos com o app fechado.",style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={
+                if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,context.packageName))
+            }){Text("Permitir notificações")}
+        }
     }
 }

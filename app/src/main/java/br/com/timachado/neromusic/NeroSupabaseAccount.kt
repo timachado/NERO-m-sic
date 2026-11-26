@@ -112,6 +112,8 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             }
         }
         if(user!=null)NeroConnectShelf()
+        Text("Notificações",fontSize=20.sp,fontWeight=FontWeight.Bold)
+        NeroUpdateNotificationPreference()
         Text("Reprodução",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("Reprodução automática");Text("Continuar com músicas semelhantes ao terminar a fila.",fontSize=12.sp,color=Color.LightGray)};Switch(checked=autoplay,onCheckedChange={onAutoplay()})}
