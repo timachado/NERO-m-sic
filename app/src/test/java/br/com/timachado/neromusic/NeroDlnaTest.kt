@@ -4,6 +4,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NeroDlnaTest {
+    @Test fun transportAcknowledgementIsNotPlaybackConfirmation(){
+        val uri="https://example.test/audio.mp3"
+        assertTrue(NeroDlna.confirmedPlayback("PLAYING",uri,uri))
+        assertFalse(NeroDlna.confirmedPlayback("TRANSITIONING",uri,uri))
+        assertFalse(NeroDlna.confirmedPlayback("STOPPED",uri,uri))
+        assertFalse(NeroDlna.confirmedPlayback("PLAYING",null,uri))
+        assertFalse(NeroDlna.confirmedPlayback("PLAYING","https://example.test/another.mp3",uri))
+    }
+
     @Test fun locationRequiresSuccessfulSsdpResponse(){
         assertEquals("http://192.168.1.20:8080/device.xml",NeroDlna.location("HTTP/1.1 200 OK\r\nLOCATION: http://192.168.1.20:8080/device.xml\r\n\r\n"))
         assertNull(NeroDlna.location("HTTP/1.1 404 Not Found\r\nLOCATION: http://192.168.1.20/device.xml"))
