@@ -18,11 +18,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 
-internal enum class NeroPlayerTheme(val label:String,val primary:Long,val secondary:Long,val panel:Long,val background:Long){
-    AURORA("Aurora Neon",0xFF39FF14,0xFF00E5FF,0xFF17262D,0xFF000000),
-    OCEAN("Ocean Pulse",0xFF38CFFF,0xFF9AB6FF,0xFF14263D,0xFF080F20),
-    VIOLET("Violet Wave",0xFFC9A5FF,0xFFFF91D4,0xFF2B193F,0xFF120B21),
-    GOLD("Midnight Gold",0xFFFFD170,0xFFFFA66B,0xFF31271A,0xFF16100A)
+internal enum class NeroPlayerTheme(val label:String,val primary:Long,val secondary:Long,val panel:Long,val background:Long,val description:String){
+    AURORA("Aurora Neon",0xFF39FF14,0xFF00E5FF,0xFF17262D,0xFF000000,"Energia neon e identidade original NERO."),
+    OCEAN("Ocean Pulse",0xFF38CFFF,0xFF9AB6FF,0xFF14263D,0xFF080F20,"Azul oceânico, frescor e tranquilidade."),
+    VIOLET("Violet Wave",0xFFC9A5FF,0xFFFF91D4,0xFF2B193F,0xFF120B21,"Violeta envolvente e personalidade moderna."),
+    GOLD("Midnight Gold",0xFFFFD170,0xFFFFA66B,0xFF31271A,0xFF16100A,"Dourado noturno, brilho e elegância."),
+    CAFE("Midnight Café",0xFFE8BB87,0xFFE9A3B6,0xFF3B2028,0xFF170E0D,"Espresso, vinho e rosé: romance à meia-noite.")
 }
 internal fun effectivePlayerTheme(stored:String?,verified:Boolean):NeroPlayerTheme {
     val theme=NeroPlayerTheme.entries.firstOrNull{it.name==stored}?:NeroPlayerTheme.AURORA
@@ -98,6 +99,7 @@ internal fun NeroPlayerAppearance(uid:String,enabled:Boolean){
                 Column(Modifier.weight(1f)){
                     Text(theme.label)
                     Text(if(theme==NeroPlayerTheme.AURORA)"Gratuito" else "Premium",fontSize=11.sp)
+                    Text(theme.description,fontSize=12.sp,color=Color.LightGray)
                 }
                 if(theme==selected)Text("Preferido",fontSize=11.sp)
             }

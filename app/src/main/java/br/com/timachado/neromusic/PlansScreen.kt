@@ -44,6 +44,19 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             Text("Em desenvolvimento",fontWeight=FontWeight.Medium,color=Color.LightGray)
             listOf("Tudo do Free","Smart Mix e Daily Mix avançados","Temas exclusivos","Personalização avançada do player","Estatísticas musicais avançadas","Backup e exportação avançada","Suporte prioritário").forEach { PlanFeature(it,false) }
             HorizontalDivider(color=Color(0xFF33434A))
+            Text("Coleção de temas do player",fontWeight=FontWeight.Bold,color=premiumCyan)
+            NeroPlayerTheme.entries.forEach{theme->
+                Row(Modifier.fillMaxWidth().background(Color(theme.background),RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    Box(Modifier.size(20.dp).background(Color(theme.primary),RoundedCornerShape(5.dp)))
+                    Box(Modifier.size(20.dp).background(Color(theme.secondary),RoundedCornerShape(5.dp)))
+                    Column(Modifier.weight(1f)){
+                        Text(theme.label,color=Color(theme.primary),fontWeight=FontWeight.Medium)
+                        Text(theme.description,fontSize=12.sp,color=Color.LightGray)
+                        Text(if(theme==NeroPlayerTheme.AURORA)"Free" else "Premium",fontSize=11.sp,color=Color.LightGray)
+                    }
+                }
+            }
+            HorizontalDivider(color=Color(0xFF33434A))
             NeroPlans.offers.forEach{offer->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f)){

@@ -100,7 +100,7 @@ internal fun ImmersivePlayer(
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
     val tones=rememberPlayerTones(track,remoteCover)
     BoxWithConstraints(modifier.fillMaxSize().background(Color(appearance.background))){
-        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else aqua,playing&&!videoMode,Modifier.matchParentSize())
+        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else if(appearance==NeroPlayerTheme.CAFE)Color(0xFF653044) else aqua,playing&&!videoMode,Modifier.matchParentSize())
         val compact=maxHeight<780.dp
         val coverSize=minOf(maxWidth-36.dp,(maxHeight-(if(canVideo) 335.dp else 285.dp)).coerceAtLeast(150.dp),410.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
@@ -163,8 +163,8 @@ internal fun ImmersivePlayer(
             else {
                 val shape=RoundedCornerShape(24.dp)
                 Box(Modifier.size(coverSize).drawBehind{
-                    for(i in 4 downTo 1){val d=i*3.dp.toPx();drawRoundRect(Brush.linearGradient(listOf(neon.copy(alpha=.05f),aqua.copy(alpha=.09f),Color(0xFFFF527D).copy(alpha=.05f))),topLeft=Offset(-d,-d),size=Size(size.width+2*d,size.height+2*d),cornerRadius=CornerRadius(24.dp.toPx()+d),style=Stroke(3.dp.toPx()))}
-                }.shadow(10.dp,shape).background(Color(0xFF0C171A),shape)
+                    for(i in 4 downTo 1){val d=i*3.dp.toPx();drawRoundRect(Brush.linearGradient(listOf(neon.copy(alpha=.05f),aqua.copy(alpha=.09f),(if(appearance==NeroPlayerTheme.CAFE)aqua else Color(0xFFFF527D)).copy(alpha=.05f))),topLeft=Offset(-d,-d),size=Size(size.width+2*d,size.height+2*d),cornerRadius=CornerRadius(24.dp.toPx()+d),style=Stroke(3.dp.toPx()))}
+                }.shadow(10.dp,shape).background(if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF0C171A),shape)
                     .border(1.5.dp,Brush.linearGradient(listOf(neon,aqua,tones.copy(alpha=.85f),neon)),shape).padding(2.dp).clip(shape),contentAlignment=Alignment.Center){
                     if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize(),large=true)
                     else LocalArtwork(track,Modifier.fillMaxSize(),large=true)
@@ -185,7 +185,7 @@ internal fun ImmersivePlayer(
                 Slider(modifier=Modifier.fillMaxWidth().height(32.dp),value=seekPreview?:if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,
                     onValueChange={seekPreview=it},onValueChangeFinished={
                         seekPreview?.let{if(duration>0)onSeek((it*duration).toLong())};seekPreview=null
-                    },enabled=ready&&duration>0,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=Color(0xFF16434A)))
+                    },enabled=ready&&duration>0,colors=SliderDefaults.colors(thumbColor=neon,activeTrackColor=neon,inactiveTrackColor=if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF16434A)))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                     Text(clock(seekPreview?.let{(it*duration).toLong()}?:position),fontSize=12.sp,color=Color.LightGray)
                     Text(clock(duration),fontSize=12.sp,color=Color.LightGray)
@@ -196,7 +196,7 @@ internal fun ImmersivePlayer(
                 FilledIconButton(onClick=onPlayPause,enabled=ready,modifier=Modifier.size(if(compact)72.dp else 80.dp).drawBehind{for(i in 3 downTo 1){drawCircle(neon.copy(alpha=.055f*i),radius=size.minDimension/2+i*3.dp.toPx(),style=Stroke(2.dp.toPx()))}}.border(2.dp,neon,androidx.compose.foundation.shape.CircleShape).padding(3.dp),colors=IconButtonDefaults.filledIconButtonColors(containerColor=neon,contentColor=Color.Black)){Icon(if(playing)Icons.Default.Pause else Icons.Default.PlayArrow,"Reproduzir ou pausar",Modifier.size(36.dp))}
                 FilledTonalIconButton(onClick=onNext,enabled=ready,modifier=Modifier.size(if(compact)54.dp else 60.dp).border(1.dp,aqua.copy(alpha=.48f),RoundedCornerShape(18.dp)),shape=RoundedCornerShape(18.dp),colors=IconButtonDefaults.filledTonalIconButtonColors(containerColor=panel)){Icon(Icons.Default.SkipNext,"Próxima",Modifier.size(30.dp))}
             }
-            Row(Modifier.fillMaxWidth().background(Color(0xFF102B23).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().background((if(appearance==NeroPlayerTheme.CAFE)panel else Color(0xFF102B23)).copy(alpha=.7f),RoundedCornerShape(24.dp)).border(1.dp,aqua.copy(alpha=.22f),RoundedCornerShape(24.dp)),horizontalArrangement=Arrangement.SpaceEvenly,verticalAlignment=Alignment.CenterVertically){
                 IconButton(onClick={showDevices=true}){Icon(Icons.Default.Devices,"Dispositivos de áudio",tint=aqua)}
                 IconButton(onClick=onQueue,enabled=ready){Icon(Icons.Default.QueueMusic,"Fila",tint=aqua)}
                 IconButton(onClick={showTimer=true},enabled=ready){Icon(Icons.Default.Bedtime,"Temporizador de sono",tint=if(deadline!=null)neon else Color.White)}
