@@ -39,10 +39,16 @@ internal suspend fun onlineRadio(seed:NativeMusicHit,excluded:Set<String>):List<
 @Composable
 internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
     if(!NativeMusicCatalog.enabled)return
+    val uid by NeroSupabase.activeUid.collectAsState()
+    val ready by NeroSupabase.identityReady.collectAsState()
+    if(!ready)return
+    key(uid,ready){OnlineDiscoveryContent(favorites,canPlay,onQueue,uid)}
+}
+@Composable
+private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit,historyUid:String?){
     val context=LocalContext.current
     val prefs=remember(context){context.getSharedPreferences("nero_personal",0)}
-    val historyUid by NeroSupabase.activeUid.collectAsState()
-    val historyReady by NeroSupabase.identityReady.collectAsState()
+    val historyReady=true
     val historyChanges by NeroAccountSync.changes.collectAsState()
     var heard by remember(historyUid,historyReady,historyChanges){mutableStateOf(history(context))}
     val scope=rememberCoroutineScope()
@@ -56,19 +62,24 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
     }
     val recent=remember(heard){heard.mapNotNull{it.asNativeHit()}.distinctBy{it.id}.take(12)}
     val liked=remember(favorites){favorites.mapNotNull(::musicHitFromRef)}
-    var played by remember{mutableStateOf(replayTracks(NeroReplay.entries(context),NeroReplay.today(),30))}
+    var played by remember{mutableStateOf(if(historyUid==null)replayTracks(NeroReplay.entries(context),NeroReplay.today(),30)else emptyList())}
     LaunchedEffect(Unit){
-        while(true){played=replayTracks(NeroReplay.entries(context),NeroReplay.today(),30);kotlinx.coroutines.delay(10000L)}
+        if(historyUid==null)while(true){played=replayTracks(NeroReplay.entries(context),NeroReplay.today(),30);kotlinx.coroutines.delay(10000L)}
     }
     val hidden=rememberHiddenSongs()
     var resetHidden by remember(historyUid,historyReady){mutableStateOf(false)}
-    val visibleMix=filterRecommendedSongs(mix,hidden)
     if(resetHidden)AlertDialog(onDismissRequest={resetHidden=false},title={Text("Restaurar recomendações?")},text={Text("As músicas ocultadas poderão voltar a aparecer no seu mix. Seus favoritos e playlists não serão alterados.")},confirmButton={TextButton(enabled=historyReady,onClick={val owner=historyUid;resetHidden=false;scope.launch{
         try{resetScopedHiddenSongs(context,owner)}catch(e:CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner)notice="Não foi possível restaurar as recomendações."}
     }}){Text("Restaurar")}},dismissButton={TextButton(onClick={resetHidden=false}){Text("Cancelar")}})
     val followed=rememberFollowedArtists()
     val scopedPlayed=if(historyReady&&historyUid==null)played else emptyList()
-    val artists=remember(recent,liked,scopedPlayed,followed){preferredMixArtists(followed,mixArtists(scopedPlayed,liked.map{it.artist},recent.map{it.artist}))}
+    val artists=remember(heard,liked,scopedPlayed,followed){
+        rankNeroMixArtists(followed,liked.map{it.artist},heard.filter{recommendationId(it.id)!=null}.map{it.artist},replayArtists(scopedPlayed).map{it.first})
+    }
+    val excluded=remember(heard,liked,scopedPlayed){
+        (heard.map{it.id}+liked.map{it.id}+scopedPlayed.map{it.id}).mapNotNull(::recommendationId).toSet()
+    }
+    val visibleMix=remember(mix,hidden,excluded){filterRecommendedSongs(mix,hidden).filterNot{it.id in excluded}.take(24)}
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
         if(recent.isNotEmpty()){
             Text("Ouça novamente",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -77,26 +88,43 @@ internal fun OnlineDiscoveryShelf(favorites:List<OnlineRef>,canPlay:Boolean,onQu
         if(hidden.isNotEmpty())TextButton(onClick={resetHidden=true}){Text("Restaurar músicas ocultadas (${hidden.size})")}
         if(artists.isNotEmpty()){
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
-            Text("Sugestões pelos artistas que você segue, mais ouvidos, favoritos e recentes. Ao gerar, apenas os nomes dos artistas são consultados na fonte musical.",fontSize=12.sp,color=Color.LightGray)
+            Text(if(historyUid!=null)"Sugestões dos artistas seguidos, favoritos e histórico online da sua conta, se disponível." else "Sugestões dos artistas seguidos, favoritos e histórico deste aparelho.",fontSize=12.sp,color=Color.LightGray)
+            Text("Inspirado em: "+artists.take(3).joinToString(" · "),fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
+            Text("Ao gerar, somente os nomes dos artistas são consultados na fonte musical.",fontSize=11.sp,color=Color.LightGray)
             OutlinedButton(enabled=!busy&&historyReady,onClick={
                 val owner=historyUid
                 busy=true;notice=null
                 scope.launch{
                     try{
-                        val excluded=(recent+liked).map{it.id}.toSet()+scopedPlayed.map{it.id.removePrefix("youtube:")}
-                        val rows=artists.flatMap{NativeMusicCatalog.search(it).take(12)}
+                        val groups=mutableListOf<List<NativeMusicHit>>()
+                        var failures=0
+                        for(artist in artists){
+                            if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
+                            try{groups+=NativeMusicCatalog.search(artist).take(20)}
+                            catch(e:CancellationException){throw e}catch(_:Exception){failures++}
+                        }
                         if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=owner)return@launch
-                        mix=filterRecommendedSongs(rows.filter{it.id !in excluded},scopedHiddenSongs(context,owner)).distinctBy{it.id}.take(24)
-                        if(mix.isEmpty())notice="Nenhuma nova faixa encontrada."
+                        val candidates=interleaveNeroMix(groups,excluded,emptySet(),limit=60)
+                        val available=filterRecommendedSongs(candidates,scopedHiddenSongs(context,owner))
+                        if(available.isNotEmpty())mix=candidates
+                        notice=when{
+                            failures==artists.size->"Não foi possível consultar os artistas. Tente novamente."
+                            available.isEmpty()->"Nenhuma nova faixa encontrada. Tente atualizar depois."
+                            failures>0->"Mix criado. Algumas consultas ficaram indisponíveis."
+                            else->null
+                        }
                     }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível atualizar o mix."}
                     finally{busy=false}
                 }
-            }){Text(if(busy)"Preparando mix…" else if(mix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
+            }){Text(if(busy)"Preparando mix…" else if(visibleMix.isEmpty())"Gerar meu mix" else "Atualizar meu mix")}
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             if(visibleMix.isNotEmpty()){
                 Button(enabled=canPlay,onClick={onQueue(visibleMix.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Meu mix NERO","")),0)}){Icon(Icons.Default.PlayArrow,null);Text("Reproduzir mix")}
                 OnlineDiscoveryRow(visibleMix,canPlay,onQueue)
             }
+        }else{
+            Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
+            Text("Curta músicas ou siga artistas para descobrir novas faixas do seu gosto.",fontSize=12.sp,color=Color.LightGray)
         }
     }
 }
