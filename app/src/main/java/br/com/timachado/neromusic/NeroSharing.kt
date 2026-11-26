@@ -48,13 +48,6 @@ internal fun sharedSong(ref:OnlineRef):SharedSong{
     val open=ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}
     return SharedSong(ref.title,ref.artist,native?.id,open?.source)
 }
-internal fun shareLink(song:SharedSong):String?{
-    song.videoId?.takeIf{shareVideoId.matches(it)}?.let{return "https://music.youtube.com/watch?v="+it}
-    return song.publicLink?.let{value->
-        val uri=Uri.parse(value)
-        value.takeIf{uri.scheme=="https"&&uri.host in setOf("commons.wikimedia.org","open.spotify.com")}
-    }
-}
 internal fun sharedPlaylistRefs(playlist:SharedPlaylist):List<OnlineRef> =
     playlist.songs.map{song->
         val id=song.videoId?.takeIf{shareVideoId.matches(it)}?.let{"youtube:"+it} ?: "shared:"+UUID.randomUUID().toString()
@@ -91,16 +84,6 @@ internal fun decodeSharedPlaylist(payload:String):SharedPlaylist{
         SharedSong(title,artist,id)
     }
     return SharedPlaylist(name,songs)
-}
-private fun songLine(song:SharedSong)=listOf(song.title,song.artist).filter{it.isNotBlank()}.joinToString(" · ")
-private fun trackMessage(song:SharedSong)=listOf("🎧 Ouvindo no NERO Music",songLine(song),shareLink(song)).filterNotNull().joinToString("\n")
-private fun playlistMessage(playlist:SharedPlaylist):String=buildString{
-    append("🎧 ").append(playlist.name).append(" | NERO Music\n").append(playlist.songs.size).append(" faixas\n")
-    playlist.songs.take(50).forEachIndexed{i,song->
-        append("\n").append(i+1).append(". ").append(songLine(song))
-        shareLink(song)?.let{append("\n").append(it)}
-    }
-    if(playlist.songs.size>50)append("\n\nCompartilhe o arquivo NERO para enviar a playlist completa.")
 }
 internal fun sendText(context:Context,subject:String,text:String){
     val intent=Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT,subject).putExtra(Intent.EXTRA_TEXT,text)
@@ -159,8 +142,8 @@ private suspend fun createTrackCard(context:Context,song:SharedSong,cover:String
     }finally{bitmap.recycle()}
 }
 
-// Public sharing contains selected metadata and the actual public source link, never audio or login tokens.
-internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String?):String=buildString{
+// Public sharing contains selected metadata and only a validated NERO HTTPS link, never a source URL or credentials.
+internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String?,host:String=BuildConfig.SHARE_HOST):String=buildString{
     append("🎧 NERO Music\n")
     append(playlist.name.take(300))
     if(single){
@@ -169,7 +152,7 @@ internal fun neroShareCaption(playlist:SharedPlaylist,single:Boolean,link:String
     }else{
         append("\n").append(playlist.songs.size).append(" faixas")
     }
-    if(link!=null)append("\n").append(link)
+    if(link!=null&&ShareLinks.parseForHost(link,host)!=null)append("\n").append(link)
     else append("\nCompartilhado no NERO Music")
 }
 @Composable
@@ -186,10 +169,13 @@ internal fun TrackShareDialog(title:String,artist:String,ref:OnlineRef?,cover:St
 @Composable
 internal fun PlaylistShareDialog(playlist:SharedPlaylist,onClose:()->Unit){
     val context=LocalContext.current
-    MusicShareDialog(playlist,single=false,onClose=onClose,send={_,_->
-        val file=withContext(Dispatchers.IO){
-            File(shareDir(context),"nero-playlist-"+UUID.randomUUID()+".json").apply{writeBytes(encodePlaylist(playlist))}
+    MusicShareDialog(playlist,single=false,onClose=onClose,send={link,_->
+        if(link!=null)sendText(context,"NERO Music",neroShareCaption(playlist,false,link))
+        else {
+            val file=withContext(Dispatchers.IO){
+                File(shareDir(context),"nero-playlist-"+UUID.randomUUID()+".json").apply{writeBytes(encodePlaylist(playlist))}
+            }
+            sendFile(context,file,"application/json",neroShareCaption(playlist,false,null))
         }
-        sendFile(context,file,"application/json",neroShareCaption(playlist,false,null))
     })
 }

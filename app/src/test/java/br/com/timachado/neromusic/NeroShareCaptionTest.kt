@@ -2,20 +2,24 @@ package br.com.timachado.neromusic
 import org.junit.Assert.*
 import org.junit.Test
 class NeroShareCaptionTest{
+    private val host="nero-test.example"
+    private val native="https://"+host+"/s/0123456789abcdef0123456789abcdef"
+    private val song=SharedSong("Música","Artista","abcdefghijk")
+    private val p=SharedPlaylist("Música",listOf(song))
     @Test fun metadataWithoutServer(){
-        val p=SharedPlaylist("Música",listOf(SharedSong("Música","Artista","abcdefghijk")))
-        val caption=neroShareCaption(p,true,null)
+        val caption=neroShareCaption(p,true,null,host)
         assertTrue(caption.contains("Música"));assertTrue(caption.contains("Artista"))
-        assertFalse(caption.contains("http"));assertFalse(caption.contains("Google"))
+        assertFalse(caption.contains("http"))
     }
-    @Test fun normalTrackLinkNeedsNoLogin(){
-        val song=SharedSong("Música","Artista","abcdefghijk")
-        val link=shareLink(song)
-        assertEquals("https://music.youtube.com/watch?v=abcdefghijk",link)
-        val caption=neroShareCaption(SharedPlaylist(song.title,listOf(song)),true,link)
-        assertTrue(caption.contains(requireNotNull(link)));assertFalse(caption.contains("Google"))
+    @Test fun nativeLinkForTrackAndPlaylist(){
+        assertTrue(neroShareCaption(p,true,native,host).contains(native))
+        assertTrue(neroShareCaption(p,false,native,host).contains(native))
     }
-    @Test fun localSongHasNoFabricatedUrl(){
-        assertNull(shareLink(SharedSong("Local","Artista")))
+    @Test fun externalLinksNeverAppear(){
+        for(link in listOf("https://music.youtube.com/watch?v=abcdefghijk","https://open.spotify.com/track/abc","https://"+host+".evil.test/s/0123456789abcdef0123456789abcdef")){
+            assertFalse(neroShareCaption(p,true,link,host).contains("https://"))
+            assertFalse(neroShareCaption(p,false,link,host).contains("https://"))
+        }
+        assertFalse(neroShareCaption(p,true,native,"").contains("https://"))
     }
 }
