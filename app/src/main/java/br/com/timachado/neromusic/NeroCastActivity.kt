@@ -21,6 +21,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.android.gms.cast.CastMediaControlIntent
+import com.google.android.gms.cast.MediaStatus
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -167,7 +168,7 @@ class NeroCastActivity:FragmentActivity(){
                     AlertDialog.Builder(this@NeroCastActivity).setTitle("Escolha um dispositivo DLNA")
                         .setItems(devices.map{it.name+" ("+it.endpoint.host+")"}.toTypedArray()){_,i->
                             selectedDlna=devices[i];targetStatus.text="Destino DLNA: "+devices[i].name
-                            message("Dispositivo selecionado. Escolha uma faixa compatível e transmita.")
+                            message("TV encontrada e selecionada. Toque em Transmitir faixa atual para verificar o áudio.")
                         }.setNegativeButton("Cancelar",null).show()
                 }
             }catch(e:CancellationException){throw e}catch(_:Exception){message("Busca DLNA indisponível. Confira se o Wi-Fi está conectado.")}
@@ -193,7 +194,13 @@ class NeroCastActivity:FragmentActivity(){
         val item=player.currentMediaItem
         val track=item?.let(::openRefFromItem)?.openAudio
         if(track==null||!allowed(track)||track.mime !in setOf("audio/mpeg","audio/flac","audio/wav","audio/ogg")){
-            message("Escolha uma faixa de áudio livre compatível no NERO.");return
+            if(item==null){message("Inicie uma música no NERO antes de transmitir.");return}
+            message("A TV foi localizada, mas esta faixa não oferece uma fonte compatível para transmissão direta.")
+            AlertDialog.Builder(this).setTitle("Faixa incompatível com transmissão direta")
+                .setMessage("O NERO encontrou o dispositivo, mas não pode enviar esta faixa como áudio DLNA ou Google Cast. Se seu celular e sua TV oferecerem espelhamento, você pode utilizar a conexão nativa do Android.")
+                .setPositiveButton("Abrir espelhamento"){_,_->openMirrorSettings()}
+                .setNegativeButton("Continuar no celular",null).show()
+            return
         }
         if(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){message("Não foi possível pausar o player local.");return}
         val dlna=selectedDlna
@@ -202,11 +209,22 @@ class NeroCastActivity:FragmentActivity(){
             sending=true;message("Enviando faixa à TV por DLNA…")
             scope.launch{
                 try{
-                    withContext(Dispatchers.IO){NeroDlna.play(applicationContext,dlna,track.url,track.title,track.artist,track.mime)}
-                    dlnaPlaying=dlna to track.url
-                    if(player.currentMediaItem==item)player.pause()
-                    message("Faixa enviada: "+track.title+" • "+dlna.name)
-                }catch(e:CancellationException){throw e}catch(_:Exception){message("A TV não confirmou a reprodução. O formato pode não ser compatível.")}
+                    val confirmed=withContext(Dispatchers.IO){
+                        NeroDlna.play(applicationContext,dlna,track.url,track.title,track.artist,track.mime)
+                        NeroDlna.awaitPlaying(applicationContext,dlna,track.url)
+                    }
+                    if(confirmed&&player.currentMediaItem==item){
+                        dlnaPlaying=dlna to track.url
+                        player.pause()
+                        message("TV confirmou a reprodução: "+track.title+" • "+dlna.name)
+                    }else{
+                        withContext(Dispatchers.IO){runCatching{NeroDlna.control(applicationContext,dlna,track.url,"Stop")}}
+                        message("A TV não confirmou esta faixa. O áudio do celular foi preservado.")
+                    }
+                }catch(e:CancellationException){throw e}catch(_:Exception){
+                    withContext(Dispatchers.IO){runCatching{NeroDlna.control(applicationContext,dlna,track.url,"Stop")}}
+                    message("A TV não confirmou a reprodução. Verifique o formato e o acesso à mídia. O celular não foi pausado.")
+                }
                 finally{sending=false}
             }
             return
@@ -219,19 +237,39 @@ class NeroCastActivity:FragmentActivity(){
             }
             val media=MediaInfo.Builder(track.url).setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
                 .setContentType(track.mime).setMetadata(metadata).build()
-            player.pause()
             sending=true
             loaded=remote;loadedUrl=track.url
             message("Enviando faixa à TV…")
             remote.load(MediaLoadRequestData.Builder().setMediaInfo(media).setAutoplay(true)
                 .setCurrentTime(player.currentPosition.coerceAtLeast(0L)).build()).setResultCallback{result->
-                sending=false
                 if(isFinishing||isDestroyed){
+                    sending=false
                     if(result.status.isSuccess&&remote.mediaInfo?.contentId==track.url)remote.stop()
-                }else if(result.status.isSuccess)message("Transmitindo: "+track.title)
-                else{loaded=null;loadedUrl=null;message("A TV não conseguiu carregar a faixa. Retome no celular manualmente.")}
+                }else if(result.status.isSuccess){
+                    scope.launch{
+                        try{
+                            val confirmed=withTimeoutOrNull(12000L){
+                                while(client()===remote){
+                                    if(remote.playerState==MediaStatus.PLAYER_STATE_PLAYING&&remote.mediaInfo?.contentId==track.url)return@withTimeoutOrNull true
+                                    delay(400L)
+                                }
+                                false
+                            }==true
+                            if(confirmed&&player.currentMediaItem==item){
+                                player.pause()
+                                message("TV confirmou a reprodução: "+track.title)
+                            }else{
+                                stopOwn()
+                                message("A TV não confirmou a faixa. O áudio do celular foi preservado.")
+                            }
+                        }finally{sending=false}
+                    }
+                }else{
+                    sending=false;loaded=null;loadedUrl=null
+                    message("A TV não conseguiu carregar a faixa. O áudio do celular foi preservado.")
+                }
             }
-        }catch(_:Exception){sending=false;message("Falha ao transmitir. Retome no celular manualmente.")}
+        }catch(_:Exception){sending=false;message("Falha ao transmitir. O áudio do celular foi preservado.")}
     }
     private fun stopOwn(){
         runCatching{ours()?.stop()}
