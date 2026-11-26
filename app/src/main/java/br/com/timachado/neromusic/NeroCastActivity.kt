@@ -2,6 +2,8 @@ package br.com.timachado.neromusic
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import android.os.Bundle
 import android.app.AlertDialog
 import android.net.wifi.WifiManager
@@ -99,7 +101,10 @@ class NeroCastActivity:FragmentActivity(){
             cast?.addCastStateListener(castListener)
             cast?.let{castListener.onCastStateChanged(it.castState)}
         }catch(_:Exception){message("Google Cast indisponível neste aparelho.")}
-        button("Buscar TVs DLNA / UPnP"){discoverDlna()}
+        panel.addView(text("Smart TVs LG e Samsung: procure primeiro por DLNA. Para espelhar a tela, use a conexão sem fio do próprio Android.",14f))
+        button("Buscar TVs LG / Samsung / DLNA"){discoverDlna()}
+        button("Espelhar tela · Miracast / Smart View"){openMirrorSettings()}
+        button("Ajuda para LG e Samsung"){showTvHelp()}
         button("Usar Google Cast"){
             if(!sending&&dlnaPlaying==null){selectedDlna=null;targetStatus.text="Destino: Google Cast"}
             else message("Encerre a transmissão atual antes de trocar.")
@@ -131,6 +136,22 @@ class NeroCastActivity:FragmentActivity(){
         runCatching{multicast?.let{if(it.isHeld)it.release()}}
         multicast=null
         super.onStop()
+    }
+    private fun openMirrorSettings(){
+        if(sending||dlnaPlaying!=null||ours()!=null){
+            message("Encerre a transmissão atual antes de espelhar.");return
+        }
+        try{
+            startActivity(Intent(Settings.ACTION_CAST_SETTINGS))
+            message("Escolha a TV nas configurações do Android. A conexão depende do suporte do celular e da TV.")
+        }catch(_:Exception){
+            message("Abra as configurações rápidas do celular e procure Transmitir, Smart View ou Smart Connect.")
+        }
+    }
+    private fun showTvHelp(){
+        AlertDialog.Builder(this).setTitle("Conectar sua Smart TV")
+            .setMessage("LG webOS: abra Screen Share para espelhamento, ou habilite o compartilhamento de mídia quando disponível.\n\nSamsung: habilite Screen Mirroring ou o acesso de dispositivos externos na TV. Em celulares Galaxy, procure Smart View.\n\nMotorola: quando disponível, use Smart Connect para localizar telas Miracast.\n\nDLNA transmite somente áudio compatível com o receptor. Miracast espelha a tela pelo sistema; não é um transmissor independente do NERO. Nem todos os modelos suportam os mesmos protocolos.")
+            .setPositiveButton("Entendi",null).show()
     }
     private fun discoverDlna(){
         if(scanning||sending||dlnaPlaying!=null||ours()!=null){message("Encerre a transmissão atual antes de buscar.");return}
@@ -181,7 +202,7 @@ class NeroCastActivity:FragmentActivity(){
             sending=true;message("Enviando faixa à TV por DLNA…")
             scope.launch{
                 try{
-                    withContext(Dispatchers.IO){NeroDlna.play(applicationContext,dlna,track.url)}
+                    withContext(Dispatchers.IO){NeroDlna.play(applicationContext,dlna,track.url,track.title,track.artist,track.mime)}
                     dlnaPlaying=dlna to track.url
                     if(player.currentMediaItem==item)player.pause()
                     message("Faixa enviada: "+track.title+" • "+dlna.name)
