@@ -3,7 +3,12 @@ package br.com.timachado.neromusic
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
-import android.view.View
+import android.app.AlertDialog
+import android.net.wifi.WifiManager
+import android.widget.ScrollView
+import com.google.android.gms.cast.framework.CastState
+import com.google.android.gms.cast.framework.CastStateListener
+import kotlinx.coroutines.*
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -31,7 +36,7 @@ class NeroCastOptions:OptionsProvider{
     override fun getAdditionalSessionProviders(context:Context):List<SessionProvider>?=null
 }
 
-// Isolated debug-only sender: explicit single-track load, not a replacement
+// Explicit single-track sender, not a replacement
 // for the Media3 queue. Only validated publicly reachable open audio is sent.
 class NeroCastActivity:FragmentActivity(){
     private var controller:MediaController?=null
@@ -40,6 +45,22 @@ class NeroCastActivity:FragmentActivity(){
     private var loaded:RemoteMediaClient?=null
     private var loadedUrl:String?=null
     private var sending=false
+    private var scanning=false
+    private var selectedDlna:NeroDlnaDevice?=null
+    private var dlnaPlaying:Pair<NeroDlnaDevice,String>?=null
+    private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
+    private var multicast:WifiManager.MulticastLock?=null
+    private lateinit var castStatus:TextView
+    private lateinit var targetStatus:TextView
+    private val castListener=CastStateListener{state->
+        if(::castStatus.isInitialized)castStatus.text=when(state){
+            CastState.NO_DEVICES_AVAILABLE->"Google Cast: nenhum dispositivo compatível detectado."
+            CastState.NOT_CONNECTED->"Google Cast: dispositivos disponíveis."
+            CastState.CONNECTING->"Google Cast: conectando…"
+            CastState.CONNECTED->"Google Cast: conectado."
+            else->"Google Cast: verificando…"
+        }
+    }
     private lateinit var status:TextView
     private fun message(value:String){if(!isFinishing&&!isDestroyed)status.text=value}
     private fun client()=cast?.sessionManager?.currentCastSession?.takeIf{it.isConnected}?.remoteMediaClient
@@ -56,31 +77,88 @@ class NeroCastActivity:FragmentActivity(){
             text=label;setOnClickListener{action()};panel.addView(this)
         }
         panel.addView(text("NERO Cast",24f))
-        panel.addView(text("Selecione uma TV na mesma rede e transmita a faixa atual de áudio livre. A fila do celular fica pausada; arquivos locais e faixas online não compatíveis com a transmissão não são transmitidos.",15f))
+        panel.addView(text("Google Cast ou DLNA/UPnP. Conecte a TV à mesma rede Wi-Fi. Apenas faixas de áudio livre compatíveis podem ser enviadas; não transmite arquivos locais ou faixas de serviços protegidos.",15f))
         status=text("Conectando ao player…",16f)
         panel.addView(status)
-        setContentView(panel)
+        castStatus=text("Google Cast: verificando…",14f)
+        targetStatus=text("Destino: Google Cast",16f)
+        panel.addView(castStatus)
+        panel.addView(targetStatus)
+        setContentView(ScrollView(this).apply{addView(panel)})
         try{
             cast=CastContext.getSharedInstance(this)
             val route=MediaRouteButton(this)
             panel.addView(route,LinearLayout.LayoutParams(120,100))
             CastButtonFactory.setUpMediaRouteButton(this,route)
+            cast?.addCastStateListener(castListener)
+            cast?.let{castListener.onCastStateChanged(it.castState)}
         }catch(_:Exception){message("Google Cast indisponível neste aparelho.")}
-        button("Transmitir faixa atual"){send()}
-        button("Pausar na TV"){ours()?.pause()?:message("Nenhuma transmissão NERO ativa.")}
-        button("Continuar na TV"){ours()?.play()?:message("Nenhuma transmissão NERO ativa.")}
-        button("Encerrar transmissão"){
-            stopOwn()
-            message("Transmissão encerrada. Retome a música no player quando quiser.")
+        button("Buscar TVs DLNA / UPnP"){discoverDlna()}
+        button("Usar Google Cast"){
+            if(!sending&&dlnaPlaying==null){selectedDlna=null;targetStatus.text="Destino: Google Cast"}
+            else message("Encerre a transmissão atual antes de trocar.")
         }
-        button("Voltar ao NERO"){finish()}
+        button("Transmitir faixa atual"){send()}
+        button("Pausar na TV"){if(dlnaPlaying!=null)dlnaControl("Pause") else ours()?.pause()?:message("Nenhuma transmissão NERO ativa.")}
+        button("Continuar na TV"){if(dlnaPlaying!=null)dlnaControl("Play") else ours()?.play()?:message("Nenhuma transmissão NERO ativa.")}
+        button("Encerrar transmissão"){
+            if(dlnaPlaying!=null)dlnaControl("Stop")
+            else if(!sending){stopOwn();message("Transmissão encerrada. Retome a música no player quando quiser.")}
+        }
+        button("Voltar ao NERO"){if(sending||dlnaPlaying!=null)message("Encerre a transmissão DLNA antes de sair.") else finish()}
         val request=MediaController.Builder(this,SessionToken(this,ComponentName(this,PlaybackService::class.java))).buildAsync()
         future=request
         request.addListener({
             if(!isDestroyed&&!isFinishing){
-                try{controller=request.get();message(if(cast!=null)"Escolha uma TV pelo botão Cast." else "Google Cast indisponível.")}catch(_:Exception){message("Player indisponível.")}
+                try{controller=request.get();message("Escolha o destino Google Cast ou busque TVs DLNA.")}catch(_:Exception){message("Player indisponível.")}
             }
         },ContextCompat.getMainExecutor(this))
+    }
+    override fun onStart(){
+        super.onStart()
+        runCatching{
+            multicast=(applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
+                .createMulticastLock("nero-google-cast").apply{setReferenceCounted(false);acquire()}
+        }
+    }
+    override fun onStop(){
+        runCatching{multicast?.let{if(it.isHeld)it.release()}}
+        multicast=null
+        super.onStop()
+    }
+    private fun discoverDlna(){
+        if(scanning||sending||dlnaPlaying!=null||ours()!=null){message("Encerre a transmissão atual antes de buscar.");return}
+        scanning=true;message("Buscando TVs e caixas de som DLNA na rede Wi-Fi…")
+        scope.launch{
+            try{
+                val devices=withContext(Dispatchers.IO){NeroDlna.discover(applicationContext)}
+                if(isDestroyed||isFinishing)return@launch
+                if(devices.isEmpty()){
+                    message("Nenhum DLNA encontrado. Ative o receptor de mídia na TV; verifique Wi-Fi de convidados, isolamento de dispositivos e VPN.")
+                }else{
+                    message("Dispositivos DLNA encontrados: "+devices.size)
+                    AlertDialog.Builder(this@NeroCastActivity).setTitle("Escolha um dispositivo DLNA")
+                        .setItems(devices.map{it.name+" ("+it.endpoint.host+")"}.toTypedArray()){_,i->
+                            selectedDlna=devices[i];targetStatus.text="Destino DLNA: "+devices[i].name
+                            message("Dispositivo selecionado. Escolha uma faixa compatível e transmita.")
+                        }.setNegativeButton("Cancelar",null).show()
+                }
+            }catch(e:CancellationException){throw e}catch(_:Exception){message("Busca DLNA indisponível. Confira se o Wi-Fi está conectado.")}
+            finally{scanning=false}
+        }
+    }
+    private fun dlnaControl(action:String){
+        if(sending)return
+        val active=dlnaPlaying?:return
+        sending=true
+        scope.launch{
+            try{
+                withContext(Dispatchers.IO){NeroDlna.control(applicationContext,active.first,active.second,action)}
+                if(action=="Stop")dlnaPlaying=null
+                message(when(action){"Pause"->"Transmissão DLNA pausada.";"Play"->"Transmissão DLNA retomada.";else->"Transmissão encerrada."})
+            }catch(e:CancellationException){throw e}catch(_:Exception){if(action=="Stop")dlnaPlaying=null;message("A TV não confirmou o comando. Confira a reprodução diretamente na TV.")}
+            finally{sending=false}
+        }
     }
     private fun send(){
         if(sending)return
@@ -90,8 +168,23 @@ class NeroCastActivity:FragmentActivity(){
         if(track==null||!allowed(track)||track.mime !in setOf("audio/mpeg","audio/flac","audio/wav","audio/ogg")){
             message("Escolha uma faixa de áudio livre compatível no NERO.");return
         }
-        val remote=client()?:run{message("Selecione uma TV primeiro.");return}
         if(!player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){message("Não foi possível pausar o player local.");return}
+        val dlna=selectedDlna
+        if(dlna!=null){
+            if(scanning||ours()!=null||dlnaPlaying!=null){message("Encerre a transmissão anterior primeiro.");return}
+            sending=true;message("Enviando faixa à TV por DLNA…")
+            scope.launch{
+                try{
+                    withContext(Dispatchers.IO){NeroDlna.play(applicationContext,dlna,track.url)}
+                    dlnaPlaying=dlna to track.url
+                    if(player.currentMediaItem==item)player.pause()
+                    message("Faixa enviada: "+track.title+" • "+dlna.name)
+                }catch(e:CancellationException){throw e}catch(_:Exception){message("A TV não confirmou a reprodução. O formato pode não ser compatível.")}
+                finally{sending=false}
+            }
+            return
+        }
+        val remote=client()?:run{message("Selecione uma TV primeiro.");return}
         try{
             val metadata=MediaMetadata(MediaMetadata.MEDIA_TYPE_MUSIC_TRACK).apply{
                 putString(MediaMetadata.KEY_TITLE,track.title)
@@ -120,6 +213,8 @@ class NeroCastActivity:FragmentActivity(){
     override fun onDestroy(){
         // This preview intentionally stops its own track when leaving.
         stopOwn()
+        cast?.removeCastStateListener(castListener)
+        scope.cancel()
         future?.let{MediaController.releaseFuture(it)}
         future=null;controller=null
         super.onDestroy()
