@@ -163,6 +163,12 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                 }
                 OnlineDiscoveryRow(collection.tracks,canPlay,onQueue)
             }
+            if(historyUid!=null){
+                val premiumSeeds=remember(followed,liked,heard){
+                    rankNeroMixArtists(followed,liked.map{it.artist},heard.filter{recommendationId(it.id)!=null}.map{it.artist},emptyList(),limit=12)
+                }
+                NeroSmartMixPremium(historyUid,premiumSeeds,followed+liked.map{it.artist}+heard.map{it.artist},excluded,hidden,canPlay,onQueue)
+            }
             NeroPersonalDiscovery(artists,followed+liked.map{it.artist}+heard.map{it.artist},visibleMix+dailyVisible.flatMap{it.tracks},hidden,historyUid,onSearch,onAlbum)
         }else{
             Text("Seu mix NERO",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -171,7 +177,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
     }
 }
 @Composable
-private fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
+internal fun OnlineDiscoveryRow(rows:List<NativeMusicHit>,canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
     LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
         items(rows,key={it.id}){hit->
             val now=LocalNeroNowPlaying.current

@@ -1,7 +1,7 @@
 package br.com.timachado.neromusic
 
 // Personalization uses only the signals supplied by the active account/guest.
-internal fun rankNeroMixArtists(followed:List<String>,liked:List<String>,recent:List<String>,replay:List<String>):List<String>{
+internal fun rankNeroMixArtists(followed:List<String>,liked:List<String>,recent:List<String>,replay:List<String>,limit:Int=4):List<String>{
     data class Artist(val name:String,var score:Int=0)
     val scores=linkedMapOf<String,Artist>()
     fun add(name:String,weight:Int){
@@ -15,7 +15,7 @@ internal fun rankNeroMixArtists(followed:List<String>,liked:List<String>,recent:
     recent.take(100).forEachIndexed{i,name->add(name,if(i<10)5 else 1)}
     replay.take(10).forEachIndexed{i,name->add(name,20-i)}
     return scores.entries.sortedWith(compareByDescending<Map.Entry<String,Artist>>{it.value.score}.thenBy{it.key})
-        .take(4).map{it.value.name}
+        .take(limit.coerceIn(1,12)).map{it.value.name}
 }
 
 // Round robin across searches, with canonical deduplication and a per-artist cap.
