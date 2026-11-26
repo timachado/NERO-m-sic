@@ -73,6 +73,8 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
             }
             Text("Amostragem de 5 segundos, sem contar pausas. Sessões curtas podem não entrar. Dados no aparelho, a partir desta versão; retenção máxima de 90 dias e 3.000 registros.",fontSize=12.sp,color=Color.LightGray)
             TextButton(enabled=entries.isNotEmpty(),onClick={confirm=true}){Text("Limpar estatísticas")}
+            HorizontalDivider()
+            NeroReplayPremium(days)
         }
     },confirmButton={TextButton(onClick={open=false}){Text("Fechar")}})
     if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Limpar estatísticas do Replay?")},text={Text("O tempo ouvido e os rankings locais serão apagados. Favoritos, playlists e downloads permanecem.")},confirmButton={TextButton(onClick={NeroReplay.clear(context);entries=emptyList();confirm=false}){Text("Limpar")}},dismissButton={TextButton(onClick={confirm=false}){Text("Cancelar")}})

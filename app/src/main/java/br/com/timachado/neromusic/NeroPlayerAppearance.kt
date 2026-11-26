@@ -38,7 +38,7 @@ private object PlayerAppearanceStore{
         prefs(context).edit().putString(key(uid),theme.name).apply()
     }
 }
-private suspend fun verifiedPremium(context:Context,uid:String):Boolean{
+internal suspend fun verifiedPremium(context:Context,uid:String):Boolean{
     if(!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return false
     return try{
         withTimeoutOrNull(12000L){

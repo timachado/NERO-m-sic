@@ -8,6 +8,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
 import org.json.JSONObject
 import java.time.LocalDate
 import java.util.Locale
@@ -71,11 +73,15 @@ internal object NeroReplay {
 internal class NeroReplaySampler(private val context:Context,private val player:Player,scope:CoroutineScope):AutoCloseable{
     private var since=SystemClock.elapsedRealtime()
     private var id:String?=null
+    private var accountOwner:String?=null
+    private var accountGeneration:Long=0L
     private val prefs=NeroReplay.prefs(context)
     private val prefListener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,key->if(key=="enabled"||key==null)reset()}
     private fun reset(){
         since=SystemClock.elapsedRealtime()
         id=player.currentMediaItem?.mediaId?.takeIf{player.isPlaying&&NeroReplay.enabled(context)}
+        accountOwner=NeroReplayPremiumStore.recordingOwner(context)
+        accountGeneration=NeroReplayPremiumStore.generation
     }
     private val listener=object:Player.Listener{
         override fun onEvents(player:Player,events:Player.Events){
@@ -84,10 +90,12 @@ internal class NeroReplaySampler(private val context:Context,private val player:
         }
     }
     private val job:Job
+    private val identityJob:Job
     init{
         NeroReplay.prune(context)
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         player.addListener(listener);reset()
+        identityJob=scope.launch{NeroSupabase.activeUid.combine(NeroSupabase.identityReady){uid,ready->uid to ready}.collect{reset()}}
         job=scope.launch{
             while(isActive){
                 delay(5000)
@@ -98,10 +106,12 @@ internal class NeroReplaySampler(private val context:Context,private val player:
                     val title=player.mediaMetadata.title?.toString().orEmpty().ifBlank{current.mediaMetadata.title?.toString().orEmpty()}
                     val artist=player.mediaMetadata.artist?.toString().orEmpty().ifBlank{current.mediaMetadata.artist?.toString().orEmpty()}
                     NeroReplay.add(context,previous,title,artist,now-since)
+                    val owner=accountOwner
+                    if(owner!=null&&accountGeneration==NeroReplayPremiumStore.generation)NeroReplayPremiumStore.add(context,owner,previous,title,artist,now-since)
                 }
                 reset()
             }
         }
     }
-    override fun close(){job.cancel();player.removeListener(listener);prefs.unregisterOnSharedPreferenceChangeListener(prefListener)}
+    override fun close(){job.cancel();identityJob.cancel();player.removeListener(listener);prefs.unregisterOnSharedPreferenceChangeListener(prefListener)}
 }
