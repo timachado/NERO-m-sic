@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 156
-        versionName = "0.9.101-dev"
+        versionCode = 157
+        versionName = "0.9.102-dev"
         buildConfigField("boolean", "FULL_FEATURES", "true")
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
@@ -23,7 +23,8 @@ android {
         buildConfigField("String","SUPABASE_URL","\""+supabaseUrl+"\"")
         buildConfigField("String","SUPABASE_KEY","\""+supabaseKey+"\"")
         buildConfigField("String","GOOGLE_CLIENT","\""+googleClient+"\"")
-        val shareHost = System.getenv("NERO_SHARE_HOST").orEmpty().trim().lowercase()
+        // Canonical NERO share host approved for the T.I. Machado WordPress App Links plugin.
+        val shareHost = "timachado.ifree.page"
         require(shareHost.isEmpty() || Regex("[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+").matches(shareHost)) { "Invalid share host" }
         manifestPlaceholders["neroShareHost"] = shareHost.ifEmpty { "nero-share-unconfigured.invalid" }
         buildConfigField("String","SHARE_HOST","\""+shareHost+"\"")
