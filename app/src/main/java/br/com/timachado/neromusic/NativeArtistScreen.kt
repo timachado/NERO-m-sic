@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 internal fun nativeArtistKey(value:String):String=displayArtistName(value).lowercase(java.util.Locale.ROOT)
 internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMusicHit>{
@@ -31,6 +32,9 @@ internal fun artistTracks(artist:String,hits:List<NativeMusicHit>):List<NativeMu
 @Composable
 internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:Boolean,onBack:()->Unit,onQueue:(List<MediaItem>,Int)->Unit,onExplore:(String)->Unit,onAlbum:((NativeCollection)->Unit)?=null){
     val context=androidx.compose.ui.platform.LocalContext.current
+    val accountUid by NeroSupabase.activeUid.collectAsState()
+    val accountReady by NeroSupabase.identityReady.collectAsState()
+    val accountScope=rememberCoroutineScope()
     val followed=rememberFollowedArtists()
     val following=followed.any{nativeArtistKey(it)==nativeArtistKey(artist)}
     val profile=rememberArtistProfile(artist)
@@ -59,7 +63,16 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                 Icon(Icons.Default.KeyboardArrowDown,"Deslize para fechar",tint=MaterialTheme.colorScheme.primary)
             }
             ArtistProfileCard(artist,profile=profile,expanded=true)
-            OutlinedButton(onClick={if(!NeroFollowedArtists.toggle(context,artist))android.widget.Toast.makeText(context,"Limite de artistas seguidos atingido.",android.widget.Toast.LENGTH_SHORT).show()}){
+            OutlinedButton(onClick={
+                val owner=accountUid
+                if(accountReady)accountScope.launch{
+                    try{
+                        require(NeroSupabase.activeUid.value==owner)
+                        if(owner!=null)NeroAccountSync.toggleArtist(context,owner,artist)
+                        else require(NeroFollowedArtists.toggle(context,artist))
+                    }catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível atualizar o artista.",android.widget.Toast.LENGTH_SHORT).show()}
+                }
+            }){
                 Icon(if(following)Icons.Default.Check else Icons.Default.Add,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(6.dp));Text(if(following)"Seguindo" else "Seguir artista")
             }
             if(albums.isNotEmpty()){
