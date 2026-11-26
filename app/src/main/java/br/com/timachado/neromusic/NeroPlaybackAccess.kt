@@ -29,7 +29,7 @@ internal object NeroPlaybackAccess {
     }
     @androidx.annotation.OptIn(UnstableApi::class)
     fun sessionCommands():SessionCommands{
-        val builder=MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon().add(NeroMediaActions.favorite)
+        val builder=MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon().add(NeroMediaActions.favorite).add(NeroMediaActions.switchVideo)
         if(allowed())builder.add(NeroMediaActions.repeat)
         return builder.build()
     }
@@ -41,5 +41,7 @@ internal val restrictedPlaybackCommands=setOf(
     Player.COMMAND_SET_SHUFFLE_MODE,Player.COMMAND_SET_REPEAT_MODE
 )
 internal fun neroPlaybackCommandAllowed(premium:Boolean,command:Int)=premium||command !in restrictedPlaybackCommands
+// Explicit selection wins; ExoPlayer shuffles the subsequent playback order in Free.
+@Suppress("UNUSED_PARAMETER")
 internal fun neroPlaybackStartIndex(size:Int,requested:Int,premium:Boolean,randomIndex:(Int)->Int={kotlin.random.Random.nextInt(it)}):Int =
-    if(size<=0)requested else if(premium)requested else if(size==1)0 else randomIndex(size)
+    if(size<=0||requested==androidx.media3.common.C.INDEX_UNSET)requested else requested.coerceIn(0,size-1)
