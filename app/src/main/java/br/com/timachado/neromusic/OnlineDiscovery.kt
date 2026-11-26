@@ -168,6 +168,7 @@ private fun OnlineDiscoveryContent(favorites:List<OnlineRef>,canPlay:Boolean,onQ
                     rankNeroMixArtists(followed,liked.map{it.artist},heard.filter{recommendationId(it.id)!=null}.map{it.artist},emptyList(),limit=12)
                 }
                 NeroSmartMixPremium(historyUid,premiumSeeds,followed+liked.map{it.artist}+heard.map{it.artist},excluded,hidden,canPlay,onQueue)
+                NeroDailyMixPremium(historyUid,premiumSeeds,dailyDay,excluded,hidden,canPlay,onQueue)
             }
             NeroPersonalDiscovery(artists,followed+liked.map{it.artist}+heard.map{it.artist},visibleMix+dailyVisible.flatMap{it.tracks},hidden,historyUid,onSearch,onAlbum)
         }else{
