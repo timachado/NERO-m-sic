@@ -1,7 +1,12 @@
 name: NERO isolated commerce contract
 on:
   push:
-    branches: [test/nero-commercial-contract]
+    branches: [test/nero-commercial-contract, feat/nero-connect]
+    paths:
+      - 'supabase/tests/**'
+      - 'supabase/deployed/**'
+      - 'supabase/setup/nero_commerce_snapshot*'
+      - '.github/workflows/nero-commerce-contract.yml'
   workflow_dispatch:
 permissions:
   contents: read
