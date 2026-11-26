@@ -11,7 +11,7 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 185
+        versionCode = 186
         versionName = "1.0.0"
         buildConfigField("boolean", "FULL_FEATURES", "true")
         buildConfigField("boolean", "NERO_FCM_DIAGNOSTIC", "false")
