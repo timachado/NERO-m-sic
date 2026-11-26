@@ -49,6 +49,32 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
         val result=when{
             !trusted(controller)->SessionError.ERROR_PERMISSION_DENIED
             customCommand==NeroMediaActions.favorite->if(NeroMediaActions.toggle(context,session.player.currentMediaItem))androidx.media3.session.SessionResult.RESULT_SUCCESS else SessionError.ERROR_BAD_VALUE
+            customCommand==NeroMediaActions.switchVideo->{
+                // This narrowly scoped command cannot seek to a user-provided position or select a different track.
+                val p=session.player
+                val item=p.currentMediaItem
+                val index=p.currentMediaItemIndex
+                val target=args.getBoolean("video")
+                val quality=args.getInt("quality",0)
+                if(!own(controller))SessionError.ERROR_PERMISSION_DENIED
+                else if(item==null||item.mediaId!=args.getString("mediaId")||index !in 0 until p.mediaItemCount||
+                    quality !in listOf(0,360,480,720,1080))SessionError.ERROR_BAD_VALUE
+                else {
+                    val replacement=item.withVideoMode(target,quality)
+                    if(replacement==null||replacement.mediaId!=item.mediaId)SessionError.ERROR_BAD_VALUE
+                    else if(item.isNeroVideo()==target&&(!target||item.videoQuality()==quality))androidx.media3.session.SessionResult.RESULT_SUCCESS
+                    else {
+                        val position=p.currentPosition.coerceAtLeast(0L)
+                        val resume=p.playWhenReady
+                        // Replace the timeline atomically at the current item; never ask Free's controller to seek.
+                        val queue=(0 until p.mediaItemCount).map{if(it==index)replacement else p.getMediaItemAt(it)}
+                        p.setMediaItems(queue,index,position)
+                        p.prepare()
+                        p.playWhenReady=resume
+                        androidx.media3.session.SessionResult.RESULT_SUCCESS
+                    }
+                }
+            }
             customCommand==NeroMediaActions.repeat&&!NeroPlaybackAccess.allowed()->SessionError.ERROR_PERMISSION_DENIED
             customCommand==NeroMediaActions.repeat->{
                 val p=session.player
