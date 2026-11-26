@@ -1,0 +1,28 @@
+name: NERO private test transport key
+on:
+  push:
+    branches: [qa/nero-firebase-readiness]
+    paths: ['.github/workflows/nero-fcm-transport-key.yml']
+permissions:
+  contents: read
+jobs:
+  public-key:
+    runs-on: ubuntu-latest
+    environment: nero-release
+    timeout-minutes: 3
+    steps:
+      - name: Export public RSA key only
+        env:
+          SERVER_CONFIG: ${{ secrets.NERO_FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          python3 - "$tmp/key.pem" <<'PY'
+          import json, os, sys
+          info=json.loads(os.environ["SERVER_CONFIG"])
+          assert info["project_id"]=="nero-music-c8654"
+          open(sys.argv[1],"w").write(info["private_key"])
+          PY
+          echo "NERO_PUBLIC_KEY_DER_B64=$(openssl pkey -in "$tmp/key.pem" -pubout -outform DER | base64 -w0)"
