@@ -70,6 +70,9 @@ internal fun ImmersivePlayer(
     var showTimer by remember{mutableStateOf(false)}
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
+    val tvVolumeState by NeroWvcVolume.state.collectAsState()
+    LaunchedEffect(playing){if(playing)NeroWvcVolume.clear()}
+
     var showDevices by remember{mutableStateOf(false)}
     var castBusy by remember{mutableStateOf(false)}
     val castScope=rememberCoroutineScope()
@@ -262,6 +265,15 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onRepeat,enabled=ready&&fullControls,modifier=Modifier.weight(1f)){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(!fullControls)Color.White.copy(alpha=.32f) else if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
                 if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer,modifier=Modifier.weight(1f)){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
+            if(tvVolumeState.target!=null&&tvVolumeState.value!=null){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
+                    OutlinedButton(onClick={NeroWvcVolume.adjust(castContext,-5)},enabled=!tvVolumeState.busy){Text("−")}
+                    Text("Volume TV: "+tvVolumeState.value+"%",fontSize=13.sp,color=Color.White)
+                    OutlinedButton(onClick={NeroWvcVolume.adjust(castContext,5)},enabled=!tvVolumeState.busy){Text("+")}
+                }
+                TextButton(onClick={NeroWvcVolume.clear()}){Text("Voltar ao volume do telefone")}
+            }
+            tvVolumeState.notice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id
