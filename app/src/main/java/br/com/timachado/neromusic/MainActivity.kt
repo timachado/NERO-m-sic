@@ -53,9 +53,13 @@ private val Green = Color(0xFF39FF14)
 private val SurfaceDark = Color(0xFF10171C)
 
 class MainActivity : ComponentActivity() {
-    override fun dispatchKeyEvent(event:android.view.KeyEvent):Boolean {
+    override fun onKeyDown(keyCode:Int,event:android.view.KeyEvent):Boolean{
         if(NeroWvcVolume.key(this,event))return true
-        return super.dispatchKeyEvent(event)
+        return super.onKeyDown(keyCode,event)
+    }
+    override fun onKeyUp(keyCode:Int,event:android.view.KeyEvent):Boolean{
+        if(NeroWvcVolume.key(this,event))return true
+        return super.onKeyUp(keyCode,event)
     }
 
     private var pipMode by mutableStateOf(false)
