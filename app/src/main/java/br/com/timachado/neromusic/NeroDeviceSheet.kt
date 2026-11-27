@@ -89,6 +89,8 @@ private fun transferMediaRoute(router:MediaRouter2,id:String):Boolean=runCatchin
 @Composable
 internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit,onConnectQueue:(()->Unit)?=null){
     val context=LocalContext.current
+    var showNativeAudioTest by remember{mutableStateOf(false)}
+    if(BuildConfig.DEBUG&&showNativeAudioTest)NeroNativeAudioTestDialog(onClose={showNativeAudioTest=false})
     val green=MaterialTheme.colorScheme.primary
     var outputs by remember{mutableStateOf(readOutputs(context))}
     val sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)
@@ -241,6 +243,11 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                     Text("Teste de compatibilidade com webOS. Ainda não controla a reprodução remotamente.",fontSize=12.sp,color=Color.LightGray)
                 }
                 HorizontalDivider()
+                if(BuildConfig.DEBUG){
+                    OutlinedButton(enabled=!opening&&!volumeBusy,onClick={showNativeAudioTest=true},modifier=Modifier.fillMaxWidth()){
+                        Text("NERO Connect · teste de áudio nativo")
+                    }
+                }
                 Text("Volume da TV (experimental)",fontWeight=FontWeight.Medium)
                 Text("Selecione manualmente a TV na mesma rede Wi-Fi. O volume é independente da transmissão e depende do suporte DLNA da TV.",fontSize=12.sp,color=Color.LightGray)
                 OutlinedButton(enabled=!opening&&!volumeBusy,onClick={discoverVolume()},modifier=Modifier.fillMaxWidth()){
