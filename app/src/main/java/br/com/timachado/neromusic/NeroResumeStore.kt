@@ -9,7 +9,10 @@ import org.json.JSONObject
 internal data class NeroResumeRecord(val id:String,val title:String,val artist:String,val position:Long,val open:OpenTrack?)
 internal object NeroResumeStore{
     private fun prefs(context:Context)=context.getSharedPreferences("nero_resume",Context.MODE_PRIVATE)
+    fun markExplicitExit(context:Context){prefs(context).edit().putBoolean("explicit_exit",true).apply()}
+    fun wasExplicitlyClosed(context:Context)=prefs(context).getBoolean("explicit_exit",false)
     fun save(context:Context,player:Player){
+        if(player.isPlaying&&wasExplicitlyClosed(context))prefs(context).edit().putBoolean("explicit_exit",false).apply()
         val item=player.currentMediaItem?:return
         if(item.isNeroVideo()){prefs(context).edit().remove("last").apply();return}
         val ref=openRefFromItem(item)
