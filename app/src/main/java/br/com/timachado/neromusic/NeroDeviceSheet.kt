@@ -87,7 +87,7 @@ private fun transferMediaRoute(router:MediaRouter2,id:String):Boolean=runCatchin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit){
+internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:Boolean,onCast:()->Unit,onClose:()->Unit,onConnectQueue:(()->Unit)?=null){
     val context=LocalContext.current
     val green=MaterialTheme.colorScheme.primary
     var outputs by remember{mutableStateOf(readOutputs(context))}
@@ -234,6 +234,12 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                     Icon(Icons.Default.OpenInNew,null);Spacer(Modifier.width(8.dp));Text("Abrir Web Video Caster")
                 }
                 Text("A transmissão entrega uma faixa por vez. A fila e os comandos de reprodução ficam no Web Video Caster.",fontSize=12.sp,color=Color.LightGray)
+                if(onConnectQueue!=null){
+                    OutlinedButton(enabled=!opening,onClick={handoff{onConnectQueue();true}},modifier=Modifier.fillMaxWidth()){
+                        Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("NERO Connect TV · teste de fila")
+                    }
+                    Text("Teste de compatibilidade com webOS. Ainda não controla a reprodução remotamente.",fontSize=12.sp,color=Color.LightGray)
+                }
                 HorizontalDivider()
                 Text("Volume da TV (experimental)",fontWeight=FontWeight.Medium)
                 Text("Selecione manualmente a TV na mesma rede Wi-Fi. O volume é independente da transmissão e depende do suporte DLNA da TV.",fontSize=12.sp,color=Color.LightGray)
