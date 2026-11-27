@@ -39,7 +39,7 @@ internal object NeroWebOsReceiver {
         require(ids.size in 1..100&&index in ids.indices)
         require(ids.all{it.matches(Regex("[A-Za-z0-9_-]{11}"))})
         val encoded=URLEncoder.encode(ids.joinToString(","),"UTF-8")
-        return ORIGIN+"#q="+encoded+"&i="+index+"&t="+seconds.coerceIn(0L,86400L)
+        return "https://nero-connect-tv-195-test.timachado-mcp.workers.dev/"+"#q="+encoded+"&i="+index+"&t="+seconds.coerceIn(0L,86400L)
     }
     fun isWebOs(name:String)=name.contains("webOS",ignoreCase=true)
     fun open(context:Context,network:Network,host:String,id:String,title:String,artist:String,seconds:Long):Boolean {
