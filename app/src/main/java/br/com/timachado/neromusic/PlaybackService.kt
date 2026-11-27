@@ -165,6 +165,29 @@ class PlaybackService : MediaLibraryService() {
         val activity = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         session = MediaLibrarySession.Builder(this, player, NeroCarLibrary(applicationContext,timerScope)).setSessionActivity(activity).build()
+        // Refresh the existing native media notification after genuine playback transitions.
+        // Never manufacture a playing state, start playback, or create another notification.
+        // Let Media3 finish its normal state propagation before the single refresh.
+        var shadeRefresh: Job? = null
+        player.addListener(object : Player.Listener {
+            override fun onEvents(p: Player, events: Player.Events) {
+                if (!events.contains(Player.EVENT_IS_PLAYING_CHANGED) &&
+                    !events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) return
+                shadeRefresh?.cancel()
+                if (!p.isPlaying) return
+                val expected = session ?: return
+                shadeRefresh = timerScope.launch {
+                    delay(250L)
+                    if (session !== expected || !p.isPlaying || !isPlaybackOngoing()) return@launch
+                    // Already in foreground: no additional service start or permission.
+                    try {
+                        onUpdateNotification(expected, true)
+                    } catch (e: IllegalStateException) {
+                        android.util.Log.w("NeroPlayback", "Native media refresh deferred: " + e.javaClass.simpleName)
+                    }
+                }
+            }
+        })
         var lastLayout=emptyList<androidx.media3.session.CommandButton>()
         fun refreshLayout(){
             val layout=NeroMediaActions.layout(applicationContext,player)
