@@ -97,6 +97,15 @@ internal fun ImmersivePlayer(
                             android.widget.Toast.makeText(castContext,"A faixa não possui versão MP4 compatível disponível.",android.widget.Toast.LENGTH_LONG).show()
                         }else if(!NeroWebVideoCaster.handoffTv(castContext,requestedId,title,source)){
                             android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
+                        }else{
+                            // The external app accepted the Android handoff.
+                            // No remote PLAYING callback is exposed by the WVC integration.
+                            // Pause only this same local item, never a newly selected track.
+                            videoPlayer?.let{local->
+                                if(local.currentMediaItem?.mediaId==requestedId&&local.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)){
+                                    local.pause()
+                                }
+                            }
                         }
                     }catch(e:CancellationException){throw e}catch(_:Exception){
                         android.widget.Toast.makeText(castContext,"Não foi possível preparar a mídia compatível. A reprodução continua no NERO.",android.widget.Toast.LENGTH_LONG).show()
