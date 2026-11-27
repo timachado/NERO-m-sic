@@ -82,7 +82,10 @@ jobs:
             echo "::error::Versao ja existe; auditar antes de repetir."
             exit 1
           fi
-          gh release create "$tag" dist/NERO-Music.apk --target "$sha" --title "NERO Music $version" --notes "Atualizacao oficial do NERO Music." --latest
+          if ! git show "$sha:updates/release-notes/$version.md" > /tmp/nero-release-notes.md 2>/dev/null || ! test -s /tmp/nero-release-notes.md; then
+            printf '%s\n' 'Atualizacao oficial do NERO Music.' > /tmp/nero-release-notes.md
+          fi
+          gh release create "$tag" dist/NERO-Music.apk --target "$sha" --title "NERO Music $version" --notes-file /tmp/nero-release-notes.md --latest
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" >/tmp/release.json
           jq -e --arg digest "sha256:$hash" '.draft==false and .prerelease==false and .published_at!=null and ([.assets[]|select(.name=="NERO-Music.apk" and .digest==$digest)]|length)==1' /tmp/release.json
           python3 - <<'PY'

@@ -12,6 +12,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -27,7 +29,7 @@ import java.net.URL
 import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
 
-internal data class NeroUpdate(val code:Int,val name:String,val url:String,val notes:String)
+internal data class NeroUpdate(val code:Int,val name:String,val url:String,val notes:String,val sha256:String)
 internal fun neroParseUpdate(body:String,installed:Int):NeroUpdate?{
     val row=JSONObject(body)
     if(row.optString("applicationId")!="br.com.timachado.neromusic"||row.optString("channel")!="stable"||!row.optBoolean("published",false))return null
@@ -37,7 +39,7 @@ internal fun neroParseUpdate(body:String,installed:Int):NeroUpdate?{
     if(code<=installed||!version.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+"))||
         !row.optString("sha256").matches(Regex("[a-f0-9]{64}"))||
         url!="https://github.com/timachado/NERO-m-sic/releases/download/v"+version+"/NERO-Music.apk")return null
-    return NeroUpdate(code,version,url,row.optString("releaseNotes").take(1200))
+    return NeroUpdate(code,version,url,row.optString("releaseNotes").take(1200),row.optString("sha256"))
 }
 internal fun neroShouldNotify(code:Int,installed:Int,notified:Int,enabled:Boolean,permitted:Boolean):Boolean =
     code>installed&&code>notified&&enabled&&permitted
@@ -114,28 +116,52 @@ class NeroUpdateWorker(c:Context,p:WorkerParameters):CoroutineWorker(c,p){
 internal fun NeroUpdateNotice(){
     val context=LocalContext.current
     val resume=rememberNeroCommerceResume()
-    var update by remember{mutableStateOf<NeroUpdate?>(null)}
+    val current by NeroUpdateInstaller.state.collectAsState()
     LaunchedEffect(resume){
         NeroAppUpdates.schedule(context)
         NeroUpdatePush.sync(context)
         try{
             val available=NeroAppUpdates.fetch()
             available?.let{runCatching{NeroAppUpdates.notify(context,it)}}
-            update=available?.takeUnless{NeroAppUpdates.dismissed(context,it.code)}
+            available?.takeUnless{NeroAppUpdates.dismissed(context,it.code)}?.let{NeroUpdateInstaller.offer(it)}
         }
         catch(e:CancellationException){throw e}catch(_:Exception){}
     }
-    update?.let{u->
-        AlertDialog(onDismissRequest={NeroAppUpdates.dismiss(context,u.code);update=null},
-            title={Text("Nova versão: NERO Music "+u.name)},
-            text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text("Uma atualização oficial está disponível.")
-                if(u.notes.isNotBlank())Text(u.notes,maxLines=10)
+    current?.let{state->
+        val u=state.update
+        val downloading=state.phase==NeroInstallPhase.DOWNLOADING
+        val verifying=state.phase==NeroInstallPhase.VERIFYING
+        val busy=downloading||verifying
+        fun close(){NeroAppUpdates.dismiss(context,u.code);NeroUpdateInstaller.close()}
+        AlertDialog(
+            onDismissRequest={if(!busy)close()},
+            title={Text("NERO Music "+u.name)},
+            text={Column(Modifier.heightIn(max=340.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                Text("Nova atualização oficial · build "+u.code,style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.primary)
+                Text("Novidades desta versão",style=MaterialTheme.typography.titleMedium)
+                Text(u.notes.ifBlank{"Melhorias gerais e correções de estabilidade."},style=MaterialTheme.typography.bodyMedium)
+                if(downloading){
+                    if(state.total>0){
+                        val progress=(state.bytes.toDouble()/state.total.toDouble()).toFloat().coerceIn(0f,1f)
+                        LinearProgressIndicator(progress={progress},modifier=Modifier.fillMaxWidth())
+                        Text("Baixando… "+(progress*100).toInt()+"% · "+(state.bytes/1048576)+" de "+(state.total/1048576)+" MB")
+                    }else{LinearProgressIndicator(Modifier.fillMaxWidth());Text("Baixando… "+(state.bytes/1048576)+" MB")}
+                }
+                if(verifying){LinearProgressIndicator(Modifier.fillMaxWidth());Text("Verificando integridade e assinatura do APK…")}
+                if(state.phase==NeroInstallPhase.READY)Text("Atualização pronta para instalar",color=MaterialTheme.colorScheme.primary)
+                state.message?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=if(state.phase==NeroInstallPhase.FAILED)MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)}
             }},
-            confirmButton={TextButton(onClick={
-                try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(u.url)));NeroAppUpdates.dismiss(context,u.code);update=null}catch(_:Exception){}
-            }){Text("Baixar atualização")}},
-            dismissButton={TextButton(onClick={NeroAppUpdates.dismiss(context,u.code);update=null}){Text("Agora não")}})
+            confirmButton={
+                if(!busy)TextButton(onClick={
+                    if(state.phase==NeroInstallPhase.READY)NeroUpdateInstaller.install(context,u)
+                    else NeroUpdateInstaller.start(context,u)
+                }){Text(when(state.phase){
+                    NeroInstallPhase.READY->"Instalar atualização"
+                    NeroInstallPhase.FAILED->"Tentar novamente"
+                    else->"Baixar atualização"
+                })}
+            },
+            dismissButton={TextButton(enabled=!verifying,onClick={if(downloading)NeroUpdateInstaller.cancel() else close()}){Text(if(downloading)"Cancelar download" else "Agora não")}})
     }
 }
 
@@ -183,7 +209,7 @@ internal fun NeroUpdateNotificationPreference(){
         },modifier=Modifier.fillMaxWidth()){Text(if(checking)"Consultando…" else "Verificar atualizações")}
         status?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
         result?.let{update->
-            TextButton(onClick={try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(update.url)))}catch(_:Exception){status="Não foi possível abrir o download."}}){Text("Baixar NERO Music "+update.name)}
+            TextButton(onClick={NeroUpdateInstaller.start(context,update)}){Text("Baixar NERO Music "+update.name)}
         }
         if(enabled&&!allowed){
             Text("Autorize notificações do Android para receber avisos com o app fechado.",style=MaterialTheme.typography.bodySmall)
