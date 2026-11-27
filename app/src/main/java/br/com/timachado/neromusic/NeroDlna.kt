@@ -14,10 +14,12 @@ import java.net.*
 
 internal data class NeroDlnaDevice(val name:String,val endpoint:URI,val service:String,val network:Network)
 internal data class NeroDialDevice(val name:String,val endpoint:URI,val network:Network)
-internal data class NeroTvDiscovery(val dlna:List<NeroDlnaDevice>,val dial:List<NeroDialDevice>)
+internal data class NeroVolumeDevice(val name:String,val endpoint:URI,val service:String,val network:Network)
+internal data class NeroTvDiscovery(val dlna:List<NeroDlnaDevice>,val dial:List<NeroDialDevice>,val volume:List<NeroVolumeDevice> = emptyList())
 internal object NeroDlna {
     private const val LIMIT=256*1024
     private val servicePattern=Regex("urn:schemas-upnp-org:service:AVTransport:[1-9][0-9]?")
+    private val renderingPattern=Regex("urn:schemas-upnp-org:service:RenderingControl:[1-9][0-9]?")
     internal fun location(response:String):String? {
         if(!response.startsWith("HTTP/1.1 200 ",true)&&!response.startsWith("HTTP/1.0 200 ",true))return null
         return response.lineSequence().firstOrNull{it.substringBefore(':').trim().equals("location",true)}
@@ -56,7 +58,7 @@ internal object NeroDlna {
                 network.bindSocket(socket)
                 socket.soTimeout=400
                 val group=InetAddress.getByName("239.255.255.250")
-                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:device:MediaRenderer:2","urn:schemas-upnp-org:service:AVTransport:1","urn:schemas-upnp-org:service:AVTransport:2","urn:dial-multiscreen-org:service:dial:1")){
+                for(st in listOf("urn:schemas-upnp-org:device:MediaRenderer:1","urn:schemas-upnp-org:device:MediaRenderer:2","urn:schemas-upnp-org:service:AVTransport:1","urn:schemas-upnp-org:service:AVTransport:2","urn:schemas-upnp-org:service:RenderingControl:1","urn:schemas-upnp-org:service:RenderingControl:2","urn:dial-multiscreen-org:service:dial:1")){
                     val bytes=("M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: "+st+"\r\n\r\n").toByteArray(Charsets.US_ASCII)
                     socket.send(DatagramPacket(bytes,bytes.size,group,1900))
                 }
@@ -73,6 +75,7 @@ internal object NeroDlna {
             }
             val results=mutableListOf<NeroDlnaDevice>()
             val dial=mutableListOf<NeroDialDevice>()
+            val volume=mutableListOf<NeroVolumeDevice>()
             for((endpoint,peer) in found.entries.take(8)){
                 runCatching {
                     val response=request(context,network,endpoint,null,null)
@@ -80,6 +83,11 @@ internal object NeroDlna {
                     description(xml)?.let{values->
                         safeEndpoint(endpoint.resolve(values.third).toString(),peer)?.let{control->
                             results.add(NeroDlnaDevice(values.first,control,values.second,network))
+                        }
+                    }
+                    description(xml,renderingPattern)?.let{values->
+                        safeEndpoint(endpoint.resolve(values.third).toString(),peer)?.let{control->
+                            volume.add(NeroVolumeDevice(values.first,control,values.second,network))
                         }
                     }
                     val app=applicationEndpoint(response.headers["application-url"],peer)
@@ -92,7 +100,7 @@ internal object NeroDlna {
                     }
                 }
             }
-            return NeroTvDiscovery(results.distinctBy{it.endpoint},dial.distinctBy{it.endpoint.host})
+            return NeroTvDiscovery(results.distinctBy{it.endpoint},dial.distinctBy{it.endpoint.host},volume.distinctBy{it.endpoint})
         } finally {if(lock.isHeld)lock.release()}
     }
     internal fun applicationEndpoint(base:String?,peer:String):URI?{
@@ -121,7 +129,7 @@ internal object NeroDlna {
         require(!xml.contains("<!DOCTYPE",true)&&!xml.contains("<!ENTITY",true))
         return Xml.newPullParser().apply{setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES,true);setInput(xml.reader())}
     }
-    private fun description(xml:String):Triple<String,String,String>?{
+    private fun description(xml:String,pattern:Regex=servicePattern):Triple<String,String,String>?{
         val p=parser(xml);var name="Dispositivo DLNA";var type="";var control="";var serviceDepth=-1
         while(p.eventType!=XmlPullParser.END_DOCUMENT){
             if(p.eventType==XmlPullParser.START_TAG){
@@ -132,7 +140,7 @@ internal object NeroDlna {
                     "controlURL"->if(serviceDepth>0)control=p.nextText().trim()
                 }
             }else if(p.eventType==XmlPullParser.END_TAG&&p.name=="service"&&p.depth==serviceDepth){
-                if(servicePattern.matches(type)&&control.isNotBlank())return Triple(name,type,control)
+                if(pattern.matches(type)&&control.isNotBlank())return Triple(name,type,control)
                 serviceDepth=-1
             }
             p.next()
@@ -186,6 +194,28 @@ internal object NeroDlna {
         val current=field(soap(context,d,"GetMediaInfo",""),"CurrentURI")
         require(current==url)
         soap(context,d,action,if(action=="Play")"<Speed>1</Speed>" else "")
+    }
+    // RenderingControl is independent of AVTransport and does not imply ownership
+    // of the external casting session. Only explicitly selected devices are used.
+    private fun volumeSoap(context:Context,d:NeroVolumeDevice,action:String,args:String):String{
+        require(renderingPattern.matches(d.service))
+        require(action in setOf("GetVolume","SetVolume"))
+        val body="""<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:$action xmlns:u="${d.service}"><InstanceID>0</InstanceID><Channel>Master</Channel>$args</u:$action></s:Body></s:Envelope>"""
+        return http(context,d.network,d.endpoint,d.service+"#"+action,body)
+    }
+    internal fun parseVolume(value:String?):Int?=value?.trim()?.toIntOrNull()?.takeIf{it in 0..100}
+    internal fun adjustedVolume(current:Int,delta:Int):Int{
+        require(current in 0..100&&delta in -10..10)
+        return (current+delta).coerceIn(0,100)
+    }
+    fun getVolume(context:Context,d:NeroVolumeDevice):Int =
+        requireNotNull(parseVolume(field(volumeSoap(context,d,"GetVolume",""),"CurrentVolume")))
+    fun changeVolume(context:Context,d:NeroVolumeDevice,delta:Int):Int{
+        val current=getVolume(context,d)
+        val target=adjustedVolume(current,delta)
+        if(target!=current)volumeSoap(context,d,"SetVolume","<DesiredVolume>$target</DesiredVolume>")
+        // Read back actual device volume; never infer success from SOAP acknowledgement.
+        return getVolume(context,d)
     }
     // Only local HTTP to the verified responder on Wi-Fi. No redirects, proxy or
     // global cleartext permission. Bounded response and time.
