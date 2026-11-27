@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 private data class NeroOutput(val id:Int,val name:String,val type:Int)
 private data class NeroOutputs(val expected:List<NeroOutput> = emptyList(),val connected:List<NeroOutput> = emptyList())
@@ -95,6 +98,40 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
     var routes by remember{mutableStateOf(emptyList<NeroMediaRoute>())}
     var pending by remember{mutableStateOf<String?>(null)}
     var routeNotice by remember{mutableStateOf<String?>(null)}
+    var volumeDevices by remember{mutableStateOf(emptyList<NeroVolumeDevice>())}
+    var volumeTarget by remember{mutableStateOf<NeroVolumeDevice?>(null)}
+    var tvVolume by remember{mutableStateOf<Int?>(null)}
+    var volumeBusy by remember{mutableStateOf(false)}
+    var volumeNotice by remember{mutableStateOf<String?>(null)}
+    fun volumeAction(target:NeroVolumeDevice,delta:Int?=null){
+        if(volumeBusy)return
+        volumeTarget=target
+        volumeBusy=true
+        tvVolume=null
+        volumeNotice=null
+        scope.launch{
+            try{
+                tvVolume=withContext(Dispatchers.IO){
+                    if(delta==null)NeroDlna.getVolume(context,target)
+                    else NeroDlna.changeVolume(context,target,delta)
+                }
+            }catch(e:CancellationException){throw e}catch(_:Exception){
+                volumeNotice="A TV não confirmou o volume. Confira a conexão e o suporte da TV."
+            }finally{volumeBusy=false}
+        }
+    }
+    fun discoverVolume(){
+        if(volumeBusy)return
+        volumeBusy=true;volumeDevices=emptyList();volumeTarget=null;tvVolume=null;volumeNotice=null
+        scope.launch{
+            try{
+                volumeDevices=withContext(Dispatchers.IO){NeroDlna.discoverTargets(context).volume}
+                if(volumeDevices.isEmpty())volumeNotice="Nenhuma TV com controle de volume DLNA encontrada nesta rede."
+            }catch(e:CancellationException){throw e}catch(_:Exception){
+                volumeNotice="Não foi possível localizar TVs. Verifique o Wi-Fi."
+            }finally{volumeBusy=false}
+        }
+    }
     fun handoff(action:()->Boolean){
         if(opening)return
         opening=true
@@ -196,7 +233,28 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 },modifier=Modifier.fillMaxWidth()){
                     Icon(Icons.Default.OpenInNew,null);Spacer(Modifier.width(8.dp));Text("Abrir Web Video Caster")
                 }
-                Text("A transmissão entrega uma faixa por vez. A sessão e os comandos remotos ficam no Web Video Caster; os ajustes de volume local do NERO não controlam essa sessão. Use os controles disponíveis no aplicativo receptor ou na televisão.",fontSize=12.sp,color=Color.LightGray)
+                Text("A transmissão entrega uma faixa por vez. A fila e os comandos de reprodução ficam no Web Video Caster.",fontSize=12.sp,color=Color.LightGray)
+                HorizontalDivider()
+                Text("Volume da TV (experimental)",fontWeight=FontWeight.Medium)
+                Text("Selecione manualmente a TV na mesma rede Wi-Fi. O volume é independente da transmissão e depende do suporte DLNA da TV.",fontSize=12.sp,color=Color.LightGray)
+                OutlinedButton(enabled=!opening&&!volumeBusy,onClick={discoverVolume()},modifier=Modifier.fillMaxWidth()){
+                    Text(if(volumeBusy)"Consultando TV…" else "Buscar TVs com controle de volume")
+                }
+                volumeDevices.forEach{device->
+                    OutlinedButton(enabled=!opening&&!volumeBusy,onClick={volumeAction(device)},modifier=Modifier.fillMaxWidth()){
+                        Text(device.name+if(volumeTarget==device)" · selecionada" else "")
+                    }
+                }
+                val selectedVolumeDevice=volumeTarget
+                val confirmedVolume=tvVolume
+                if(selectedVolumeDevice!=null&&confirmedVolume!=null){
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
+                        OutlinedButton(enabled=!volumeBusy&&confirmedVolume>0,onClick={volumeAction(selectedVolumeDevice,-5)}){Text("−")}
+                        Text("Volume: $confirmedVolume%")
+                        OutlinedButton(enabled=!volumeBusy&&confirmedVolume<100,onClick={volumeAction(selectedVolumeDevice,5)}){Text("+")}
+                    }
+                }
+                volumeNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             }
 
         }
