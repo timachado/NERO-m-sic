@@ -74,6 +74,8 @@ internal fun ImmersivePlayer(
     var castBusy by remember{mutableStateOf(false)}
     val castScope=rememberCoroutineScope()
     val currentCastId by rememberUpdatedState(mediaId)
+    var showConnectQueue by remember{mutableStateOf(false)}
+    if(showConnectQueue)NeroQueueTvDialog(videoPlayer,onClose={showConnectQueue=false})
     if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!castBusy,onCast={
         showDevices=false
         when{
@@ -113,7 +115,7 @@ internal fun ImmersivePlayer(
                 }
             }
         }
-    },onClose={showDevices=false})
+    },onClose={showDevices=false},onConnectQueue=if(BuildConfig.DEBUG&&fullControls&&ready&&!castBusy&&videoPlayer!=null)({showDevices=false;showConnectQueue=true})else null)
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
     val hiddenSongs=rememberHiddenSongs()
     val preferenceUid by NeroSupabase.activeUid.collectAsState()
