@@ -16,4 +16,11 @@ class NeroWebVideoCasterTest {
         assertNull(NeroWebVideoCaster.validatedSource(id,false,"https://googlevideo.com/videoplayback"))
         assertNull(NeroWebVideoCaster.validatedSource(id,false,"https://googlevideo.com/videoplayback?mime=audio%2Fmp4#secret"))
     }
+    @Test fun olderTvRouteUsesOnlyMp4VideoMime(){
+        assertTrue(NeroWebVideoCaster.compatibleTvMime("video/mp4"))
+        assertFalse(NeroWebVideoCaster.compatibleTvMime("audio/webm"))
+        assertFalse(NeroWebVideoCaster.compatibleTvMime("audio/mp4"))
+        assertFalse(NeroWebVideoCaster.compatibleTvMime("video/webm"))
+        assertFalse(NeroWebVideoCaster.compatibleTvMime(null))
+    }
 }
