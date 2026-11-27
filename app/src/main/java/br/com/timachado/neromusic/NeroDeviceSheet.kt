@@ -184,7 +184,19 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 HorizontalDivider()
                 Text("Transmissão para TV",fontWeight=FontWeight.Medium)
                 OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Transmitir para TV")}
-                Text("Via Web Video Caster. A TV recebe a versão MP4 da faixa, quando disponível.",fontSize=12.sp,color=Color.LightGray)
+                OutlinedButton(enabled=!opening&&NeroWebVideoCaster.available(context),onClick={
+                    handoff{
+                        runCatching{
+                            val launch=context.packageManager.getLaunchIntentForPackage(NeroWebVideoCaster.PACKAGE_NAME)
+                                ?:return@runCatching false
+                            context.startActivity(launch)
+                            true
+                        }.getOrDefault(false)
+                    }
+                },modifier=Modifier.fillMaxWidth()){
+                    Icon(Icons.Default.OpenInNew,null);Spacer(Modifier.width(8.dp));Text("Abrir Web Video Caster")
+                }
+                Text("A transmissão entrega uma faixa por vez. A sessão e os comandos remotos ficam no Web Video Caster; o volume do Android acima não controla a TV. Use os controles disponíveis no aplicativo receptor ou na televisão.",fontSize=12.sp,color=Color.LightGray)
             }
 
         }
