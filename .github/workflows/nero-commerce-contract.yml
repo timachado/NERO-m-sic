@@ -1,11 +1,12 @@
 name: NERO isolated commerce contract
 on:
   push:
-    branches: [test/nero-commercial-contract, feat/nero-connect]
+    branches: [test/nero-commercial-contract, feat/nero-connect, experiment/nero-together-sync]
     paths:
       - 'supabase/tests/**'
       - 'supabase/deployed/**'
       - 'supabase/setup/nero_commerce_snapshot*'
+      - 'supabase/setup/nero_together_sync_v2_draft.sql'
       - '.github/workflows/nero-commerce-contract.yml'
   workflow_dispatch:
 permissions:
@@ -44,3 +45,15 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f supabase/setup/nero_commerce_snapshot_draft.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/setup/nero_commerce_snapshot_permissions_test.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/tests/commerce_contract.sql
+
+      - name: Run isolated Together synchronization contract
+        if: github.ref == 'refs/heads/experiment/nero-together-sync'
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: disposable_test_only
+          PGDATABASE: nero_test
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/setup/nero_together_sync_v2_draft.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/together_sync_contract.sql
