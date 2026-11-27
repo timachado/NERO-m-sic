@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NeroDlnaTest {
+    @Test fun remoteVolumeRequiresValidReadback(){
+        assertEquals(0,NeroDlna.parseVolume("0"))
+        assertEquals(100,NeroDlna.parseVolume("100"))
+        assertEquals(25,NeroDlna.parseVolume(" 25 "))
+        for(bad in listOf(null,"","-1","101","bad","2.5"))assertNull(NeroDlna.parseVolume(bad))
+    }
+    @Test fun volumeChangesStayWithinDeviceRange(){
+        assertEquals(0,NeroDlna.adjustedVolume(2,-5))
+        assertEquals(100,NeroDlna.adjustedVolume(98,5))
+        assertEquals(55,NeroDlna.adjustedVolume(50,5))
+        assertTrue(runCatching{NeroDlna.adjustedVolume(50,99)}.isFailure)
+        assertTrue(runCatching{NeroDlna.adjustedVolume(-1,5)}.isFailure)
+    }
     @Test fun dialEndpointIsBoundToDiscoveredPeer(){
         val peer="192.168.1.20"
         assertEquals("http://192.168.1.20:8080/apps/YouTube",NeroDlna.applicationEndpoint("http://192.168.1.20:8080/apps/",peer)?.toString())
