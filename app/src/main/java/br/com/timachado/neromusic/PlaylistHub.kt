@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList())
@@ -48,7 +50,38 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
     var term by remember{mutableStateOf("")}
     var alphabetic by remember{mutableStateOf(false)}
     var more by remember{mutableStateOf(false)}
-    LaunchedEffect(tracks,uid,ready,changes){
+    val scope=rememberCoroutineScope()
+    var deleteTarget by remember(uid,ready){mutableStateOf<HubPlaylist?>(null)}
+    var deleting by remember(uid,ready){mutableStateOf(false)}
+    var deleteNotice by remember(uid,ready){mutableStateOf<String?>(null)}
+    var localRevision by remember{mutableIntStateOf(0)}
+    deleteTarget?.let{target->
+        AlertDialog(onDismissRequest={if(!deleting)deleteTarget=null},title={Text("Excluir playlist?")},
+            text={Text("Excluir \""+target.title+"\"? Apenas a playlist será removida; músicas, favoritos e downloads serão preservados. "+if(target.page==7&&uid!=null)"A exclusão será sincronizada com sua conta." else "")},
+            confirmButton={TextButton(enabled=ready&&!deleting,onClick={
+                val owner=uid;deleting=true;deleteNotice=null
+                scope.launch{
+                    try{
+                        require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner)
+                        when(target.page){
+                            7->deleteScopedOnlinePlaylist(context,owner,target.id)
+                            1->{saveMixes(context,mixes(context).filterNot{it.id==target.id});localRevision++}
+                            else->error("unsupported playlist")
+                        }
+                        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){
+                            lists=lists.filterNot{it.page==target.page&&it.id==target.id}
+                            val pinKey="${target.page}:${target.id}"
+                            val nextPins=pinPrefs.getStringSet("keys",emptySet()).orEmpty().toSet()-pinKey
+                            pinPrefs.edit().putStringSet("keys",nextPins).apply();pins=nextPins
+                            localRevision++;deleteTarget=null;deleteNotice="Playlist excluída."
+                        }
+                    }catch(e:CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner){deleteTarget=null;deleteNotice="Não foi possível excluir a playlist. Tente novamente."}}
+                    finally{deleting=false}
+                }
+            }){Text(if(deleting)"Excluindo…" else "Excluir",color=MaterialTheme.colorScheme.error)}},
+            dismissButton={TextButton(enabled=!deleting,onClick={deleteTarget=null}){Text("Cancelar")}})
+    }
+    LaunchedEffect(tracks,uid,ready,changes,localRevision){
         loading=true
         val result=withContext(Dispatchers.IO){
             val index=tracks.associateBy{it.id}
@@ -92,6 +125,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         TextButton(onClick={alphabetic=!alphabetic}){Icon(Icons.Default.Sort,null);Spacer(Modifier.width(8.dp));Text(if(alphabetic)"Nome" else "Ordem de criação")}
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         if(failed)Text("Não foi possível carregar todas as playlists.",color=MaterialTheme.colorScheme.error)
+        deleteNotice?.let{Text(it,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         val visible=lists.filter{it.title.contains(term,true)}.let{if(alphabetic)it.sortedBy{row->row.title.lowercase(java.util.Locale.ROOT)} else it}.sortedByDescending{"${it.page}:${it.id}" in pins}
         LazyColumn(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
             if(!artistFilter&&!albumFilter&&"Músicas curtidas".contains(term,true))item{
@@ -139,6 +173,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                         IconButton(onClick={options=true}){Icon(Icons.Default.MoreVert,"Opções da playlist")}
                         DropdownMenu(expanded=options,onDismissRequest={options=false}){
                             DropdownMenuItem(text={Text(if(pinned)"Desafixar playlist" else "Fixar playlist")},onClick={options=false;togglePin(row)})
+                            if(row.page==7||row.page==1)DropdownMenuItem(text={Text("Excluir playlist",color=MaterialTheme.colorScheme.error)},leadingIcon={Icon(Icons.Default.Delete,null,tint=MaterialTheme.colorScheme.error)},enabled=ready&&!deleting,onClick={options=false;deleteTarget=row})
                         }
                     }
                 }
