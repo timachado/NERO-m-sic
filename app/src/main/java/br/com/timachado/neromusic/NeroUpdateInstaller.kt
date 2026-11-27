@@ -47,11 +47,11 @@ internal object NeroUpdateInstaller {
         if(busy())return
         val app=context.applicationContext
         val current=mutable.value
-        if(current?.update==u&&current.phase==NeroInstallPhase.READY&&apk(app,u).isFile)return
+        if(current!=null&&current.update==u&&current.phase==NeroInstallPhase.READY&&apk(app,u).isFile)return
         mutable.value=NeroInstallState(u,NeroInstallPhase.DOWNLOADING)
         task=scope.launch{
             val target=apk(app,u)
-            val partial=File(target.parentFile,target.name+".part")
+            val partial=File(target.parentFile,target.name+".part.apk")
             try{
                 withContext(Dispatchers.IO){
                     require(u.code>BuildConfig.VERSION_CODE&&u.sha256.matches(Regex("[a-f0-9]{64}")))
