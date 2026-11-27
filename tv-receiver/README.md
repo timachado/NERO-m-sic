@@ -13,3 +13,9 @@ A interface mantém o player oficial e sua atribuição visíveis. Não extrai �
 - Não pausar o Android antes da confirmação remota. Não prometer abertura automática em TVs sem receptor instalado ou mecanismo de lançamento suportado.
 - Publicação LG, integração Android e hospedagem ainda não realizadas; não lançar como Premium ou versão comercial.
 - Referências: https://webostv.developer.lge.com/develop/tools/cli-dev-guide ; https://developers.google.com/youtube/iframe_api_reference ; https://developers.google.com/youtube/terms/developer-policies
+
+
+## NERO Connect TV — etapa experimental de fila
+A nova interface aceita fragmento de teste `#q=ID1%2CID2&i=0&t=0` com 1 a 100 identificadores de 11 caracteres autorizados para incorporação. Preserva duplicatas e índice inicial. O receptor prepara a fila via cuePlaylist; o usuário inicia na TV, com controles visíveis de reprodução, pausa, anterior e próxima. O iframe oficial permanece visível, com anúncios e restrições do provedor respeitados. Não usa URLs de mídia extraídas.
+O fragmento não autentica nem autoriza um dispositivo. Não há controle Android→TV, descoberta, sincronização ou garantia de reprodução em webOS 2.0. A função Kotlin de geração de URL ainda não está ligada ao player Android. A hospedagem de teste existente não foi atualizada nesta etapa.
+Homologação: testar duas faixas incorporáveis, ordem, conclusão automática, pausa, próxima/anterior, bloqueio de autoplay, vídeo indisponível, e navegação do controle físico. Só depois integrar transporte autenticado, confirmação de PLAYING e transferência local. O NERO Free deve preservar regras de acesso e ordem; não habilitar um atalho de Premium através desse protótipo.
