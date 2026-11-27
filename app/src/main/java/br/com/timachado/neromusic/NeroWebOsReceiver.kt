@@ -31,6 +31,16 @@ internal object NeroWebOsReceiver {
         fun enc(s:String)=URLEncoder.encode(s.take(180),"UTF-8")
         return ORIGIN+"#v="+id+"&title="+enc(title)+"&artist="+enc(artist)+"&t="+seconds.coerceIn(0L,86400L)
     }
+    /** Experimental receiver link, not yet wired to Android playback.
+     * Only public video identifiers, no account tokens or signed media URLs.
+     * A production session must use authenticated pairing, not URL fragments.
+     */
+    internal fun receiverQueueUrl(ids:List<String>,index:Int,seconds:Long):String{
+        require(ids.size in 1..100&&index in ids.indices)
+        require(ids.all{it.matches(Regex("[A-Za-z0-9_-]{11}"))})
+        val encoded=URLEncoder.encode(ids.joinToString(","),"UTF-8")
+        return ORIGIN+"#q="+encoded+"&i="+index+"&t="+seconds.coerceIn(0L,86400L)
+    }
     fun isWebOs(name:String)=name.contains("webOS",ignoreCase=true)
     fun open(context:Context,network:Network,host:String,id:String,title:String,artist:String,seconds:Long):Boolean {
         require(host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")))
