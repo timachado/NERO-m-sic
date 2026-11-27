@@ -70,16 +70,18 @@ internal object NeroWebVideoCaster {
         val source=validatedSource(mediaId,true,url)?:return false
         val mime=declaredMime(source)
         if(mime!=null&&!compatibleTvMime(mime))return false
-        val deepLink=Uri.Builder().scheme("wvc-x-callback").authority("open")
-            .appendQueryParameter("url",source)
-            .appendQueryParameter("skip_page_load","true")
-            .appendQueryParameter("secure_uri","true")
-            .appendQueryParameter("mime_type","video/mp4")
-            .appendQueryParameter("poster","https://i.ytimg.com/vi/"+mediaId.removePrefix("youtube:")+"/hqdefault.jpg")
-            .apply{if(title.isNotBlank())appendQueryParameter("title",title.take(180))}
-            .build()
+        // Native ACTION_VIEW is the preferred Android integration documented
+        // by Web Video Caster. Deliver the original media URI as Intent data,
+        // not as a page URL nested inside another URI.
+        val intent=Intent(Intent.ACTION_VIEW)
+            .setDataAndType(Uri.parse(source),"video/*")
+            .setPackage(PACKAGE_NAME)
+            .putExtra("title",title.take(180))
+            .putExtra("poster","https://i.ytimg.com/vi/"+mediaId.removePrefix("youtube:")+"/hqdefault.jpg")
+            .putExtra("skip_page_load",true)
+            .putExtra("secure_uri",true)
         return try{
-            context.startActivity(Intent(Intent.ACTION_VIEW,deepLink).setPackage(PACKAGE_NAME))
+            context.startActivity(intent)
             true
         }catch(_:ActivityNotFoundException){false}catch(_:SecurityException){false}
     }
