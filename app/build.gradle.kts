@@ -11,9 +11,11 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 197
+        versionCode = 198
         versionName = "1.0.0"
         buildConfigField("boolean", "FULL_FEATURES", "true")
+        // TV casting remains on experiment/nero-tv-build-197, not in commercial builds.
+        buildConfigField("boolean", "NERO_TV_EXPERIMENT", "false")
         buildConfigField("boolean", "NERO_FCM_DIAGNOSTIC", "false")
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()

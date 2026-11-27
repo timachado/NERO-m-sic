@@ -54,11 +54,11 @@ private val SurfaceDark = Color(0xFF10171C)
 
 class MainActivity : ComponentActivity() {
     override fun onKeyDown(keyCode:Int,event:android.view.KeyEvent):Boolean{
-        if(NeroWvcVolume.key(this,event))return true
+        if(BuildConfig.NERO_TV_EXPERIMENT&&NeroWvcVolume.key(this,event))return true
         return super.onKeyDown(keyCode,event)
     }
     override fun onKeyUp(keyCode:Int,event:android.view.KeyEvent):Boolean{
-        if(NeroWvcVolume.key(this,event))return true
+        if(BuildConfig.NERO_TV_EXPERIMENT&&NeroWvcVolume.key(this,event))return true
         return super.onKeyUp(keyCode,event)
     }
 

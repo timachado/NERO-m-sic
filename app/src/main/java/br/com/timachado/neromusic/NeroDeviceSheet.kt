@@ -208,7 +208,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 Icon(Icons.Default.Bluetooth,null);Spacer(Modifier.width(8.dp));Text("Conectar ou reconectar Bluetooth")
             }
             Text("Se o Bluetooth sumir após voltar ao telefone, reconecte o acessório nas configurações do Android e escolha a saída novamente. O NERO não desconecta nem desemparelha o acessório.",fontSize=12.sp,color=Color.LightGray)
-            if(BuildConfig.FULL_FEATURES){
+            if(BuildConfig.NERO_TV_EXPERIMENT){
                 HorizontalDivider()
                 Text("Transmissão para TV",fontWeight=FontWeight.Medium)
                 OutlinedButton(enabled=canCast&&!opening,onClick={handoff{onCast();true}},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Cast,null);Spacer(Modifier.width(8.dp));Text("Transmitir para TV")}

@@ -71,16 +71,16 @@ internal fun ImmersivePlayer(
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
     val tvVolumeState by NeroWvcVolume.state.collectAsState()
-    LaunchedEffect(playing){if(playing)NeroWvcVolume.clear()}
+    LaunchedEffect(playing){if(BuildConfig.NERO_TV_EXPERIMENT&&playing)NeroWvcVolume.clear()}
 
     var showDevices by remember{mutableStateOf(false)}
     var castBusy by remember{mutableStateOf(false)}
     val castScope=rememberCoroutineScope()
     val currentCastId by rememberUpdatedState(mediaId)
-    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!castBusy,onCast={
+    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=BuildConfig.NERO_TV_EXPERIMENT&&ready&&!castBusy,onCast={
         showDevices=false
         when{
-            castBusy->Unit
+            !BuildConfig.NERO_TV_EXPERIMENT||castBusy->Unit
             !NeroWebVideoCaster.available(castContext)->{
                 android.widget.Toast.makeText(castContext,"Instale o Web Video Caster para transmitir à TV.",android.widget.Toast.LENGTH_LONG).show()
                 runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}
@@ -265,7 +265,7 @@ internal fun ImmersivePlayer(
                 IconButton(onClick=onRepeat,enabled=ready&&fullControls,modifier=Modifier.weight(1f)){Icon(if(repeat==Player.REPEAT_MODE_ONE)Icons.Default.RepeatOne else Icons.Default.Repeat,"Repetição",tint=if(!fullControls)Color.White.copy(alpha=.32f) else if(repeat!=Player.REPEAT_MODE_OFF)neon else Color.White)}
                 if(BuildConfig.FULL_FEATURES)IconButton(onClick=onEqualizer,modifier=Modifier.weight(1f)){Icon(Icons.Default.Equalizer,"Equalizador",tint=aqua)}
             }
-            if(tvVolumeState.target!=null&&tvVolumeState.value!=null){
+            if(BuildConfig.NERO_TV_EXPERIMENT&&tvVolumeState.target!=null&&tvVolumeState.value!=null){
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                     OutlinedButton(onClick={NeroWvcVolume.adjust(castContext,-5)},enabled=!tvVolumeState.busy){Text("−")}
                     Text("Volume TV: "+tvVolumeState.value+"%",fontSize=13.sp,color=Color.White)
@@ -273,7 +273,7 @@ internal fun ImmersivePlayer(
                 }
                 TextButton(onClick={NeroWvcVolume.clear()}){Text("Voltar ao volume do telefone")}
             }
-            tvVolumeState.notice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
+            if(BuildConfig.NERO_TV_EXPERIMENT)tvVolumeState.notice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id
