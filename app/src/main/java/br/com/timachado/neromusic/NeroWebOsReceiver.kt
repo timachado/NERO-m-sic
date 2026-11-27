@@ -42,11 +42,17 @@ internal object NeroWebOsReceiver {
         return "https://nero-connect-tv-195-test.timachado-mcp.workers.dev/"+"#q="+encoded+"&i="+index+"&t="+seconds.coerceIn(0L,86400L)
     }
     fun isWebOs(name:String)=name.contains("webOS",ignoreCase=true)
-    fun open(context:Context,network:Network,host:String,id:String,title:String,artist:String,seconds:Long):Boolean {
+    fun open(context:Context,network:Network,host:String,id:String,title:String,artist:String,seconds:Long):Boolean =
+        openTarget(context,network,host,receiverUrl(id,title,artist,seconds))
+
+    // Explicit experimental launch. Acknowledgement is NOT playback confirmation.
+    fun openQueue(context:Context,network:Network,host:String,ids:List<String>,index:Int,seconds:Long):Boolean =
+        openTarget(context,network,host,receiverQueueUrl(ids,index,seconds))
+
+    private fun openTarget(context:Context,network:Network,host:String,target:String):Boolean {
         require(host.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")))
         val address=InetAddress.getByName(host)
         require(address.hostAddress==host&&NeroDlna.isLocalPeer(context,network,address))
-        val target=receiverUrl(id,title,artist,seconds)
         val deadline=SystemClock.elapsedRealtime()+35000L
         network.socketFactory.createSocket().use{socket->
             socket.connect(InetSocketAddress(address,3000),2500)
