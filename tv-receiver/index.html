@@ -16,12 +16,12 @@
 <p id="artist"></p><p id="state" role="status">Informe o identificador do vídeo autorizado.</p>
 <form id="form"><label for="videoId">ID do vídeo </label><input id="videoId" maxlength="11" autocomplete="off"><button type="submit">Reproduzir</button></form>
 <div id="screen"><div id="player"></div></div>
-<p id="progress" aria-live="off">00:00 / 00:00</p><small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
+<section id="queueControls" aria-label="Fila de reprodução" style="display:none"><p id="queueState" role="status"></p><button id="prev" type="button">Anterior</button> <button id="play" type="button">Reproduzir</button> <button id="pause" type="button">Pausar</button> <button id="next" type="button">Próxima</button></section><p id="progress" aria-live="off">00:00 / 00:00</p><small>Reprodução incorporada pelo YouTube. Protótipo gratuito de compatibilidade; não é uma sessão de espelhamento.</small>
 </main>
 <script>
 (function(){
 "use strict";
-var player=null, ready=false, pending=null, state=document.getElementById("state");
+var player=null, ready=false, pending=null, queue=null, queueIndex=0, queueStart=0, state=document.getElementById("state");
 function query(name){
  var pattern=new RegExp("(?:^|[?&])"+name+"=([^&]*)");
  var match=pattern.exec(location.hash.replace(/^#/,"?"))||pattern.exec(location.search);
@@ -42,6 +42,47 @@ setInterval(function(){
 },1000);
 var valid=function(id){return /^[A-Za-z0-9_-]{11}$/.test(id);};
 function status(s){state.textContent=s;}
+function readQueue(){
+ var match=/(?:^|[?&])q=([^&]*)/.exec(location.hash.replace(/^#/,"?"));
+ if(!match||match[1].length>2400)return null;
+ try{
+  var ids=decodeURIComponent(match[1]).split(",");
+  if(ids.length<1||ids.length>100)return null;
+  for(var i=0;i<ids.length;i++)if(!valid(ids[i]))return null;
+  var indexRaw=query("i");
+  if(indexRaw&&!/^\d{1,3}$/.test(indexRaw))return null;
+  var index=Number(indexRaw||0);
+  if(index<0||index>=ids.length)return null;
+  return {ids:ids,index:index};
+ }catch(e){return null;}
+}
+function updateQueue(){
+ if(!queue||!ready||!player)return;
+ try{
+  var index=player.getPlaylistIndex();
+  if(typeof index==="number"&&index>=0&&index<queue.length)document.getElementById("queueState").textContent="Faixa "+(index+1)+" de "+queue.length;
+ }catch(e){}
+}
+function cueQueue(){
+ if(!ready||!queue)return;
+ try{
+  player.cuePlaylist({playlist:queue,index:queueIndex,startSeconds:queueStart});
+  status("Fila preparada. Pressione Reproduzir na TV.");
+ }catch(e){status("Não foi possível preparar a fila no player oficial.");}
+}
+function queueAction(method){
+ if(!ready||!queue||!player)return;
+ try{
+  var index=player.getPlaylistIndex();
+  if(method==="nextVideo"&&(index<0||index>=queue.length-1))return;
+  if(method==="previousVideo"&&index<=0)return;
+  player[method]();
+ }catch(e){status("Comando indisponível no player desta TV.");}
+}
+document.getElementById("prev").onclick=function(){queueAction("previousVideo");};
+document.getElementById("play").onclick=function(){queueAction("playVideo");};
+document.getElementById("pause").onclick=function(){queueAction("pauseVideo");};
+document.getElementById("next").onclick=function(){queueAction("nextVideo");};
 function load(id){
  if(!valid(id)){status("Identificador inválido.");return;}
  pending=id;
@@ -58,18 +99,20 @@ document.getElementById("form").onsubmit=function(e){
 window.onYouTubeIframeAPIReady=function(){
  try {
  player=new YT.Player("player",{height:"480",width:"854",playerVars:{controls:1,autoplay:0,playsinline:1,origin:location.protocol+"//"+location.host},events:{
- onReady:function(){ready=true;status("Receptor pronto. Selecione o vídeo.");if(pending)load(pending);},
+ onReady:function(){ready=true;status("Receptor pronto. Selecione o vídeo.");if(queue)cueQueue();else if(pending)load(pending);},
  onStateChange:function(e){
  var messages={"-1":"Aguardando reprodução.","0":"Reprodução encerrada.","1":"Reprodução confirmada pelo player.","2":"Pausado.","3":"Carregando…","5":"Vídeo preparado."};
- if(Object.prototype.hasOwnProperty.call(messages,String(e.data)))status(messages[String(e.data)]);
+ if(Object.prototype.hasOwnProperty.call(messages,String(e.data)))status(messages[String(e.data)]);updateQueue();
  },
  onError:function(e){status("O player oficial não conseguiu reproduzir este vídeo (código "+String(e.data)+").");},
  onAutoplayBlocked:function(){status("A TV bloqueou a reprodução automática. Use o botão do player.");}
  }});
  }catch(e){status("Player incompatível com este navegador.");}
 };
+var initialQueue=readQueue();
+if(initialQueue){queue=initialQueue.ids;queueIndex=initialQueue.index;queueStart=start;document.getElementById("form").style.display="none";document.getElementById("queueControls").style.display="block";document.getElementById("title").textContent="NERO Connect TV";document.getElementById("artist").textContent="Fila de reprodução";document.getElementById("queueState").textContent="Faixa "+(queueIndex+1)+" de "+queue.length;}
 var initialId=query("v");
-if(valid(initialId)){document.getElementById("videoId").value=initialId;pending=initialId;document.getElementById("form").style.display="none";}
+if(!queue&&valid(initialId)){document.getElementById("videoId").value=initialId;pending=initialId;document.getElementById("form").style.display="none";}
 var script=document.createElement("script");script.src="https://www.youtube.com/iframe_api";script.onerror=function(){status("Não foi possível carregar o player oficial. Verifique a compatibilidade do navegador e a rede.");};
 document.head.appendChild(script);
 setTimeout(function(){if(!ready)status("O player ainda não respondeu. Navegadores antigos podem ser incompatíveis.");},20000);
