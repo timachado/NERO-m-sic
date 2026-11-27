@@ -170,6 +170,21 @@ internal object NeroDlna {
         soap(context,d,"SetAVTransportURI","<CurrentURI>"+escape(url)+"</CurrentURI><CurrentURIMetaData>"+escape(metadata)+"</CurrentURIMetaData>")
         soap(context,d,"Play","<Speed>1</Speed>")
     }
+    /** Optional renderer-owned next-track slot (not a complete playlist API).
+     * Only called after the selected receiver confirms the current test item.
+     * Never substitute a successful SOAP acknowledgement for actual transition.
+     */
+    fun prepareNext(context:Context,d:NeroDlnaDevice,currentUrl:String,nextUrl:String,title:String,artist:String,mime:String):Boolean{
+        require(currentUrl!=nextUrl)
+        val before=soap(context,d,"GetMediaInfo","")
+        if(field(before,"CurrentURI")!=currentUrl)return false
+        val metadata=mediaMetadata(nextUrl,title,artist,mime)
+        soap(context,d,"SetNextAVTransportURI","<NextURI>"+escape(nextUrl)+"</NextURI><NextURIMetaData>"+escape(metadata)+"</NextURIMetaData>")
+        val after=soap(context,d,"GetMediaInfo","")
+        return field(after,"CurrentURI")==currentUrl&&field(after,"NextURI")==nextUrl
+    }
+    fun currentUri(context:Context,d:NeroDlnaDevice):String?=
+        field(soap(context,d,"GetMediaInfo",""),"CurrentURI")
     // A successful SOAP response only acknowledges the command. Confirm
     // the actual transport state and URI before pausing local playback.
     internal fun confirmedPlayback(state:String?,currentUri:String?,expectedUri:String):Boolean =
