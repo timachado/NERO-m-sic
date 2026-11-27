@@ -99,37 +99,28 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
     var pending by remember{mutableStateOf<String?>(null)}
     var routeNotice by remember{mutableStateOf<String?>(null)}
     var volumeDevices by remember{mutableStateOf(emptyList<NeroVolumeDevice>())}
-    var volumeTarget by remember{mutableStateOf<NeroVolumeDevice?>(null)}
-    var tvVolume by remember{mutableStateOf<Int?>(null)}
-    var volumeBusy by remember{mutableStateOf(false)}
+    val volumeState by NeroWvcVolume.state.collectAsState()
+    val volumeTarget=volumeState.target
+    val tvVolume=volumeState.value
+    var scanningVolume by remember{mutableStateOf(false)}
+    val volumeBusy=scanningVolume||volumeState.busy
     var volumeNotice by remember{mutableStateOf<String?>(null)}
     fun volumeAction(target:NeroVolumeDevice,delta:Int?=null){
         if(volumeBusy)return
-        volumeTarget=target
-        volumeBusy=true
-        tvVolume=null
         volumeNotice=null
-        scope.launch{
-            try{
-                tvVolume=withContext(Dispatchers.IO){
-                    if(delta==null)NeroDlna.getVolume(context,target)
-                    else NeroDlna.changeVolume(context,target,delta)
-                }
-            }catch(e:CancellationException){throw e}catch(_:Exception){
-                volumeNotice="A TV não confirmou o volume. Confira a conexão e o suporte da TV."
-            }finally{volumeBusy=false}
-        }
+        if(delta==null)NeroWvcVolume.select(context,target)
+        else NeroWvcVolume.adjust(context,delta)
     }
     fun discoverVolume(){
         if(volumeBusy)return
-        volumeBusy=true;volumeDevices=emptyList();volumeTarget=null;tvVolume=null;volumeNotice=null
+        scanningVolume=true;volumeDevices=emptyList();volumeNotice=null;NeroWvcVolume.clear()
         scope.launch{
             try{
                 volumeDevices=withContext(Dispatchers.IO){NeroDlna.discoverTargets(context).volume}
                 if(volumeDevices.isEmpty())volumeNotice="Nenhuma TV com controle de volume DLNA encontrada nesta rede."
             }catch(e:CancellationException){throw e}catch(_:Exception){
                 volumeNotice="Não foi possível localizar TVs. Verifique o Wi-Fi."
-            }finally{volumeBusy=false}
+            }finally{scanningVolume=false}
         }
     }
     fun handoff(action:()->Boolean){
@@ -235,8 +226,8 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 }
                 Text("A transmissão entrega uma faixa por vez. A fila e os comandos de reprodução ficam no Web Video Caster.",fontSize=12.sp,color=Color.LightGray)
                 HorizontalDivider()
-                Text("Volume da TV (experimental)",fontWeight=FontWeight.Medium)
-                Text("Selecione manualmente a TV na mesma rede Wi-Fi. O volume é independente da transmissão e depende do suporte DLNA da TV.",fontSize=12.sp,color=Color.LightGray)
+                Text("Volume da TV",fontWeight=FontWeight.Medium)
+                Text("Selecione a TV usada no Web Video Caster. Os botões + e − e as teclas físicas dentro do NERO passam a controlar o volume da TV quando ela confirma o suporte DLNA.",fontSize=12.sp,color=Color.LightGray)
                 OutlinedButton(enabled=!opening&&!volumeBusy,onClick={discoverVolume()},modifier=Modifier.fillMaxWidth()){
                     Text(if(volumeBusy)"Consultando TV…" else "Buscar TVs com controle de volume")
                 }
@@ -254,6 +245,12 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                         OutlinedButton(enabled=!volumeBusy&&confirmedVolume<100,onClick={volumeAction(selectedVolumeDevice,5)}){Text("+")}
                     }
                 }
+                if(volumeTarget!=null){
+                    OutlinedButton(onClick={NeroWvcVolume.clear()},modifier=Modifier.fillMaxWidth()){
+                        Text("Voltar ao volume do telefone")
+                    }
+                }
+                volumeState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
                 volumeNotice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             }
 
