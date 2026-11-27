@@ -16,6 +16,7 @@ internal data class NeroDlnaDevice(val name:String,val endpoint:URI,val service:
 internal data class NeroDialDevice(val name:String,val endpoint:URI,val network:Network)
 internal data class NeroVolumeDevice(val name:String,val endpoint:URI,val service:String,val network:Network)
 internal data class NeroTvDiscovery(val dlna:List<NeroDlnaDevice>,val dial:List<NeroDialDevice>,val volume:List<NeroVolumeDevice> = emptyList())
+internal class NeroDlnaHttpException(val status:Int):java.io.IOException("DLNA HTTP $status")
 internal object NeroDlna {
     private const val LIMIT=256*1024
     private val servicePattern=Regex("urn:schemas-upnp-org:service:AVTransport:[1-9][0-9]?")
@@ -264,7 +265,10 @@ internal object NeroDlna {
                 while(true){val c=readByte();check(c>=0&&b.size()<8192);if(c==10)break;if(c!=13)b.write(c)}
                 return b.toString("US-ASCII")
             }
-            val status=line();require(status.matches(Regex("HTTP/1\\.[01] 2[0-9]{2}( .*)?")))
+            val status=line()
+            val code=Regex("HTTP/1\\.[01] ([0-9]{3})( .*)?").matchEntire(status)?.groupValues?.get(1)?.toIntOrNull()
+                ?:throw java.io.IOException("Resposta HTTP inválida")
+            if(code !in 200..299)throw NeroDlnaHttpException(code)
             val h=mutableMapOf<String,String>()
             for(i in 0..63){val l=line();if(l.isEmpty())break;check(i<63&&l.contains(':'));h[l.substringBefore(':').lowercase()]=l.substringAfter(':').trim()}
             if(dialPost)return LocalResponse(h,"")
