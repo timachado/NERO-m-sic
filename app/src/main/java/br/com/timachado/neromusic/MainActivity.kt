@@ -175,6 +175,15 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         lifecycle?.addObserver(observer)
         onDispose{lifecycle?.removeObserver(observer)}
     }
+    val presenceRevision by NeroPresence.revision.collectAsState()
+    LaunchedEffect(foreground,accountUid,accountReady,presenceRevision){
+        val uid=accountUid ?: return@LaunchedEffect
+        if(!foreground||!accountReady)return@LaunchedEffect
+        while(true){
+            val ok=NeroPresence.sync(context.applicationContext,uid)
+            delay(if(ok) 6*60*60*1000L else 15*60*1000L)
+        }
+    }
     LaunchedEffect(foreground,accountUid,accountEdits){
         if(!foreground)return@LaunchedEffect
         if(!NeroSupabase.configured){NeroSupabase.markGuestReady();return@LaunchedEffect}
