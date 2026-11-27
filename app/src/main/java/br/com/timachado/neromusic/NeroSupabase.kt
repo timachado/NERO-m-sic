@@ -30,7 +30,7 @@ internal class GoogleRequired:Exception()
 internal class ShareNotConfigured:Exception()
 private class NeroHttpException(val status:Int):Exception("Request failed")
 internal fun neroGoogleLoginMessage(error:Exception):String=when(error){
-    is androidx.credentials.exceptions.GetCredentialCancellationException->"Entrada cancelada."
+    is androidx.credentials.exceptions.GetCredentialCancellationException->if(BuildConfig.DEBUG)"Entrada Google interrompida (G00). Este APK de teste pode não ter assinatura OAuth autorizada." else "Entrada Google interrompida (G00). Tente novamente."
     is androidx.credentials.exceptions.NoCredentialException->"Nenhuma conta Google disponível para entrar. Confira sua conta no Android."
     is androidx.credentials.exceptions.GetCredentialException->"O Android não conseguiu autenticar com Google (G01). Confira a assinatura do APK e a configuração OAuth."
     is NeroHttpException->when(error.status){
