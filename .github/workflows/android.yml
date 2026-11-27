@@ -2,7 +2,7 @@ name: Android debug build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'fix/nero-wvc-controls-194']
   pull_request:
     branches: [main]
 permissions:
