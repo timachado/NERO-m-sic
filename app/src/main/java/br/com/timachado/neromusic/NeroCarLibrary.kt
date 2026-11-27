@@ -33,8 +33,6 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     private val favorites="nero-car-favorites"
     private fun own(controller:MediaSession.ControllerInfo)=controller.uid==android.os.Process.myUid()
     private fun trusted(controller:MediaSession.ControllerInfo)=own(controller)||controller.isTrusted
-    private fun systemResumeBlocked(controller:MediaSession.ControllerInfo)=
-        controller.packageName=="com.android.systemui"&&NeroResumeStore.wasExplicitlyClosed(context)
     override fun onConnect(session:MediaSession,controller:MediaSession.ControllerInfo):MediaSession.ConnectionResult{
         if(!trusted(controller))return MediaSession.ConnectionResult.reject()
         return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -124,7 +122,6 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
         .setMediaMetadata(browseItem(item).mediaMetadata.buildUpon().setArtworkUri(item.mediaMetadata.artworkUri).build()).build()
     override fun onPlaybackResumption(mediaSession:MediaSession,controller:MediaSession.ControllerInfo):ListenableFuture<MediaSession.MediaItemsWithStartPosition>{
         if(!trusted(controller))return Futures.immediateFailedFuture(SecurityException("Controller not authorized"))
-        if(systemResumeBlocked(controller))return Futures.immediateFailedFuture(IllegalStateException("Playback explicitly closed"))
         return async{
             val (item,position)=resume()?:throw IllegalStateException("No saved audio")
             MediaSession.MediaItemsWithStartPosition(listOf(item),0,position)
@@ -156,7 +153,7 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
         if(!trusted(browser))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
         if(page<0||pageSize<=0||parentId !in setOf(root,local,offline,favorites,recentRoot))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
         return async{
-            val rows=if(parentId==recentRoot)if(systemResumeBlocked(browser))emptyList() else listOfNotNull(resume()?.first?.let(::recentItem)) else if(parentId==root)folders() else catalog().let{data->when(parentId){local->data.local;offline->data.offline;else->data.favorites}.map(::browseItem)}
+            val rows=if(parentId==recentRoot)listOfNotNull(resume()?.first?.let(::recentItem)) else if(parentId==root)folders() else catalog().let{data->when(parentId){local->data.local;offline->data.offline;else->data.favorites}.map(::browseItem)}
             val start=(page.toLong()*pageSize).coerceAtMost(rows.size.toLong()).toInt()
             val end=(start.toLong()+pageSize).coerceAtMost(rows.size.toLong()).toInt()
             LibraryResult.ofItemList(rows.subList(start,end),params)
@@ -165,13 +162,12 @@ internal class NeroCarLibrary(private val context:Context,private val scope:Coro
     override fun onGetItem(session:MediaLibrarySession,browser:MediaSession.ControllerInfo,mediaId:String):ListenableFuture<LibraryResult<MediaItem>>{
         if(!trusted(browser))return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
         return async{
-            val item=if(mediaId==resumeId)if(systemResumeBlocked(browser))null else resume()?.first?.let(::recentItem) else (listOf(folder(root,"NERO Music"))+folders()).firstOrNull{it.mediaId==mediaId}
+            val item=if(mediaId==resumeId)resume()?.first?.let(::recentItem) else (listOf(folder(root,"NERO Music"))+folders()).firstOrNull{it.mediaId==mediaId}
                 ?:catalog().all.firstOrNull{it.mediaId==mediaId}?.let(::browseItem)
             if(item==null)LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)else LibraryResult.ofItem(item,null)
         }
     }
     override fun onAddMediaItems(mediaSession:MediaSession,controller:MediaSession.ControllerInfo,mediaItems:List<MediaItem>):ListenableFuture<List<MediaItem>>{
-        if(trusted(controller)&&mediaItems.size==1&&mediaItems.first().mediaId==resumeId&&systemResumeBlocked(controller))return Futures.immediateFailedFuture(IllegalStateException("Playback explicitly closed"))
         if(trusted(controller)&&mediaItems.size==1&&mediaItems.first().mediaId==resumeId)return async{listOf(resume()?.first?:throw IllegalStateException("No saved audio"))}
         if(own(controller))return Futures.immediateFuture(mediaItems)
         if(!trusted(controller)||mediaItems.size>1500)return Futures.immediateFailedFuture(SecurityException("Controller not authorized"))
