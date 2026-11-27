@@ -4,6 +4,7 @@ on:
     branches:
       - feat/nero-connect
       - experiment/nero-together-sync
+      - candidate/nero-player-pr12
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   release:
-    if: github.ref == 'refs/heads/feat/nero-connect' || github.ref == 'refs/heads/experiment/nero-together-sync' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    if: github.ref == 'refs/heads/candidate/nero-player-pr12' || github.ref == 'refs/heads/feat/nero-connect' || github.ref == 'refs/heads/experiment/nero-together-sync' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     environment: nero-release
     runs-on: ubuntu-latest
     timeout-minutes: 30
