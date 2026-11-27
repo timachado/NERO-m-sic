@@ -25,7 +25,7 @@ private val premiumCyan=Color(0xFF00E5FF)
 private val panel=Color(0xFF10171C)
 
 @Composable
-internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
+internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayTogether:Boolean=false,onTogetherQueue:((List<androidx.media3.common.MediaItem>,Int)->Unit)?=null) {
     val context=LocalContext.current
     var siteError by remember{mutableStateOf(false)}
     var preparingCheckout by remember{mutableStateOf(false)}
@@ -83,6 +83,15 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
         if(ready&&uid!=null)Text("Seu plano: "+(if(checking)"Consultando…" else neroProfilePlanLabel(subscription?.phase)),fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(premium)Color(0xFFFFD170) else premiumCyan)
         Text("Sua música. Sua liberdade.",fontSize=18.sp,fontWeight=FontWeight.Medium,color=premiumCyan)
         Text("Escolha a experiência NERO que combina com você.",fontSize=13.sp,color=Color.LightGray)
+        if(ready&&uid!=null){
+            val owner=requireNotNull(uid)
+            NeroStudioEntry(owner)
+            onTogetherQueue?.let{playQueue->
+                Text("NERO Together · homologação",fontWeight=FontWeight.Bold,color=premiumCyan)
+                Text("Salas privadas, convites e fila por votos. Cada aparelho reproduz individualmente.",fontSize=12.sp,color=Color.LightGray)
+                NeroTogetherShelf(canPlayTogether,playQueue)
+            }
+        }
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text("NERO Free",fontSize=23.sp,fontWeight=FontWeight.Bold)
             Text("Acesso gratuito",color=premiumCyan)

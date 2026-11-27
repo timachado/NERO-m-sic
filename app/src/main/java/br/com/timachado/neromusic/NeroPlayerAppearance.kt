@@ -2,6 +2,8 @@ package br.com.timachado.neromusic
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -109,4 +111,20 @@ internal fun NeroPlayerAppearance(uid:String,enabled:Boolean){
     }
     if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
     notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
+}
+
+@Composable
+internal fun NeroStudioEntry(uid:String,enabled:Boolean=true){
+    var open by remember(uid){mutableStateOf(false)}
+    Button(enabled=enabled,onClick={open=true},modifier=Modifier.fillMaxWidth()){Text("NERO Studio · Trocar tema do player")}
+    if(open)NeroStudioDialog(uid,onClose={open=false})
+}
+
+@Composable
+internal fun NeroStudioDialog(uid:String,onClose:()->Unit){
+    AlertDialog(onDismissRequest=onClose,title={Text("Temas do player")},text={
+        Column(Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            NeroPlayerAppearance(uid,true)
+        }
+    },confirmButton={TextButton(onClick=onClose){Text("Concluir")}})
 }

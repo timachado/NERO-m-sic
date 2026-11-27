@@ -402,7 +402,11 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 wifiOnly=offlineState.wifiOnly,onWifiChange=offlineManager::setWifiOnly,
                 economicalDownload=offlineState.economical,onDownloadQuality=offlineManager::setEconomical)
         } else if (tab==5 && !fullPlayer) {
-            PlansScreen(onBack={tab=premiumReturnTab},modifier=Modifier.padding(padding))
+            PlansScreen(onBack={tab=premiumReturnTab},modifier=Modifier.padding(padding),canPlayTogether=controller!=null,onTogetherQueue={queue,index->
+                controller?.let{p->if(queue.isNotEmpty()){
+                    p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play();fullPlayer=true
+                }}
+            })
         } else if (fullPlayer) {
             val currentTrack=tracks.firstOrNull{it.id.toString()==nowId}
             ImmersivePlayer(

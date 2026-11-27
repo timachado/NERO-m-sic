@@ -121,6 +121,8 @@ internal fun ImmersivePlayer(
     val hiddenSongs=rememberHiddenSongs()
     val preferenceUid by NeroSupabase.activeUid.collectAsState()
     val preferenceReady by NeroSupabase.identityReady.collectAsState()
+    var showStudio by remember(preferenceUid){mutableStateOf(false)}
+    if(showStudio&&preferenceReady)preferenceUid?.let{owner->NeroStudioDialog(owner,onClose={showStudio=false})}
     val preferenceScope=rememberCoroutineScope()
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
     if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
@@ -177,6 +179,7 @@ internal fun ImmersivePlayer(
                         DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
+                        DropdownMenuItem(text={Text("NERO Studio · Trocar tema")},enabled=preferenceReady&&preferenceUid!=null,onClick={showMore=false;showStudio=true})
                         if(BuildConfig.FULL_FEATURES)DropdownMenuItem(text={Text("Equalizador")},onClick={showMore=false;onEqualizer()})
                         DropdownMenuItem(text={Text("Dispositivos")},onClick={showMore=false;showDevices=true},leadingIcon={Icon(Icons.Default.Devices,null)})
                         DropdownMenuItem(text={Text("Fila de reprodução")},enabled=ready,onClick={showMore=false;onQueue()})

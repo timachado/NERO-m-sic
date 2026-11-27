@@ -111,6 +111,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 TextButton(onClick=onHistory){Icon(Icons.Default.History,null);Spacer(Modifier.width(8.dp));Text("Histórico de reprodução")}
             }
         }
+        user?.let{NeroStudioEntry(it.uid,enabled=!busy)}
         if(user!=null)NeroConnectShelf()
         Text("Notificações",fontSize=20.sp,fontWeight=FontWeight.Bold)
         NeroUpdateNotificationPreference()
