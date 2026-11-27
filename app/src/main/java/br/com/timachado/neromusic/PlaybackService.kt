@@ -252,14 +252,12 @@ class PlaybackService : MediaLibraryService() {
         NeroSleepTimer.cancel()
         session?.player?.let { player ->
             NeroResumeStore.save(applicationContext,player)
-            // Do not clear the timeline: System UI needs the last item and
-            // paused playback state to create its native resumption card.
             player.pause()
+            // Clear the active timeline but retain the persisted resume record.
+            player.clearMediaItems()
+            player.stop()
         }
-        // The service may still be bound to a controller during a rapid reopen.
-        // Keep its session valid until Android actually destroys this service.
-        // Media3 1.5.1 explicitly supports pausing all players and stopping
-        // the service on task removal, while preserving the recent media item.
+        // Keep the session valid until Android destroys the service.
         pauseAllPlayersAndStopSelf()
     }
     private fun closePlayback() {
