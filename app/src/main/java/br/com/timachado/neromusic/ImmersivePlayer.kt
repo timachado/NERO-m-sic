@@ -71,17 +71,38 @@ internal fun ImmersivePlayer(
     var showMore by remember{mutableStateOf(false)}
     val castContext=androidx.compose.ui.platform.LocalContext.current
     var showDevices by remember{mutableStateOf(false)}
-    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready,onCast={
+    var castBusy by remember{mutableStateOf(false)}
+    val castScope=rememberCoroutineScope()
+    val currentCastId by rememberUpdatedState(mediaId)
+    if(showDevices)NeroDeviceSheet(title,artist,playing,canCast=ready&&!castBusy,onCast={
         showDevices=false
         when{
-            NeroWebVideoCaster.currentSource(mediaId,videoMode)==null->android.widget.Toast.makeText(castContext,"A mídia atual ainda não está disponível para transmissão. Inicie a reprodução no NERO.",android.widget.Toast.LENGTH_LONG).show()
+            castBusy->Unit
             !NeroWebVideoCaster.available(castContext)->{
                 android.widget.Toast.makeText(castContext,"Instale o Web Video Caster para transmitir à TV.",android.widget.Toast.LENGTH_LONG).show()
                 runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("market://details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}
                     .onFailure{runCatching{castContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/apps/details?id="+NeroWebVideoCaster.PACKAGE_NAME)))}}
             }
-            !NeroWebVideoCaster.handoff(castContext,mediaId,title,videoMode)->android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
-            else->Unit
+            else->{
+                val requestedId=mediaId
+                castBusy=true
+                android.widget.Toast.makeText(castContext,"Preparando a faixa em MP4 para a TV…",android.widget.Toast.LENGTH_SHORT).show()
+                castScope.launch{
+                    try{
+                        val source=kotlinx.coroutines.withTimeoutOrNull(20000L){
+                            NeroWebVideoCaster.prepareTvSource(requestedId,title,artist)
+                        }
+                        if(currentCastId!=requestedId)return@launch
+                        if(source==null){
+                            android.widget.Toast.makeText(castContext,"A faixa não possui versão MP4 compatível disponível.",android.widget.Toast.LENGTH_LONG).show()
+                        }else if(!NeroWebVideoCaster.handoffTv(castContext,requestedId,title,source)){
+                            android.widget.Toast.makeText(castContext,"Não foi possível abrir o Web Video Caster.",android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }catch(e:CancellationException){throw e}catch(_:Exception){
+                        android.widget.Toast.makeText(castContext,"Não foi possível preparar a mídia compatível. A reprodução continua no NERO.",android.widget.Toast.LENGTH_LONG).show()
+                    }finally{castBusy=false}
+                }
+            }
         }
     },onClose={showDevices=false})
     val nativeHit=shareRef?.let(::musicHitFromRef)?.takeIf{NativeMusicCatalog.enabled}
