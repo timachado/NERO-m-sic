@@ -74,6 +74,7 @@ class PlaybackService : MediaLibraryService() {
             shuffleModeEnabled=true
             repeatMode=Player.REPEAT_MODE_OFF
         }
+        TogetherFollowerPlayback.attach(player)
         if(BuildConfig.FULL_FEATURES) {
             eq = SessionEqualizer(applicationContext)
             player.addListener(object : Player.Listener {
@@ -129,7 +130,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object:Player.Listener{
             override fun onPlaybackStateChanged(state:Int){
                 if(state!=Player.STATE_ENDED){autoplayJob?.cancel();return}
-                if(player.currentMediaItem?.isNeroVideo()==true||!NativeMusicCatalog.enabled||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
+                if(TogetherFollowerPlayback.owns(player)||player.currentMediaItem?.isNeroVideo()==true||!NativeMusicCatalog.enabled||!NeroAutoplay.enabled(applicationContext)||!player.playWhenReady||
                     player.repeatMode!=Player.REPEAT_MODE_OFF||NeroSleepTimer.deadline.value!=null)return
                 val seed=player.currentMediaItem?.let(::youtubeRefFromItem)?.let(::musicHitFromRef)?:return
                 val ids=(0 until player.mediaItemCount).map{player.getMediaItemAt(it).mediaId}
@@ -240,6 +241,7 @@ class PlaybackService : MediaLibraryService() {
     }
     private fun closePlayback() {
         favoriteListener?.let{getSharedPreferences("nero_library",0).unregisterOnSharedPreferenceChangeListener(it)};favoriteListener=null
+        TogetherFollowerPlayback.detach()
         replaySampler?.close();replaySampler=null
         timerScope.cancel(); NeroPlaybackAccess.update(null,false); NeroSleepTimer.cancel()
         eq?.close(); eq = null

@@ -61,7 +61,7 @@ internal fun ImmersivePlayer(
         FullscreenClip(videoPlayer,title,artist,position,duration,playing,videoQuality,error,onVideoQuality,onSeek,onPlayPause,onPrevious,onNext,onClose={fullscreen=false},onAudio={fullscreen=false;onVideoToggle()},pipSupported=pipSupported,onPip=onPip,favorite=favorite,canFavorite=canSave,onFavorite=onFavorite,fullControls=fullControls,nextAvailable=nextAvailable)
         return
     }
-    val appearance=rememberNeroPlayerTheme()
+    val appearance=LocalNeroTheme.current
     val neon=Color(appearance.primary)
     val aqua=Color(appearance.secondary)
     val panel=Color(appearance.panel)
@@ -193,7 +193,7 @@ internal fun ImmersivePlayer(
                     val shape=RoundedCornerShape(50)
                     val outline=if(selected)neon else aqua.copy(alpha=.7f)
                     Row(Modifier.height(40.dp).widthIn(min=108.dp).clip(shape)
-                        .background(if(selected)Brush.horizontalGradient(listOf(neon,if(appearance==NeroPlayerTheme.AURORA)Color(0xFF00DDA3)else aqua))else Brush.horizontalGradient(listOf(Color(0xFF102327),Color(0xFF071619))))
+                        .background(if(selected)Brush.horizontalGradient(listOf(neon,if(appearance==NeroPlayerTheme.AURORA)Color(0xFF00DDA3)else aqua))else Brush.horizontalGradient(listOf(panel,Color(appearance.background))))
                         .border(1.dp,outline,shape).clickable(enabled=ready&&!selected){onVideoToggle()}.padding(horizontal=12.dp),
                         horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
                         Icon(if(video)Icons.Default.OndemandVideo else Icons.Default.MusicNote,null,tint=if(selected)Color.Black else neon,modifier=Modifier.size(20.dp))
@@ -214,7 +214,7 @@ internal fun ImmersivePlayer(
             else {
                 val shape=RoundedCornerShape(22.dp)
                 Box(Modifier.size(coverSize).shadow(10.dp,shape).background(panel,shape)
-                    .border(2.dp,Brush.linearGradient(listOf(neon,aqua,Color(0xFFFF68AA),neon)),shape)
+                    .border(2.dp,Brush.linearGradient(listOf(neon,aqua,neon)),shape)
                     .clip(shape).padding(2.dp).clip(RoundedCornerShape(20.dp)),contentAlignment=Alignment.Center){
                     if(remoteCover!=null&&track==null)NeroArtwork(model=remoteCover,contentDescription="Capa da faixa",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize(),large=true)
                     else LocalArtwork(track,Modifier.fillMaxSize(),large=true)

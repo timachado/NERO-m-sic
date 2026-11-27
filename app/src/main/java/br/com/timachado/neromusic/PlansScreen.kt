@@ -20,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val premiumGreen=Color(0xFF39FF14)
-private val premiumCyan=Color(0xFF00E5FF)
-private val panel=Color(0xFF10171C)
+private val premiumGreen:Color @Composable get()=MaterialTheme.colorScheme.primary
+private val premiumCyan:Color @Composable get()=MaterialTheme.colorScheme.secondary
+private val panel:Color @Composable get()=MaterialTheme.colorScheme.surface
 
 @Composable
 internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayTogether:Boolean=false,onTogetherQueue:((List<androidx.media3.common.MediaItem>,Int)->Unit)?=null,livePlayer:androidx.media3.common.Player?=null) {
@@ -80,7 +80,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("Planos NERO Music",fontSize=24.sp,fontWeight=FontWeight.Bold)
         }
-        if(ready&&uid!=null)Text("Seu plano: "+(if(checking)"Consultando…" else neroProfilePlanLabel(subscription?.phase)),fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(premium)Color(0xFFFFD170) else premiumCyan)
+        if(ready&&uid!=null)Text("Seu plano: "+(if(checking)"Consultando…" else neroProfilePlanLabel(subscription?.phase)),fontSize=14.sp,fontWeight=FontWeight.Bold,color=if(premium)MaterialTheme.colorScheme.primary else premiumCyan)
         Text("Sua música. Sua liberdade.",fontSize=18.sp,fontWeight=FontWeight.Medium,color=premiumCyan)
         Text("Escolha a experiência NERO que combina com você.",fontSize=13.sp,color=Color.LightGray)
         if(ready&&uid!=null){
@@ -88,7 +88,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             NeroStudioEntry(owner)
             onTogetherQueue?.let{playQueue->
                 Text("NERO Together · homologação",fontWeight=FontWeight.Bold,color=premiumCyan)
-                Text("Salas privadas, convites e fila por votos. Cada aparelho reproduz individualmente.",fontSize=12.sp,color=Color.LightGray)
+                Text("Salas privadas, convites e fila por votos. Convidados Free podem acompanhar o anfitrião Premium.",fontSize=12.sp,color=Color.LightGray)
                 NeroTogetherShelf(canPlayTogether,playQueue,livePlayer)
             }
         }
@@ -119,7 +119,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             listOf("Tudo do Free","Reprodução na ordem escolhida","Voltar, repetir e ajustar posição","Controle da fila","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
             PlanFeature("NERO Together · integração em homologação",false)
             PlanFeature("Suporte prioritário · previsto",false)
-            HorizontalDivider(color=Color(0xFF33434A))
+            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             Text("Coleção de temas do player",fontWeight=FontWeight.Bold,color=premiumCyan)
             NeroPlayerTheme.entries.forEach{theme->
                 Row(Modifier.fillMaxWidth().background(Color(theme.background),RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -132,7 +132,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
                     }
                 }
             }
-            HorizontalDivider(color=Color(0xFF33434A))
+            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             Text("Escolha seu plano",fontWeight=FontWeight.Bold)
             NeroPlans.offers.forEach{offer->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
@@ -143,7 +143,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
                     }
                     Text(offer.price,fontWeight=FontWeight.Bold,color=premiumGreen,fontSize=20.sp)
                 }
-                HorizontalDivider(color=Color(0xFF33434A))
+                HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
             }
             val selection=NeroPlans.offers.first{it.id==selectedPlan}
             Text("Selecionado: "+selection.label+" · "+selection.price,fontWeight=FontWeight.Medium,color=premiumGreen)

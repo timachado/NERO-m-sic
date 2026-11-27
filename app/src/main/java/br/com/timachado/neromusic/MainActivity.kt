@@ -47,10 +47,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 
-private val Blue = Color(0xFF0066FF)
-private val Cyan = Color(0xFF00E5FF)
-private val Green = Color(0xFF39FF14)
-private val SurfaceDark = Color(0xFF10171C)
+private val Blue:Color @Composable get()=MaterialTheme.colorScheme.tertiary
+private val Cyan:Color @Composable get()=MaterialTheme.colorScheme.secondary
+private val Green:Color @Composable get()=MaterialTheme.colorScheme.primary
+private val SurfaceDark:Color @Composable get()=MaterialTheme.colorScheme.surface
 
 class MainActivity : ComponentActivity() {
     override fun onKeyDown(keyCode:Int,event:android.view.KeyEvent):Boolean{
@@ -82,12 +82,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pipMode=isInPictureInPictureMode
         if(savedInstanceState==null)acceptShare(intent) else savedInstanceState.getString("nero_pending_share")?.let{incomingShare=it}
-        setContent { MaterialTheme(colorScheme = darkColorScheme(primary = Green, secondary = Cyan,
-            background = Color.Black, surface = SurfaceDark, onPrimary = Color.Black,
-            primaryContainer = Color(0xFF102B23), onPrimaryContainer = Green,
-            secondaryContainer = Color(0xFF12313A), onSecondaryContainer = Cyan,
-            tertiary = Blue, tertiaryContainer = Color(0xFF10243E), onTertiaryContainer = Cyan,
-            onBackground = Color.White, onSurface = Color.White)) { NeroApp(incomingShare,shareRevision,onShareClosed={incomingShare=null},pipMode=pipMode,pipSupported=packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE),onPip={enterClipPip()}) } }
+        setContent {
+            val appearance=rememberNeroPlayerTheme()
+            CompositionLocalProvider(LocalNeroTheme provides appearance){
+                MaterialTheme(colorScheme=appearance.scheme()){ NeroApp(incomingShare,shareRevision,onShareClosed={incomingShare=null},pipMode=pipMode,pipSupported=packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE),onPip={enterClipPip()}) }
+            }
+        }
     }
     override fun onSaveInstanceState(outState:Bundle){super.onSaveInstanceState(outState);outState.putString("nero_pending_share",incomingShare)}
 }
@@ -353,7 +353,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         }
     }
     CompositionLocalProvider(LocalNeroNowPlaying provides NeroNowPlaying(nowId,playing,buffering,playbackError!=null,open={playerAlbum=null;playerArtist=null;fullPlayer=true})) {
-    Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
+    Scaffold(containerColor = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (playerAlbum==null && playerArtist==null && !fullPlayer && !showEq && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { showAccount=false;fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val cover=nowOpenRef?.coverUrl
@@ -366,12 +366,12 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
                 IconButton(enabled=nextAvailable,onClick = { controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()} }) { Icon(Icons.Default.SkipNext, "Próxima") }
             }
-            NavigationBar(containerColor = Color.Black) {
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab == 1, onClick = { showAccount=false;if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = Color(0xFF102B23), unselectedIconColor = Color(0xFFB9C6CF), unselectedTextColor = Color(0xFFB9C6CF)), selected = !showAccount&&tab in setOf(0,2,4), onClick = { showAccount=false;tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca",maxLines=1,softWrap=false,fontSize=11.sp) })
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=Color(0xFF102B23),unselectedIconColor=Color(0xFFFFD170),unselectedTextColor=Color(0xFFFFD170)),selected=!showAccount&&tab==5,onClick={showAccount=false;if(tab!=5){premiumReturnTab=tab;tab=5}},icon={Icon(Icons.Default.WorkspacePremium,null)},label={Text("Premium\nNERO Music",maxLines=2,softWrap=false,fontSize=9.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)})
-                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=Color(0xFF102B23),unselectedIconColor=Color(0xFFB9C6CF),unselectedTextColor=Color(0xFFB9C6CF)),selected=showAccount,onClick={showAccount=true},icon={Icon(Icons.Default.AccountCircle,null)},label={Text("Conta")})
+            NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant), selected = !showAccount&&tab == 3, onClick = { showAccount=false;tab = 3 }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Início") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant), selected = !showAccount&&tab == 1, onClick = { showAccount=false;if(tab!=1){searchSeed="";searchAutoFocus=true};tab = 1 }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Buscar") })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = Green, selectedTextColor = Green, indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant), selected = !showAccount&&tab in setOf(0,2,4), onClick = { showAccount=false;tab = 0;libraryPage=8;librarySelection=null }, icon = { Icon(Icons.Default.LibraryMusic, null) }, label = { Text("Biblioteca",maxLines=1,softWrap=false,fontSize=11.sp) })
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=MaterialTheme.colorScheme.primaryContainer,unselectedIconColor=MaterialTheme.colorScheme.secondary,unselectedTextColor=MaterialTheme.colorScheme.secondary),selected=!showAccount&&tab==5,onClick={showAccount=false;if(tab!=5){premiumReturnTab=tab;tab=5}},icon={Icon(Icons.Default.WorkspacePremium,null)},label={Text("Premium\nNERO Music",maxLines=2,softWrap=false,fontSize=9.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)})
+                NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor=Green,selectedTextColor=Green,indicatorColor=MaterialTheme.colorScheme.primaryContainer,unselectedIconColor=MaterialTheme.colorScheme.onSurfaceVariant,unselectedTextColor=MaterialTheme.colorScheme.onSurfaceVariant),selected=showAccount,onClick={showAccount=true},icon={Icon(Icons.Default.AccountCircle,null)},label={Text("Conta")})
             }
         }
     }) { padding ->

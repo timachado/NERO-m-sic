@@ -27,6 +27,16 @@ internal enum class NeroPlayerTheme(val label:String,val primary:Long,val second
     RUBY("Ruby Night",0xFFFF6983,0xFFFFB37A,0xFF351922,0xFF17080F,"Vermelho intenso e brilho de palco."),
     ICE("Glacier",0xFFB9F5FF,0xFF8AC1E6,0xFF172B35,0xFF090F16,"Gelo, azul e minimalismo.")
 }
+internal val LocalNeroTheme=staticCompositionLocalOf{NeroPlayerTheme.AURORA}
+internal fun NeroPlayerTheme.scheme()=darkColorScheme(
+    primary=Color(primary),secondary=Color(secondary),tertiary=Color(secondary),
+    background=Color(background),surface=if(this==NeroPlayerTheme.AURORA)Color(0xFF10171C)else Color(panel),
+    surfaceVariant=Color(panel),primaryContainer=Color(panel),secondaryContainer=Color(panel),tertiaryContainer=Color(panel),
+    onPrimary=Color.Black,onSecondary=Color.Black,onTertiary=Color.Black,
+    onPrimaryContainer=Color(primary),onSecondaryContainer=Color(secondary),onTertiaryContainer=Color(secondary),
+    onBackground=Color.White,onSurface=Color.White,onSurfaceVariant=Color(0xFFD1D5DB),
+    outline=Color(secondary).copy(alpha=.65f),outlineVariant=Color(secondary).copy(alpha=.24f)
+)
 internal fun effectivePlayerTheme(stored:String?,verified:Boolean):NeroPlayerTheme {
     val theme=NeroPlayerTheme.entries.firstOrNull{it.name==stored}?:NeroPlayerTheme.AURORA
     return if(verified)theme else NeroPlayerTheme.AURORA
@@ -60,12 +70,11 @@ internal fun rememberNeroPlayerTheme():NeroPlayerTheme{
         onDispose{prefs.unregisterOnSharedPreferenceChangeListener(listener)}
     }
     val stored=remember(uid,ready,revision){if(ready&&uid!=null)PlayerAppearanceStore.read(context,requireNotNull(uid))else null}
-    var verified by remember(uid,ready,stored){mutableStateOf(false)}
+    var verified by remember(uid,ready){mutableStateOf(false)}
     LaunchedEffect(uid,ready,stored){
         val owner=uid
         if(!ready||owner==null||effectivePlayerTheme(stored,true)==NeroPlayerTheme.AURORA)return@LaunchedEffect
         while(true){
-            verified=false
             verified=verifiedPremium(context,owner)
             delay(300000L)
         }
@@ -80,7 +89,7 @@ internal fun NeroPlayerAppearance(uid:String,enabled:Boolean){
     var selected by remember(uid){mutableStateOf(effectivePlayerTheme(PlayerAppearanceStore.read(context,uid),true))}
     var busy by remember(uid){mutableStateOf(false)}
     var notice by remember(uid){mutableStateOf<String?>(null)}
-    Text("NERO Studio",fontSize=20.sp,color=Color(0xFF39FF14))
+    Text("NERO Studio",fontSize=20.sp,color=MaterialTheme.colorScheme.primary)
     Text("Personalize a aparência do player. Aurora Neon é gratuito; os temas exclusivos exigem Premium verificado.",fontSize=12.sp,color=Color.LightGray)
     NeroPlayerTheme.entries.forEach{theme->
         OutlinedButton(enabled=enabled&&!busy,onClick={
