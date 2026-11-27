@@ -46,21 +46,44 @@ internal object NeroWebVideoCaster {
         context.packageManager.getPackageInfo(PACKAGE_NAME,0)
         true
     }.getOrDefault(false)
-    fun handoff(context:Context,mediaId:String?,title:String,video:Boolean=false):Boolean{
-        val id=mediaId?:return false
-        val url=currentSource(id,video)?:return false
+    /** webOS 2.0 and older receivers generally support muxed MP4 better
+     * than audio-only WebM/Opus. Select an already available MP4 rendition
+     * of the same item via the existing video playback source, without
+     * modifying the local player or retrying a rejected source. */
+    internal fun compatibleTvMime(mime:String?):Boolean=mime=="video/mp4"
+    private fun declaredMime(url:String):String?=runCatching{Uri.parse(url).getQueryParameter("mime")}.getOrNull()
+    suspend fun prepareTvSource(mediaId:String,title:String,artist:String):String?{
+        if(!mediaId.matches(Regex("youtube:[A-Za-z0-9_-]{11}")))return null
+        val cached=currentSource(mediaId,true)
+        if(cached!=null&&compatibleTvMime(declaredMime(cached)))return cached
+        val hit=NativeMusicHit(mediaId.removePrefix("youtube:"),title,artist,0L)
+        val item=NativeMusicCatalog.resolveVideo(hit,quality=720)
+        val url=item.localConfiguration?.uri?.toString()?:return null
+        val validated=validatedSource(mediaId,true,url)?:return null
+        val mime=declaredMime(validated)
+        // resolveVideo guarantees muxed MPEG_4; never mislabel an explicit
+        // incompatible source to trick the receiver.
+        if(mime!=null&&!compatibleTvMime(mime))return null
+        return validated
+    }
+    fun handoffTv(context:Context,mediaId:String,title:String,url:String):Boolean{
+        val source=validatedSource(mediaId,true,url)?:return false
+        val mime=declaredMime(source)
+        if(mime!=null&&!compatibleTvMime(mime))return false
         val deepLink=Uri.Builder().scheme("wvc-x-callback").authority("open")
-            .appendQueryParameter("url",url)
+            .appendQueryParameter("url",source)
             .appendQueryParameter("skip_page_load","true")
             .appendQueryParameter("secure_uri","true")
-            .apply{
-                if(title.isNotBlank())appendQueryParameter("title",title.take(180))
-                val mime=Uri.parse(url).getQueryParameter("mime")
-                if(mime in setOf("audio/mp4","audio/webm","audio/mpeg","video/mp4","video/webm"))appendQueryParameter("mime_type",mime)
-            }.build()
+            .appendQueryParameter("mime_type","video/mp4")
+            .appendQueryParameter("poster","https://i.ytimg.com/vi/"+mediaId.removePrefix("youtube:")+"/hqdefault.jpg")
+            .apply{if(title.isNotBlank())appendQueryParameter("title",title.take(180))}
+            .build()
         return try{
             context.startActivity(Intent(Intent.ACTION_VIEW,deepLink).setPackage(PACKAGE_NAME))
             true
         }catch(_:ActivityNotFoundException){false}catch(_:SecurityException){false}
     }
+    // Legacy NERO Cast is unregistered and must not open another page.
+    @Suppress("UNUSED_PARAMETER")
+    fun handoff(context:Context,mediaId:String?,title:String,video:Boolean=false):Boolean=false
 }
