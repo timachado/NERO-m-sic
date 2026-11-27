@@ -1,0 +1,16 @@
+name: NERO - publicar build 205 autorizada
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/nero-publish-build-205.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish_approved_build:
+    if: github.ref == 'refs/heads/main' && github.event.head_commit.message == 'release: authorize NERO Music 1.0.0 build 205 publication'
+    uses: ./.github/workflows/nero-publish-official.yml
+    with:
+      run_id: '45951045152'
+      confirmation: PUBLICAR_NERO
+    secrets: inherit
