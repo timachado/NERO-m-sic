@@ -135,6 +135,20 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
         }
     }
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
+    var deleteTarget by remember(uid,ready){mutableStateOf<OnlineList?>(null)}
+    var deleting by remember(uid,ready){mutableStateOf(false)}
+    deleteTarget?.let{target->AlertDialog(onDismissRequest={if(!deleting)deleteTarget=null},title={Text("Excluir playlist?")},
+        text={Text("Excluir \""+target.name+"\"? As músicas, favoritos e downloads serão preservados.")},
+        confirmButton={TextButton(enabled=ready&&!deleting,onClick={
+            val owner=uid;deleting=true
+            scope.launch{
+                try{
+                    val next=deleteScopedOnlinePlaylist(context,owner,target.id)
+                    if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){lists=Result.success(next);if(selected==target.id)selected=null;deleteTarget=null;notice="Playlist excluída."}
+                }catch(e:CancellationException){throw e}catch(_:Exception){if(NeroSupabase.activeUid.value==owner){deleteTarget=null;notice="Não foi possível excluir a playlist. Tente novamente."}}
+                finally{deleting=false}
+            }
+        }){Text(if(deleting)"Excluindo…" else "Excluir",color=MaterialTheme.colorScheme.error)}},dismissButton={TextButton(enabled=!deleting,onClick={deleteTarget=null}){Text("Cancelar")}})}
     var renameTarget by remember(uid,selected){mutableStateOf<String?>(null)}
     var renameName by remember(uid,selected){mutableStateOf("")}
     var renaming by remember(uid){mutableStateOf(false)}
@@ -212,6 +226,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             if(active==null)NeroSmartLibrary(uid,ready,lists.getOrDefault(emptyList())){next->lists=Result.success(next);notice="Coleções inteligentes salvas."}
             if(active!=null){
                 TextButton(enabled=ready&&!renaming,onClick={renameName=active.name;renameTarget=active.id}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Renomear playlist")}
+                TextButton(enabled=ready&&!deleting,onClick={deleteTarget=active}){Icon(Icons.Default.Delete,null,tint=MaterialTheme.colorScheme.error);Spacer(Modifier.width(8.dp));Text("Excluir playlist",color=MaterialTheme.colorScheme.error)}
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
                 Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
                 if(NativeMusicCatalog.enabled&&active.songs.any{it.artist.trim().length>=3}){
