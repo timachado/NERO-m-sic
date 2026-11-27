@@ -6,6 +6,9 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.atomic.AtomicInteger
 
 internal const val NERO_UPDATE_TOPIC="nero_music_stable_updates_v1"
 internal fun neroPushVersion(data:Map<String,String>,installed:Int):Int?{
@@ -13,15 +16,31 @@ internal fun neroPushVersion(data:Map<String,String>,installed:Int):Int?{
     return data["versionCode"]?.toIntOrNull()?.takeIf{it>installed}
 }
 internal object NeroUpdatePush{
+    private val registrationState=MutableStateFlow("Inscrição ainda não verificada.")
+    val registration=registrationState.asStateFlow()
+    private val generation=AtomicInteger()
     fun sync(context:Context){
-        if(FirebaseApp.getApps(context).none{it.options.projectId=="nero-music-c8654"})return
-        if(!NeroAppUpdates.notificationsEnabled(context)||!NeroRadarAlerts.permitted(context)){
-            if(FirebaseApp.getApps(context).isNotEmpty())
-                runCatching{FirebaseMessaging.getInstance().unsubscribeFromTopic(NERO_UPDATE_TOPIC)}
-            return
+        val app=context.applicationContext
+        val request=generation.incrementAndGet()
+        fun report(status:String){if(generation.get()==request)registrationState.value=status}
+        val firebase=runCatching{FirebaseApp.getInstance()}.getOrNull()
+        if(firebase?.options?.projectId!="nero-music-c8654"){
+            report("Firebase de atualizações indisponível.");return
         }
-        if(FirebaseApp.getApps(context).isEmpty())return
-        runCatching{FirebaseMessaging.getInstance().subscribeToTopic(NERO_UPDATE_TOPIC)}
+        val enabled=NeroAppUpdates.notificationsEnabled(app)
+        val permitted=NeroAppUpdates.notificationPermitted(app)
+        try{
+            val messaging=FirebaseMessaging.getInstance()
+            if(!enabled||!permitted){
+                report(if(!enabled)"Avisos desativados." else "Notificações bloqueadas no Android.")
+                messaging.unsubscribeFromTopic(NERO_UPDATE_TOPIC)
+                return
+            }
+            report("Verificando inscrição no Firebase…")
+            messaging.subscribeToTopic(NERO_UPDATE_TOPIC).addOnCompleteListener{task->
+                report(if(task.isSuccessful)"Inscrição no Firebase confirmada." else "Inscrição não confirmada. Tente novamente.")
+            }
+        }catch(_:Exception){report("Inscrição não confirmada. Tente novamente.")}
     }
     fun requestCheck(context:Context,code:Int){
         if(!NeroAppUpdates.notificationsEnabled(context))return
