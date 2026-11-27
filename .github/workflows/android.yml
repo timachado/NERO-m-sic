@@ -2,7 +2,7 @@ name: Android debug build
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'fix/nero-wvc-controls-194']
+    branches: [main, 'fix/nero-wvc-controls-194', 'feat/nero-connect-native-195']
   pull_request:
     branches: [main]
 permissions:
