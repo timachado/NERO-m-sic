@@ -23,6 +23,8 @@ internal fun togetherTarget(position:Long,playing:Boolean,age:Long,rtt:Long):Lon
 internal fun NeroTogetherLive(room:TogetherRoom,uid:String,player:Player){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
+    val premium by NeroPlaybackAccess.premium.collectAsState()
+    var stopping by remember(room.id,uid){mutableStateOf(false)}
     var enabled by remember(room.id,uid){mutableStateOf(false)}
     var notice by remember(room.id,uid){mutableStateOf("Sincronização experimental nesta sala.")}
     var owned by remember(room.id,uid){mutableStateOf<String?>(null)}
@@ -47,13 +49,14 @@ internal fun NeroTogetherLive(room:TogetherRoom,uid:String,player:Player){
     }
     LaunchedEffect(enabled,room.id,uid,player){
         while(enabled&&active()){
+            if(!NeroPlaybackAccess.allowed()){pauseOwned();enabled=false;notice="Sincronização experimental exige Premium verificado.";break}
             try{
                 if(room.host){
                     val item=player.currentMediaItem
                     val video=item?.mediaId?.removePrefix("youtube:").orEmpty()
                     if(item==null||item.mediaId!=owned||latestRoom.songs.none{it.hit.id==video}||item.isNeroVideo()){
                         enabled=false;notice="Reprodução fora da sala. Sincronização encerrada."
-                        runCatching{rpc("stop")}
+                        try{rpc("stop")}catch(e:CancellationException){throw e}catch(_:Exception){}
                         break
                     }
                     rpc("publish",video,player.currentPosition.coerceAtLeast(0),player.isPlaying)
@@ -91,12 +94,13 @@ internal fun NeroTogetherLive(room:TogetherRoom,uid:String,player:Player){
             delay(3000L)
         }
     }
-    DisposableEffect(room.id,uid,player){onDispose{pauseOwned()}}
+    DisposableEffect(room.id,uid,player){onDispose{runCatching{pauseOwned()}}}
     Text("Ouvir juntos · experimental")
     Text("Mantenha esta sala aberta. Cada aparelho carrega sua própria faixa; atrasos de rede e buffering podem causar diferenças.")
+    if(!premium)Text("Nesta homologação, a sincronização exige Premium nos dois aparelhos. A fila compartilhada continua disponível para convidados Free.")
     if(room.host){
         room.songs.forEach{song->
-            TextButton(enabled=active(),onClick={
+            TextButton(enabled=premium&&active()&&!stopping,onClick={
                 try{load(song.hit,0L);selected=song.hit.id;player.play();enabled=true}
                 catch(_:Exception){notice="Não foi possível preparar esta faixa."}
             }){Text((if(selected==song.hit.id)"✓ " else "▶ ")+song.hit.title)}
@@ -107,10 +111,10 @@ internal fun NeroTogetherLive(room:TogetherRoom,uid:String,player:Player){
                 OutlinedButton(onClick={if(player.currentMediaItem?.mediaId==owned&&player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE))player.play()}){Text("Continuar")}
             }
         }
-    }else if(!enabled)Button(onClick={enabled=true}){Text("Ouvir junto com anfitrião")}
+    }else if(!enabled)Button(enabled=premium,onClick={enabled=true}){Text("Ouvir junto com anfitrião")}
     if(enabled)OutlinedButton(onClick={
         enabled=false;pauseOwned()
-        if(room.host)scope.launch{try{rpc("stop")}catch(e:CancellationException){throw e}catch(_:Exception){}}
+        if(room.host){stopping=true;scope.launch{try{rpc("stop")}catch(e:CancellationException){throw e}catch(_:Exception){}finally{stopping=false}}}
         notice="Sincronização encerrada neste aparelho."
     }){Text("Parar sincronização")}
     Text(notice)
