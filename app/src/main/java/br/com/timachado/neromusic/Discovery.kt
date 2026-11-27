@@ -164,7 +164,7 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 }
 
 @Composable
-internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onlineFavorites:List<OnlineRef> = emptyList(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit) {
+internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onlineFavorites:List<OnlineRef> = emptyList(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit,livePlayer:androidx.media3.common.Player?=null) {
     val context = LocalContext.current
     var showReleases by remember { mutableStateOf(false) }
     var showDatedReleases by remember { mutableStateOf(false) }
@@ -225,7 +225,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
                 NeroRadarShelf(onlineFavorites,onSearch)
-                NeroTogetherShelf(canPlay,onNativeQueue)
+                NeroTogetherShelf(canPlay,onNativeQueue,livePlayer)
                 DigitalChartsShelf(onSearch=onSearch,canPlay=canPlay,onQueue=onNativeQueue)
                 NeroReplayShelf(onSearch)
                 OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue,onSearch=onSearch,onAlbum={selectedAlbum=it})

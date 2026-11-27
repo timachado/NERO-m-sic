@@ -73,6 +73,11 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
         var open by remember{mutableStateOf(false)}
         var room by remember{mutableStateOf<TogetherRoom?>(null)}
         var busy by remember{mutableStateOf(false)}
+        var refreshing by remember{mutableStateOf(false)}
+        var playlistOpen by remember{mutableStateOf(false)}
+        var playlists by remember{mutableStateOf(emptyList<OnlineList>())}
+        var selectedPlaylist by remember{mutableStateOf<OnlineList?>(null)}
+        var importProgress by remember{mutableStateOf<String?>(null)}
         var roomFresh by remember{mutableStateOf(false)}
         var title by remember{mutableStateOf("")}
         var code by remember{mutableStateOf(bookmark.orEmpty())}
@@ -86,6 +91,7 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
             if(busy||!active())return
             busy=true;notice=null
             scope.launch{
+                while(refreshing)delay(50L)
                 try{
                     if(action=="create"&&!verifiedPremium(context,owner)){notice="Para criar uma sala, confirme seu NERO Premium.";return@launch}
                     val updated=togetherCommand(context,owner,action,id,name,video,artist)
@@ -104,15 +110,41 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
             val id=room?.id?:return@LaunchedEffect
             while(open&&active()){
                 delay(15000)
-                if(!busy){
-                    busy=true
+                if(!busy&&!refreshing){
+                    refreshing=true
                     try{
                         val updated=togetherCommand(context,owner,"read",id)
-                        if(active()){room=updated;roomFresh=updated!=null;resumeCode=updated?.id;TogetherBookmark.update(owner,resumeCode);notice=null}
+                        if(active()&&!busy){if(room!=updated)room=updated;roomFresh=updated!=null;resumeCode=updated?.id;TogetherBookmark.update(owner,resumeCode)}
                     }
-                    catch(e:CancellationException){throw e}catch(_:Exception){roomFresh=false;notice="Atualização da sala indisponível. Tente atualizar antes de reproduzir."}
-                    finally{busy=false}
+                    catch(e:CancellationException){throw e}catch(_:Exception){if(!busy)roomFresh=false}
+                    finally{refreshing=false}
                 }
+            }
+        }
+        fun importSongs(list:OnlineList,hits:List<NativeMusicHit>){
+            val owner=uid?:return
+            val current=room?:return
+            if(busy||!active())return
+            val existing=current.songs.map{it.hit.id}.toSet()
+            val pending=hits.distinctBy{it.id}.filterNot{it.id in existing}.take((100-current.songs.size).coerceAtLeast(0))
+            if(pending.isEmpty()){notice="Nenhuma faixa nova compatível ou a fila está cheia.";return}
+            busy=true;notice=null;playlistOpen=false;selectedPlaylist=null
+            scope.launch{
+                var added=0
+                try{
+                    while(refreshing)delay(50L)
+                    for(hit in pending){
+                        if(!active()||room?.id!=current.id)break
+                        importProgress="Adicionando "+(added+1)+"/"+pending.size
+                        val updated=togetherCommand(context,owner,"add",current.id,hit.title.take(300),hit.id,hit.artist.take(300))
+                        if(!active()||updated==null)break
+                        room=updated;roomFresh=true;added++
+                        delay(100L)
+                    }
+                    if(active())notice="$added faixa(s) adicionada(s) de "+list.name+"."
+                }catch(e:CancellationException){throw e}catch(_:Exception){
+                    if(active())notice="$added faixa(s) adicionada(s). A importação foi interrompida; tente novamente para incluir as restantes."
+                }finally{busy=false;importProgress=null}
             }
         }
         OutlinedButton(onClick={open=true},modifier=Modifier.fillMaxWidth()){Text("NERO Together")}
@@ -154,6 +186,34 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                             TextButton(enabled=!busy,onClick={command("add",current.id,hit.title.take(300),hit.id,hit.artist.take(300));results=emptyList()}){Text("+ "+hit.title+" · "+displayArtistName(hit.artist),fontSize=12.sp)}
                         }
                     }
+                    OutlinedButton(enabled=!busy&&uid!=null,onClick={
+                        val owner=uid
+                        if(owner!=null&&active()){
+                            playlists=runCatching{scopedOnlineLists(context,owner)}.getOrDefault(emptyList())
+                            selectedPlaylist=null;playlistOpen=!playlistOpen
+                        }
+                    },modifier=Modifier.fillMaxWidth()){Text(if(playlistOpen)"Ocultar minhas playlists" else "Adicionar das minhas playlists")}
+                    if(playlistOpen){
+                        if(playlists.isEmpty())Text("Nenhuma playlist online encontrada nesta conta.",fontSize=12.sp)
+                        if(selectedPlaylist==null)LazyColumn(Modifier.heightIn(max=140.dp)){
+                            items(playlists.distinctBy{it.id},key={it.id}){list->
+                                TextButton(enabled=!busy,onClick={selectedPlaylist=list}){Text(list.name+" · "+list.songs.size+" faixas")}
+                            }
+                        }else selectedPlaylist?.let{list->
+                            val hits=list.songs.mapNotNull(::musicHitFromRef).distinctBy{it.id}
+                            val available=hits.filterNot{hit->current.songs.any{it.hit.id==hit.id}}
+                            Text(list.name,fontWeight=FontWeight.Medium)
+                            Text("Somente faixas online compatíveis; sua playlist original não será alterada.",fontSize=11.sp)
+                            Button(enabled=!busy&&available.isNotEmpty()&&current.songs.size<100,onClick={importSongs(list,available)}){Text("Adicionar todas ("+available.size.coerceAtMost((100-current.songs.size).coerceAtLeast(0))+")")}
+                            LazyColumn(Modifier.heightIn(max=140.dp)){
+                                items(hits,key={it.id}){hit->
+                                    val exists=current.songs.any{it.hit.id==hit.id}
+                                    TextButton(enabled=!busy&&!exists&&current.songs.size<100,onClick={importSongs(list,listOf(hit))}){Text((if(exists)"✓ " else "+ ")+hit.title)}
+                                }
+                            }
+                            TextButton(onClick={selectedPlaylist=null}){Text("Voltar às playlists")}
+                        }
+                    }
                     Text("Fila compartilhada · ordem por votos",fontWeight=FontWeight.Medium)
                     LazyColumn(Modifier.heightIn(max=180.dp)){
                         items(current.songs,key={it.hit.id}){song->
@@ -173,7 +233,9 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                         TextButton(enabled=!busy,onClick={command(if(current.host)"close" else "leave",current.id)}){Text(if(current.host)"Encerrar sala" else "Sair da sala")}
                     }
                 }
-                if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
+                // Reserve the progress slot so a user action does not resize the dialog.
+                Box(Modifier.fillMaxWidth().height(4.dp)){if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())}
+                importProgress?.let{Text(it,fontSize=12.sp)}
                 notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             }
         },confirmButton={TextButton(enabled=!busy,onClick={open=false}){Text("Fechar")}})
