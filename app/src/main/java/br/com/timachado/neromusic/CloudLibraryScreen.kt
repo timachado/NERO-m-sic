@@ -138,7 +138,7 @@ internal fun CloudLibraryScreen(tracks:List<Track>,favoriteIds:Set<String>,grant
             IconButton(onClick=onBack,enabled=!busy){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("NERO Cloud",fontSize=24.sp,fontWeight=FontWeight.Bold)
         }
-        Text("Prévia de desenvolvimento · backup manual",color=Color(0xFF00E5FF))
+        Text("Prévia de desenvolvimento · backup manual",color=MaterialTheme.colorScheme.secondary)
         Text("Somente metadados da biblioteca local. Arquivos de áudio, senhas e histórico não são enviados. Não é sincronização contínua.",color=Color.LightGray)
         if(uid==null) Text("Entre na conta para acessar o backup.",color=Color.LightGray)
         else if(!granted) Text("Permita acesso à biblioteca no aparelho antes de fazer backup ou restaurar.",color=Color.LightGray)

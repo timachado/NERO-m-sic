@@ -143,7 +143,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         }
         Text(title,fontSize=21.sp,fontWeight=FontWeight.Bold)
         Text(displayArtistName(artist),color=Color.LightGray)
-        Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=Color(0xFF00E5FF),fontSize=12.sp)
+        Text(if(synced)"Letra sincronizada" else if(lines.isNotEmpty())"Letra sem marcações de tempo" else "Nenhuma letra disponível",color=MaterialTheme.colorScheme.secondary,fontSize=12.sp)
         if(synced)Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             Text(if(follow)"Acompanhar música" else "Leitura livre",modifier=Modifier.weight(1f),fontSize=13.sp)
             Switch(checked=follow,onCheckedChange={follow=it})
@@ -165,7 +165,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         }else LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){
             itemsIndexed(lines){index,line->
                 Text(line.text.ifBlank{"♪"},fontSize=if(index==active)26.sp else 21.sp,fontWeight=if(index==active)FontWeight.Bold else FontWeight.Normal,
-                    color=if(index==active)Color(0xFF39FF14) else Color.LightGray,
+                    color=if(index==active)MaterialTheme.colorScheme.primary else Color.LightGray,
                     modifier=Modifier.fillMaxWidth().clickable(enabled=fullControls&&line.at!=null&&duration>0){line.at?.let{onSeek(it.coerceIn(0,duration))}})
             }
         }

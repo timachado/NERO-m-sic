@@ -116,7 +116,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("Equalizador",fontSize=23.sp,fontWeight=FontWeight.Bold)
         }
-        Text("Ajustes de som",color=Color(0xFF00E5FF),fontSize=12.sp)
+        Text("Ajustes de som",color=MaterialTheme.colorScheme.secondary,fontSize=12.sp)
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("Equalização",modifier=Modifier.weight(1f),fontSize=18.sp)
@@ -141,7 +141,7 @@ internal fun EqualizerScreen(onBack:()->Unit,modifier:Modifier=Modifier) {
                 val value=remember(hz,revision,status){prefs.getInt("gain_"+hz,0).coerceIn(status.low,status.high)}
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                     Text(freqLabel(hz))
-                    Text(String.format(java.util.Locale.getDefault(),"%+.1f dB",value/100f),color=Color(0xFF39FF14))
+                    Text(String.format(java.util.Locale.getDefault(),"%+.1f dB",value/100f),color=MaterialTheme.colorScheme.primary)
                 }
                 Slider(value=value.toFloat(),onValueChange={prefs.edit().putInt("gain_"+hz,it.roundToInt()).apply()},
                     valueRange=status.low.toFloat()..status.high.toFloat(),enabled=enabled)

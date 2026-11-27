@@ -73,7 +73,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                     }catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível atualizar o artista.",android.widget.Toast.LENGTH_SHORT).show()}
                 }
             }){
-                Icon(if(following)Icons.Default.Check else Icons.Default.Add,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(6.dp));Text(if(following)"Seguindo" else "Seguir artista")
+                Icon(if(following)Icons.Default.Check else Icons.Default.Add,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(6.dp));Text(if(following)"Seguindo" else "Seguir artista")
             }
             if(albums.isNotEmpty()){
                 Text("Álbuns e singles",fontSize=21.sp,fontWeight=FontWeight.Bold)
@@ -106,7 +106,7 @@ internal fun NativeArtistScreen(artist:String,seed:List<NativeMusicHit>,canPlay:
                     Text(hit.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id))
                     Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)
                 }
-                IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
+                IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=MaterialTheme.colorScheme.primary)}
                 NowTrackAction(hit.reference().id,canPlay){play(hit)}
             }
         }

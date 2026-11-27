@@ -125,11 +125,11 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
         queue.items.getOrNull(queue.current)?.let{item->
             val name=item.mediaMetadata.title?.toString().orEmpty().ifBlank{byId[item.mediaId]?.title.orEmpty()}
             val artist=item.mediaMetadata.artist?.toString().orEmpty().ifBlank{byId[item.mediaId]?.artist.orEmpty()}
-            Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF102B23)),modifier=Modifier.fillMaxWidth(),onClick=onBack){
+            Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),modifier=Modifier.fillMaxWidth(),onClick=onBack){
                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-                    Icon(Icons.Default.Equalizer,"Faixa atual",tint=Color(0xFF39FF14))
+                    Icon(Icons.Default.Equalizer,"Faixa atual",tint=MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                        Text("Tocando agora",fontSize=12.sp,color=Color(0xFF39FF14))
+                        Text("Tocando agora",fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
                         Text(name.ifBlank{"Faixa atual"},fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                         Text(displayArtistName(artist),fontSize=12.sp,color=Color.LightGray)
                     }
@@ -137,7 +137,7 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                 }
             }
         }
-        if(queue.shuffle)Text(if(NeroPlaybackAccess.allowed())"Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas." else "NERO Free · reprodução aleatória. Controle da fila no Premium.",color=Color(0xFF00E5FF),fontSize=12.sp)
+        if(queue.shuffle)Text(if(NeroPlaybackAccess.allowed())"Modo aleatório ativo. Desative-o para editar a ordem das próximas faixas." else "NERO Free · reprodução aleatória. Controle da fila no Premium.",color=MaterialTheme.colorScheme.secondary,fontSize=12.sp)
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
             OutlinedButton(enabled=ready&&!saving&&queue.items.isNotEmpty()&&queue.items.size<=1000,onClick={saveOwner=uid;saveItems=queue.items.toList()},modifier=Modifier.weight(1f)){Text("Salvar fila")}
             OutlinedButton(enabled=queue.canEdit&&!queue.shuffle&&queue.current in queue.items.indices&&queue.current+1<queue.items.size,onClick={confirmClear=queue},modifier=Modifier.weight(1f)){Text("Limpar próximas")}
@@ -152,16 +152,16 @@ internal fun QueueScreen(controller:MediaController?,tracks:List<Track>,onBack:(
                 val title=item.mediaMetadata.title?.toString()?.takeIf{it.isNotBlank()}?:"Faixa sem título"
                 val artist=item.mediaMetadata.artist?.toString().orEmpty()
                 var menu by remember(i,item){mutableStateOf(false)}
-                Row(Modifier.fillMaxWidth().background(if(current)Color(0xFF102B23)else Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically){
+                Row(Modifier.fillMaxWidth().background(if(current)MaterialTheme.colorScheme.primaryContainerelse MaterialTheme.colorScheme.surface,RoundedCornerShape(10.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically){
                     val artwork=item.mediaMetadata.artworkUri
                     if(artwork!=null)NeroArtwork(model=artwork,contentDescription=null,modifier=Modifier.size(46.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
                     else LocalArtwork(byId[item.mediaId],Modifier.size(46.dp))
                     Column(Modifier.weight(1f).padding(horizontal=8.dp)){
-                        Text(title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(current)Color(0xFF39FF14)else Color.White)
+                        Text(title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=if(current)MaterialTheme.colorScheme.primaryelse Color.White)
                         Text(displayArtistName(artist),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                        Text(if(current)"Tocando agora" else if(upcoming)"Na sequência" else "Antes da faixa atual",fontSize=11.sp,color=if(current)Color(0xFF39FF14)else Color.LightGray)
+                        Text(if(current)"Tocando agora" else if(upcoming)"Na sequência" else "Antes da faixa atual",fontSize=11.sp,color=if(current)MaterialTheme.colorScheme.primaryelse Color.LightGray)
                     }
-                    IconButton(enabled=queue.canSeek,onClick={if(current)onBack()else act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(if(current)Icons.Default.Equalizer else Icons.Default.PlayArrow,if(current)"Abrir player" else "Reproduzir "+title,tint=if(current)Color(0xFF39FF14)else Color.LightGray)}
+                    IconButton(enabled=queue.canSeek,onClick={if(current)onBack()else act(queue,false){p->p.seekTo(i,0L);p.prepare();p.play()}}){Icon(if(current)Icons.Default.Equalizer else Icons.Default.PlayArrow,if(current)"Abrir player" else "Reproduzir "+title,tint=if(current)MaterialTheme.colorScheme.primaryelse Color.LightGray)}
                     if(upcoming)Box{
                         IconButton(enabled=editable,onClick={menu=true}){Icon(Icons.Default.MoreVert,"Opções da faixa")}
                         DropdownMenu(expanded=menu,onDismissRequest={menu=false}){

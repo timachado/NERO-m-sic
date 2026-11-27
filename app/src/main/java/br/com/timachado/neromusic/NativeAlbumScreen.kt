@@ -62,7 +62,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
                     }catch(e:CancellationException){throw e}catch(_:Exception){android.widget.Toast.makeText(context,"Não foi possível salvar o álbum.",android.widget.Toast.LENGTH_SHORT).show()}
                 }
             }){
-                Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,null,tint=Color(0xFF39FF14));Spacer(Modifier.width(8.dp));Text(if(saved)"Álbum salvo · remover" else "Salvar álbum na biblioteca")
+                Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(8.dp));Text(if(saved)"Álbum salvo · remover" else "Salvar álbum na biblioteca")
             }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 Button(enabled=canPlay&&songs.isNotEmpty(),onClick={songs.firstOrNull()?.let{play(it)}}){Text("Reproduzir")}
@@ -76,7 +76,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
             Row(Modifier.fillMaxWidth().clickable(enabled=canPlay){play(hit)},verticalAlignment=Alignment.CenterVertically){
                 NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(hit.reference().id));Text(displayArtistName(hit.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(hit.reference().id)}
-                IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
+                IconButton(onClick={adding=listOf(hit.reference())}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=MaterialTheme.colorScheme.primary)}
                 NowTrackAction(hit.reference().id,canPlay){play(hit)}
             }
         }
