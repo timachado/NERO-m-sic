@@ -1,10 +1,11 @@
 {
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
-  "published": false,
-  "versionCode": 0,
-  "versionName": "0.0.0",
-  "downloadUrl": "",
-  "sha256": "",
-  "releaseNotes": ""
+  "published": true,
+  "versionCode": 206,
+  "versionName": "1.0.0",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.0.0/NERO-Music.apk",
+  "sha256": "d1440b19d94a6da48cdca244d0d607842c90980f732db6c146c8d84618587257",
+  "publishedAt": "2026-11-27T07:08:27Z",
+  "releaseNotes": "Atualizacao oficial do NERO Music."
 }
