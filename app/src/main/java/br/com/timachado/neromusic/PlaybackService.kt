@@ -230,6 +230,7 @@ class PlaybackService : MediaLibraryService() {
         session?.player?.let { player ->
             NeroResumeStore.save(applicationContext,player)
             player.pause()
+            NeroResumeStore.markExplicitExit(applicationContext)
             // Explicit exit is not a pause: an empty timeline removes the
             // native media notification without deleting the saved resume record.
             player.clearMediaItems()
