@@ -1,0 +1,129 @@
+name: NERO - publicar build 208 autorizada
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/nero-publish-build-208.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: nero-commercial-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: >-
+      github.ref == 'refs/heads/main' && github.event.head_commit.message == 'release NERO Music build 208 approved'
+    environment: nero-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify approved candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: '45958738232'
+          CERT: ${{ secrets.NERO_RELEASE_CERT_SHA256 || vars.NERO_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN" > /tmp/run.json
+          jq -e '.status=="completed" and .conclusion=="success" and .path==".github/workflows/release-candidate.yml" and (.head_branch=="feat/nero-connect" or .head_branch=="main")' /tmp/run.json
+          sha="$(jq -r .head_sha /tmp/run.json)"
+          test "$sha" = '0ebc338926377b85e5e7d7d4d23fd09dbdf39e05'
+          git merge-base --is-ancestor "$sha" HEAD
+          git show "$sha:app/build.gradle.kts" | grep -Fq 'buildConfigField("boolean", "NERO_FCM_DIAGNOSTIC", "false")' || { echo "::error::Diagnostic build cannot be published."; exit 1; }
+          gh run download "$RUN" --name nero-signed-release-candidate --dir dist
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+          grep -Fx "commit=$sha" dist/version.txt
+          sdkmanager="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          "$sdkmanager" 'build-tools;35.0.0'
+          tools="$ANDROID_HOME/build-tools/35.0.0"
+          apk=dist/NERO-Music-release-candidate.apk
+          "$tools/apksigner" verify --verbose --print-certs "$apk" >/tmp/cert.txt
+          actual="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' /tmp/cert.txt | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          expected="$(printf '%s' "$CERT" | tr '[:upper:]' '[:lower:]' | tr -d ':[:space:]')"
+          [[ "$expected" =~ ^[a-f0-9]{64}$ && "$actual" == "$expected" ]]
+          "$tools/zipalign" -c -P 16 4 "$apk"
+          "$tools/aapt" dump badging "$apk" >/tmp/badging.txt
+          ! grep -q '^application-debuggable' /tmp/badging.txt
+          python3 - <<'PY'
+          import json,re,pathlib
+          info=pathlib.Path('/tmp/badging.txt').read_text().splitlines()[0]
+          m=re.fullmatch(r"package: name='br.com.timachado.neromusic' versionCode='([0-9]+)' versionName='([0-9]+\.[0-9]+\.[0-9]+)'.*",info)
+          assert m
+          code,name=int(m[1]),m[2]
+          old=json.loads(pathlib.Path('updates/stable.json').read_text())
+          assert old['applicationId']=='br.com.timachado.neromusic' and code>old['versionCode']
+          assert code == 208 and name == '1.0.1'
+          pathlib.Path('/tmp/version').write_text(name)
+          pathlib.Path('/tmp/code').write_text(str(code))
+          PY
+          cp "$apk" dist/NERO-Music.apk
+      - name: Publish approved APK and stable feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(cat /tmp/version)"
+          tag="v$version"
+          sha="$(jq -r .head_sha /tmp/run.json)"
+          hash="$(sha256sum dist/NERO-Music.apk | cut -d' ' -f1)"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::Versao ja existe; auditar antes de repetir."
+            exit 1
+          fi
+          if ! git show "$sha:updates/release-notes/$version.md" > /tmp/nero-release-notes.md 2>/dev/null || ! test -s /tmp/nero-release-notes.md; then
+            printf '%s\n' 'Atualizacao oficial do NERO Music.' > /tmp/nero-release-notes.md
+          fi
+          gh release create "$tag" dist/NERO-Music.apk --target "$sha" --title "NERO Music $version" --notes-file /tmp/nero-release-notes.md --latest
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" >/tmp/release.json
+          jq -e --arg digest "sha256:$hash" '.draft==false and .prerelease==false and .published_at!=null and ([.assets[]|select(.name=="NERO-Music.apk" and .digest==$digest)]|length)==1' /tmp/release.json
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path
+          r=json.loads(p('/tmp/release.json').read_text())
+          a=next(x for x in r['assets'] if x['name']=='NERO-Music.apk')
+          v=p('/tmp/version').read_text()
+          row=dict(applicationId='br.com.timachado.neromusic',channel='stable',published=True,versionCode=int(p('/tmp/code').read_text()),versionName=v,downloadUrl='https://github.com/timachado/NERO-m-sic/releases/download/v'+v+'/NERO-Music.apk',sha256=a['digest'].removeprefix('sha256:'),publishedAt=r['published_at'],releaseNotes=(r.get('body') or '')[:1200])
+          p('updates/stable.json').write_text(json.dumps(row,ensure_ascii=False,indent=2)+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add updates/stable.json
+          git commit -m "release(ota): NERO $version"
+          git push origin HEAD:main
+      - name: Reserve one push announcement after verified publication
+        if: vars.NERO_FCM_ENABLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          code="$(jq -r .versionCode updates/stable.json)"
+          path="updates/notifications/fcm-$code.json"
+          mkdir -p updates/notifications
+          test ! -e "$path" || { echo "::error::Push ja reservado; auditar antes de reenviar."; exit 1; }
+          jq -n --argjson code "$code" '{versionCode:$code,status:"reserved"}' > "$path"
+          git add "$path"
+          git commit -m "release(push): reserve NERO version $code"
+          git push origin HEAD:main
+      - name: Send exclusive NERO FCM announcement
+        if: vars.NERO_FCM_ENABLED == 'true'
+        env:
+          NERO_FIREBASE_PROJECT_ID: ${{ vars.NERO_FIREBASE_PROJECT_ID }}
+          NERO_FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.NERO_FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$NERO_FIREBASE_PROJECT_ID" && test -n "$NERO_FIREBASE_SERVICE_ACCOUNT_JSON"
+          python3 -m pip install --quiet 'google-auth==2.35.0' 'requests==2.32.3'
+          code="$(jq -r .versionCode updates/stable.json)"
+          export NERO_PUSH_RECEIPT="updates/notifications/fcm-$code.json"
+          python3 scripts/nero_send_update.py
+          git add "$NERO_PUSH_RECEIPT"
+          git commit -m "release(push): record FCM acceptance for NERO $code"
+          git push origin HEAD:main
