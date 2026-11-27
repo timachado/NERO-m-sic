@@ -25,7 +25,7 @@ private val premiumCyan=Color(0xFF00E5FF)
 private val panel=Color(0xFF10171C)
 
 @Composable
-internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayTogether:Boolean=false,onTogetherQueue:((List<androidx.media3.common.MediaItem>,Int)->Unit)?=null) {
+internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayTogether:Boolean=false,onTogetherQueue:((List<androidx.media3.common.MediaItem>,Int)->Unit)?=null,livePlayer:androidx.media3.common.Player?=null) {
     val context=LocalContext.current
     var siteError by remember{mutableStateOf(false)}
     var preparingCheckout by remember{mutableStateOf(false)}
@@ -89,7 +89,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             onTogetherQueue?.let{playQueue->
                 Text("NERO Together · homologação",fontWeight=FontWeight.Bold,color=premiumCyan)
                 Text("Salas privadas, convites e fila por votos. Cada aparelho reproduz individualmente.",fontSize=12.sp,color=Color.LightGray)
-                NeroTogetherShelf(canPlayTogether,playQueue)
+                NeroTogetherShelf(canPlayTogether,playQueue,livePlayer)
             }
         }
         Column(Modifier.fillMaxWidth().background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {

@@ -62,7 +62,7 @@ private object TogetherBookmark {
     }
 }
 @Composable
-internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit){
+internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Unit,livePlayer:androidx.media3.common.Player?=null){
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
@@ -163,7 +163,8 @@ internal fun NeroTogetherShelf(canPlay:Boolean,onQueue:(List<MediaItem>,Int)->Un
                             }
                         }
                     }
-                    Text("A fila é compartilhada; a reprodução é individual.",fontSize=11.sp,color=Color.LightGray)
+                    if(livePlayer!=null&&uid!=null)NeroTogetherLive(current,requireNotNull(uid),livePlayer)
+                    Text("A fila é compartilhada; a reprodução individual também está disponível.",fontSize=11.sp,color=Color.LightGray)
                     Button(enabled=canPlay&&roomFresh&&current.songs.isNotEmpty()&&!busy,onClick={
                         if(active()&&roomFresh){onQueue(current.songs.map{it.hit.queueItem()}.withOrigin(PlaybackOrigin("mix","NERO Together","")),0);open=false}
                     }){Text("Reproduzir fila")}
