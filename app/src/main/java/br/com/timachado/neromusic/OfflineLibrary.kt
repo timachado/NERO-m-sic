@@ -142,7 +142,7 @@ internal fun OfflinePlayerButton(track:OpenTrack?,local:Boolean,state:OfflineSta
         OutlinedButton(enabled=enabled&&!active&&((state.active==null&&state.nativeActive==null&&state.batchTotal==0)||saved||track==null),onClick={
             if(saved)onOpen()else if(track!=null&&allowed(track))onSave(track)else onInfo()
         },modifier=Modifier.fillMaxWidth()){
-            Icon(if(saved||local)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved||local)Color(0xFF39FF14)else Color(0xFF00E5FF))
+            Icon(if(saved||local)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved||local)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
             Spacer(Modifier.width(8.dp));Text(label)
         }
         if(active)LinearProgressIndicator(progress={state.progress},modifier=Modifier.fillMaxWidth())
@@ -156,7 +156,7 @@ internal fun NativeDownloadIcon(hit:NativeMusicHit,state:OfflineState,onSave:(Na
     val busy=state.nativeActive!=null||state.active!=null||state.batchTotal>0
     IconButton(enabled=saved||!busy,onClick={if(saved)onOpen()else onSave(hit)}){
         if(active)CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp)
-        else Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.Download,if(saved)"Baixada · abrir downloads" else "Baixar música",tint=if(saved)Color(0xFF39FF14)else Color(0xFF00E5FF))
+        else Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.Download,if(saved)"Baixada · abrir downloads" else "Baixar música",tint=if(saved)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
     }
 }
 @Composable
@@ -240,7 +240,7 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
             state.notice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
             if(total==0)Card(modifier=Modifier.fillMaxWidth()){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-                    Icon(Icons.Default.DownloadForOffline,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(42.dp))
+                    Icon(Icons.Default.DownloadForOffline,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.size(42.dp))
                     Text("Leve suas músicas com você",fontSize=19.sp,fontWeight=FontWeight.Bold)
                     Text("Baixe músicas para ouvir sem internet. As faixas salvas aparecem aqui.",color=Color.LightGray)
                     Button(onClick=onBrowse){Text("Encontrar músicas para baixar")}
@@ -249,11 +249,11 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
         }
         items(nativeVisible,key={"native:"+it.hit.id}){entry->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF39FF14),modifier=Modifier.size(38.dp))
+                Icon(Icons.Default.CheckCircle,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(entry.hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor("youtube:"+entry.hit.id));NowTrackStatus("youtube:"+entry.hit.id)
                     Text(displayArtistName(entry.hit.artist),fontSize=12.sp,color=Color.LightGray)
-                    Text("Disponível offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",entry.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
+                    Text("Disponível offline · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",entry.size/1048576.0),fontSize=11.sp,color=MaterialTheme.colorScheme.primary )
                 }
                 IconButton(enabled=canRemove,onClick={pendingRemoval=("youtube:"+entry.hit.id) to entry.hit.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
                 NowTrackAction("youtube:"+entry.hit.id,canPlay){onPlay(queue,visible.size+nativeVisible.indexOf(entry))}
@@ -261,11 +261,11 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
         }
         items(visible,key={it.id}){track->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                Icon(Icons.Default.CheckCircle,null,tint=Color(0xFF39FF14),modifier=Modifier.size(38.dp))
+                Icon(Icons.Default.CheckCircle,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(38.dp))
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                     Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor("commons:"+track.id));NowTrackStatus("commons:"+track.id)
                     Text(displayArtistName(track.artist),maxLines=2,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                    Text("Disponível offline · "+track.license+" · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",track.size/1048576.0),fontSize=11.sp,color=Color(0xFF39FF14))
+                    Text("Disponível offline · "+track.license+" · "+String.format(java.util.Locale.forLanguageTag("pt-BR"),"%.1f MB",track.size/1048576.0),fontSize=11.sp,color=MaterialTheme.colorScheme.primary )
                 }
                 IconButton(enabled=canRemove,onClick={pendingRemoval=("commons:"+track.id) to track.title}){Icon(Icons.Default.DeleteOutline,"Remover download")}
                 NowTrackAction("commons:"+track.id,canPlay){onPlay(queue,visible.indexOf(track))}

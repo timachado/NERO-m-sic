@@ -95,10 +95,10 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
                 items(songs.take(10),key={it.id}){song->
                     Card(onClick={playSong(song)},modifier=Modifier.width(144.dp)){
                         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
-                            Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center){
-                                Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
+                            Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                                Icon(Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary )
                                 song.artwork?.let{AsyncImage(model=it,contentDescription="Capa de "+song.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
-                                Text("#"+song.rank,modifier=Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha=.8f),RoundedCornerShape(bottomEnd=8.dp)).padding(7.dp),fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+                                Text("#"+song.rank,modifier=Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha=.8f),RoundedCornerShape(bottomEnd=8.dp)).padding(7.dp),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
                             }
                             Text(song.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                             Text(displayArtistName(song.artist),fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
@@ -110,7 +110,7 @@ internal fun DigitalChartsShelf(onSearch:(String)->Unit,canPlay:Boolean,onQueue:
             if(expanded)for(song in songs){
                 Card(onClick={playSong(song)},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically){
-                        Text(song.rank.toString(),modifier=Modifier.width(36.dp),color=Color(0xFF39FF14),fontWeight=FontWeight.Bold)
+                        Text(song.rank.toString(),modifier=Modifier.width(36.dp),color=MaterialTheme.colorScheme.primary ,fontWeight=FontWeight.Bold)
                         Column(Modifier.weight(1f)){Text(song.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(displayArtistName(song.artist),fontSize=12.sp,color=Color.LightGray)}
                     }
                 }

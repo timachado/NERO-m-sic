@@ -53,7 +53,7 @@ private fun NeroConnectForOwner(uid:String){
         }
     }
     OutlinedButton(onClick={open=true;notice="";peer="";code="";checked=false},modifier=Modifier.fillMaxWidth()){
-        Icon(Icons.Default.Devices,null,tint=Color(0xFF00E5FF))
+        Icon(Icons.Default.Devices,null,tint=MaterialTheme.colorScheme.secondary )
         Spacer(Modifier.width(8.dp));Text("NERO Connect · Teste Wi-Fi")
     }
     if(open)AlertDialog(onDismissRequest={if(!busy)open=false},title={Text("NERO Connect")},text={
@@ -93,7 +93,7 @@ private fun NeroConnectForOwner(uid:String){
                 }){Text("Gerar código de conferência")}
                 if(code.isNotBlank()){
                     Text("3. Compare pessoalmente o código nos dois aparelhos.",fontSize=13.sp)
-                    Text(code,color=Color(0xFF39FF14),fontSize=23.sp)
+                    Text(code,color=MaterialTheme.colorScheme.primary ,fontSize=23.sp)
                     Row(verticalAlignment=Alignment.CenterVertically){
                         Checkbox(checked=checked,onCheckedChange={checked=it},enabled=!busy)
                         Text("Os dois códigos são iguais.")

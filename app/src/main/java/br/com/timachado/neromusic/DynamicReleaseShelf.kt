@@ -61,14 +61,14 @@ internal fun DynamicReleaseShelf(onOpen:()->Unit,onSearch:(String)->Unit){
             items(rows,key={it.id}){entry->
                 Card(onClick={onSearch(entry.searchText)},modifier=Modifier.width(138.dp)){
                     Column(Modifier.padding(8.dp)){
-                        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
-                            Icon(Icons.Default.Album,null,tint=Color(0xFF00E5FF))
+                        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                            Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary )
                             AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                         }
                         Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                         Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
                         
-                        Text("Pesquisar faixa/álbum",fontSize=11.sp,color=Color(0xFF39FF14))
+                        Text("Pesquisar faixa/álbum",fontSize=11.sp,color=MaterialTheme.colorScheme.primary )
                     }
                 }
             }

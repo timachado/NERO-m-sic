@@ -42,7 +42,7 @@ internal fun NeroDjShelf(uid:String?,seeds:List<String>,hidden:Set<String>,canPl
     var notice by remember(uid){mutableStateOf<String?>(null)}
     fun active()=NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text("NERO DJ",fontSize=22.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+        Text("NERO DJ",fontSize=22.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
         Text("Seu mix por momento e estilo · degustação Free de até 5 faixas, Premium de até 30.",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
             items(djMoods){option->FilterChip(selected=mood==option,enabled=!busy,onClick={mood=djToggleMood(mood,option);rows=emptyList();notice=null},label={Text(option)})}

@@ -75,7 +75,7 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 if(row.local!=null)LocalArtwork(row.local,Modifier.size(52.dp))
                 else Box(Modifier.size(52.dp),contentAlignment=Alignment.Center){
-                    Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
+                    Icon(Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary )
                     row.cover?.let{NeroArtwork(model=it,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)))}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=10.dp)){
@@ -89,11 +89,11 @@ internal fun FavoritesScreen(localTracks:List<Track>,online:List<OnlineRef>,read
                     else if(open!=null){
                         val ready=saved.any{it==open}
                         IconButton(enabled=ready||(offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0),onClick={if(ready)onOfflineOpen()else onOpenSave(open)}){
-                            Icon(if(ready)Icons.Default.CheckCircle else Icons.Default.Download,if(ready)"Baixada" else "Baixar",tint=Color(0xFF39FF14))
+                            Icon(if(ready)Icons.Default.CheckCircle else Icons.Default.Download,if(ready)"Baixada" else "Baixar",tint=MaterialTheme.colorScheme.primary )
                         }
                     }
                 }
-                IconButton(onClick={row.local?.let(onLocalRemove)?:row.online?.let(onOnlineRemove)}){Icon(Icons.Default.Favorite,"Retirar dos favoritos",tint=Color(0xFF39FF14))}
+                IconButton(onClick={row.local?.let(onLocalRemove)?:row.online?.let(onOnlineRemove)}){Icon(Icons.Default.Favorite,"Retirar dos favoritos",tint=MaterialTheme.colorScheme.primary )}
                 val index=playable.indexOfFirst{it.id==row.id}
                 if(index>=0)NowTrackAction(queue[index].mediaId,canPlay){onQueue(queue,index)}
                 else IconButton(onClick={onSearch(row.title+" "+row.artist)}){Icon(Icons.Default.Search,"Encontrar no NERO")}

@@ -81,8 +81,8 @@ internal fun RecentReleasesScreen(onBack:()->Unit,onSearch:(String)->Unit){
                     pair.forEach{entry->
                         Card(onClick={selected=entry},modifier=Modifier.weight(1f)){
                             Column(Modifier.padding(8.dp)){
-                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
-                                    Icon(Icons.Default.Album,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(40.dp))
+                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                                    Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.size(40.dp))
                                     AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                                 }
                                 Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)

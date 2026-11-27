@@ -33,8 +33,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-private val green = Color(0xFF39FF14)
-private val cyan = Color(0xFF00E5FF)
+
+
 internal enum class CatalogKind(val label:String,val resource:String,val resultKey:String) {
     SONG("Músicas","recording","recordings"),
     ALBUM("Álbuns","release-group","release-groups"),
@@ -151,20 +151,20 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
         Text("Explore os resultados no NERO Music.",color=Color.LightGray,fontSize=12.sp)
         LazyColumn(Modifier.weight(1f).fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(vertical=10.dp)) {
             if(busy) item { CircularProgressIndicator() }
-            message?.let { msg -> item { Text(msg,color=cyan) } }
+            message?.let { msg -> item { Text(msg,color=MaterialTheme.colorScheme.secondary) } }
             if(!busy && message==null && result.isEmpty()) item { Text(if(submitted.isBlank())"Busque um artista, álbum ou faixa." else "Nenhum resultado.",color=Color.LightGray) }
             if(kind==CatalogKind.ALBUM) {
                 items(result.chunked(2)) { pair ->
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         pair.forEach { entry ->
-                            Column(Modifier.weight(1f).background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(8.dp)) {
-                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(9.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center) {
-                                    Icon(Icons.Default.Album,null,tint=cyan,modifier=Modifier.size(42.dp))
+                            Column(Modifier.weight(1f).background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(12.dp)).padding(8.dp)) {
+                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(9.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center) {
+                                    Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(42.dp))
                                     AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                                 }
                                 Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Bold)
                                 Text(entry.credit,maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                                TextButton(onClick={details=listOf(entry)}) { Text("Ver álbum",color=green) }
+                                TextButton(onClick={details=listOf(entry)}) { Text("Ver álbum",color=MaterialTheme.colorScheme.primary) }
                             }
                         }
                         if(pair.size==1) Spacer(Modifier.weight(1f))
@@ -172,13 +172,13 @@ internal fun CatalogScreen(onBack:()->Unit, initialQuery:String = "", initialKin
                 }
             } else {
                 items(result,key={it.id}) { entry ->
-                    Row(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
-                        Icon(if(entry.kind==CatalogKind.ARTIST) Icons.Default.Person else Icons.Default.MusicNote,null,tint=cyan,modifier=Modifier.size(32.dp))
+                    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Icon(if(entry.kind==CatalogKind.ARTIST) Icons.Default.Person else Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(32.dp))
                         Column(Modifier.weight(1f).padding(horizontal=8.dp)) {
                             Text(entry.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                             if(entry.credit.isNotBlank())Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
                         }
-                        IconButton(onClick={if(entry.kind==CatalogKind.ARTIST) details=listOf(entry) else onSearch(entry.searchText)}){Icon(if(entry.kind==CatalogKind.ARTIST)Icons.Default.KeyboardArrowRight else Icons.Default.PlayArrow,if(entry.kind==CatalogKind.ARTIST)"Ver artista" else "Buscar no NERO",tint=green)}
+                        IconButton(onClick={if(entry.kind==CatalogKind.ARTIST) details=listOf(entry) else onSearch(entry.searchText)}){Icon(if(entry.kind==CatalogKind.ARTIST)Icons.Default.KeyboardArrowRight else Icons.Default.PlayArrow,if(entry.kind==CatalogKind.ARTIST)"Ver artista" else "Buscar no NERO",tint=MaterialTheme.colorScheme.primary)}
                     }
                 }
             }
@@ -205,7 +205,7 @@ internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit,onSearch:(Str
     Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically) {
             Text("Explore álbuns",fontWeight=FontWeight.Bold,fontSize=20.sp,modifier=Modifier.weight(1f))
-            TextButton(onClick={onExplore(selected,CatalogKind.ALBUM)}) { Text("Ver mais",color=green) }
+            TextButton(onClick={onExplore(selected,CatalogKind.ALBUM)}) { Text("Ver mais",color=MaterialTheme.colorScheme.primary) }
         }
         Text("Seleção de álbuns · NERO Music",fontSize=12.sp,color=Color.LightGray)
         LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -218,14 +218,14 @@ internal fun CatalogHomeShelf(onExplore:(String,CatalogKind)->Unit,onSearch:(Str
         } else if(entries.isEmpty()) Text("Nenhum álbum encontrado.",color=Color.LightGray)
         else LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             items(entries,key={it.id}) { entry ->
-                Column(Modifier.width(145.dp).background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(8.dp)) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center) {
-                        Icon(Icons.Default.Album,null,tint=cyan,modifier=Modifier.size(40.dp))
+                Column(Modifier.width(145.dp).background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(12.dp)).padding(8.dp)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center) {
+                        Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(40.dp))
                         AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                     }
                     Text(entry.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                     Text(entry.credit,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray)
-                    TextButton(onClick={onSearch(entry.searchText)}) { Text("Encontrar faixas",color=green) }
+                    TextButton(onClick={onSearch(entry.searchText)}) { Text("Encontrar faixas",color=MaterialTheme.colorScheme.primary) }
                 }
             }
         }

@@ -53,11 +53,11 @@ internal fun PremiumGenres(onSearch:(String)->Unit){
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 pair.forEach{genre->
                     Card(onClick={onSearch(genre.label)},modifier=Modifier.weight(1f).height(102.dp),shape=RoundedCornerShape(14.dp)){
-                        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(genre.color),Color(0xFF10171C))))){
+                        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.primary,.16f),MaterialTheme.colorScheme.surface )))){
                             val cover=artwork[genre.label]
                             if(cover!=null)AsyncImage(model=cover,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(0.7f))
                             else Icon(Icons.Default.MusicNote,null,tint=Color.White.copy(alpha=.25f),modifier=Modifier.align(Alignment.CenterEnd).padding(12.dp).size(46.dp))
-                            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(genre.color),Color(genre.color).copy(alpha=.88f),Color.Black.copy(alpha=.16f)))))
+                            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.primary,.16f),androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.primary,.16f).copy(alpha=.88f),Color.Black.copy(alpha=.16f)))))
                             Text(genre.label,Modifier.align(Alignment.TopStart).padding(12.dp),fontWeight=FontWeight.Bold,fontSize=17.sp,color=Color.White,maxLines=2,overflow=TextOverflow.Ellipsis)
                             Text("Explorar",Modifier.align(Alignment.BottomStart).padding(12.dp),fontSize=11.sp,color=Color.White)
                         }
@@ -74,8 +74,8 @@ internal fun PremiumGenres(onSearch:(String)->Unit){
 internal fun PremiumDiscovery(onSearch:(String)->Unit){
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
         Card(onClick={onSearch("lançamentos musicais Brasil")},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp)){
-            Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(Color(0xFF173F4B),Color(0xFF102B23),Color(0xFF10171C)))).padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-                Text("NERO MUSIC",color=Color(0xFF00E5FF),fontSize=12.sp,fontWeight=FontWeight.Bold)
+            Column(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surface,MaterialTheme.colorScheme.secondary,.16f),MaterialTheme.colorScheme.surfaceVariant,MaterialTheme.colorScheme.background))).padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+                Text("NERO MUSIC",color=MaterialTheme.colorScheme.secondary ,fontSize=12.sp,fontWeight=FontWeight.Bold)
                 Text("Descubra seu próximo som",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Color.White)
                 Text("Explore músicas e novidades no NERO Music",fontSize=13.sp,color=Color.LightGray)
             }
@@ -86,9 +86,9 @@ internal fun PremiumDiscovery(onSearch:(String)->Unit){
             items(neroFeaturedGenreLabels){label->
                 val term=label
                 Card(onClick={onSearch(term)},modifier=Modifier.width(142.dp).height(86.dp)){
-                    Column(Modifier.fillMaxSize().background(Color(0xFF172D35)).padding(12.dp),verticalArrangement=Arrangement.SpaceBetween){
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant ).padding(12.dp),verticalArrangement=Arrangement.SpaceBetween){
                         Text(label,fontWeight=FontWeight.Bold,fontSize=17.sp)
-                        Text("Descobrir",color=Color(0xFF39FF14),fontSize=12.sp)
+                        Text("Descobrir",color=MaterialTheme.colorScheme.primary ,fontSize=12.sp)
                     }
                 }
             }

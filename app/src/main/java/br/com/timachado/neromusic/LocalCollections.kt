@@ -64,10 +64,10 @@ internal fun LocalArtwork(track:Track?, modifier:Modifier=Modifier, large:Boolea
     LaunchedEffect(track?.uri,large) {
         image=if(track!=null)artwork(context,track,if(large)720 else 256) else null
     }
-    Box(modifier.clip(RoundedCornerShape(if(large)24.dp else 10.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center) {
+    Box(modifier.clip(RoundedCornerShape(if(large)24.dp else 10.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center) {
         val bitmap=image
         if(bitmap!=null) Image(bitmap.asImageBitmap(),"Capa de "+(track?.album ?: "música"),Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-        else Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF),modifier=Modifier.fillMaxSize(.5f))
+        else Icon(Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.fillMaxSize(.5f))
     }
 }
 private data class Group(val key:String,val name:String,val detail:String,val tracks:List<Track>)
@@ -115,7 +115,7 @@ internal fun LocalCollectionsScreen(kind:Int,tracks:List<Track>,granted:Boolean,
                     Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(track.id.toString()));NowTrackStatus(track.id.toString())
                     Text(track.artist,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))
+                Icon(Icons.Default.PlayArrow,"Reproduzir",tint=MaterialTheme.colorScheme.primary )
             }
         } else {
             val visible=groups.filter{it.name.contains(query,true)||it.detail.contains(query,true)}
@@ -123,7 +123,7 @@ internal fun LocalCollectionsScreen(kind:Int,tracks:List<Track>,granted:Boolean,
             items(visible.chunked(2)){pair ->
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
                     pair.forEach{g ->
-                        Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color(0xFF10171C)).clickable{selected=g.key}.padding(9.dp)){
+                        Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surface ).clickable{selected=g.key}.padding(9.dp)){
                             LocalArtwork(g.tracks.firstOrNull(),Modifier.fillMaxWidth().aspectRatio(1f))
                             Spacer(Modifier.height(6.dp))
                             Text(g.name,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)

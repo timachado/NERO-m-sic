@@ -27,8 +27,8 @@ import java.util.UUID
 import java.text.DateFormat
 import java.util.Date
 
-private val accent = Color(0xFF39FF14)
-private val cardColor = Color(0xFF10171C)
+
+
 internal data class Mix(val id:String,val name:String,val ids:List<Long>)
 internal data class Heard(val id:String,val title:String,val artist:String,val at:Long)
 private fun prefs(context:Context)=context.getSharedPreferences("nero_personal",Context.MODE_PRIVATE)
@@ -170,8 +170,8 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
             if(!granted) item { TextButton(onClick=onPermission){Text("Permitir acesso às músicas locais")} }
             items(recent,key={it.id}) { h ->
                 val track=h.id.toLongOrNull()?.let { trackMap[it] }
-                Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Default.History,null,tint=accent)
+                Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Icon(Icons.Default.History,null,tint=MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
                         Text(h.title,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis,color=nowTrackColor(h.id));NowTrackStatus(h.id)
                         Text(displayArtistName(h.artist), fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
@@ -236,7 +236,7 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
             } else {
                 if(queue.isEmpty()) item { Text("Adicione músicas para começar.",color=Color.LightGray) }
                 items(queue,key={it.id}) { t ->
-                    Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface,RoundedCornerShape(12.dp)).padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
                         LocalArtwork(t,Modifier.size(44.dp))
                         NowTrackAction(t.id.toString(),canPlay){onPlay(queue,queue.indexOf(t),PlaybackOrigin("local_playlist",selected.name,selected.id))}
                         Column(Modifier.weight(1f)) {
@@ -252,12 +252,12 @@ internal fun PersonalLibraryScreen(historyMode:Boolean, tracks:List<Track>, gran
 }
 @Composable
 private fun TrackLine(t:Track,icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,onClick:()->Unit) {
-    Row(Modifier.fillMaxWidth().background(cardColor,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface,RoundedCornerShape(12.dp)).padding(10.dp),verticalAlignment=Alignment.CenterVertically) {
         LocalArtwork(t,Modifier.size(44.dp))
         Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
             Text(t.title,maxLines=1,overflow=TextOverflow.Ellipsis)
             Text(displayArtistName(t.artist),fontSize=12.sp,color=Color.LightGray,maxLines=1,overflow=TextOverflow.Ellipsis)
         }
-        IconButton(onClick=onClick){Icon(icon,label,tint=accent)}
+        IconButton(onClick=onClick){Icon(icon,label,tint=MaterialTheme.colorScheme.primary)}
     }
 }

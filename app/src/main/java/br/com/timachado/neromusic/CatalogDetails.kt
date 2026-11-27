@@ -65,8 +65,8 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
                 IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
                 Text(if(isAlbum)"Álbum" else "Artista",fontSize=21.sp,fontWeight=FontWeight.Bold)
             }
-            if(isAlbum)Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center){
-                Icon(Icons.Default.Album,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(64.dp))
+            if(isAlbum)Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.size(64.dp))
                 AsyncImage(model=entry.coverUrl,contentDescription="Capa de "+entry.title,contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize())
             }
             Text(entry.title,fontSize=25.sp,fontWeight=FontWeight.Bold)
@@ -75,7 +75,7 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             OutlinedButton(onClick={onSearch(entry.searchText)},modifier=Modifier.fillMaxWidth()){Text("Encontrar músicas no NERO Music")}
         }
         if(busy||trackBusy)item{LinearProgressIndicator(Modifier.fillMaxWidth())}
-        message?.let{msg->item{Text(msg,color=Color(0xFF00E5FF));TextButton(onClick={reload++}){Text("Tentar novamente")}}}
+        message?.let{msg->item{Text(msg,color=MaterialTheme.colorScheme.secondary );TextButton(onClick={reload++}){Text("Tentar novamente")}}}
         if(isAlbum){
             if(editions.isNotEmpty())item{
                 Text("Edição",fontWeight=FontWeight.Bold)
@@ -95,14 +95,14 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             }
             if(!busy&&!trackBusy&&songs.isEmpty())item{Text("Nenhuma faixa disponível nesta edição.",color=Color.LightGray)}
             items(songs){song->
-                Row(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(10.dp)).padding(9.dp),verticalAlignment=Alignment.CenterVertically){
+                Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(10.dp)).padding(9.dp),verticalAlignment=Alignment.CenterVertically){
                     Text(if(song.disc>1)"${song.disc}.${song.number}" else song.number,color=Color.LightGray,modifier=Modifier.width(40.dp))
                     Column(Modifier.weight(1f)){
                         Text(song.title,fontWeight=FontWeight.Medium)
                         if(song.duration>0)Text(String.format("%d:%02d",song.duration/60000,(song.duration/1000)%60),fontSize=12.sp,color=Color.LightGray)
                     }
-                    IconButton(enabled=song.recordingId!=null,onClick={reference(song)?.let{adding=listOf(it)}}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=Color(0xFF39FF14))}
-                    IconButton(onClick={onSearch(song.title+" "+song.artist.ifBlank{entry.credit})}){Icon(Icons.Default.Search,"Pesquisar faixa no NERO",tint=Color(0xFF00E5FF))}
+                    IconButton(enabled=song.recordingId!=null,onClick={reference(song)?.let{adding=listOf(it)}}){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=MaterialTheme.colorScheme.primary )}
+                    IconButton(onClick={onSearch(song.title+" "+song.artist.ifBlank{entry.credit})}){Icon(Icons.Default.Search,"Pesquisar faixa no NERO",tint=MaterialTheme.colorScheme.secondary )}
                 }
             }
         }else{
@@ -111,8 +111,8 @@ internal fun CatalogDetailsScreen(entry:CatalogEntry,onBack:()->Unit,onAlbum:(Ca
             items(albums,key={it.id}){album->
                 Card(onClick={onAlbum(album)},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(9.dp),verticalAlignment=Alignment.CenterVertically){
-                        Box(Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF14242A)),contentAlignment=Alignment.Center){
-                            Icon(Icons.Default.Album,null,tint=Color(0xFF00E5FF))
+                        Box(Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                            Icon(Icons.Default.Album,null,tint=MaterialTheme.colorScheme.secondary )
                             AsyncImage(model=album.coverUrl,contentDescription="Capa de "+album.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                         }
                         Text(album.title,modifier=Modifier.weight(1f).padding(horizontal=10.dp))

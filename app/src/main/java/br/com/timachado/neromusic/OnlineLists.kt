@@ -235,7 +235,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 val busy=offlineState.active!=null||offlineState.batchTotal>0
                 if(eligible.isNotEmpty()){
                     OutlinedButton(enabled=!busy&&ready<eligible.size,onClick={onDownloadPlaylist(eligible)},modifier=Modifier.fillMaxWidth()){
-                        Icon(if(ready==eligible.size)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=Color(0xFF39FF14))
+                        Icon(if(ready==eligible.size)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=MaterialTheme.colorScheme.primary )
                         Spacer(Modifier.width(8.dp));Text(if(ready==eligible.size)"Faixas autorizadas baixadas" else "Baixar playlist ($ready/${eligible.size})")
                     }
                     if(offlineState.batchTotal>0)Text("Preparando downloads: "+offlineState.batchDone+"/"+offlineState.batchTotal,fontSize=12.sp,color=Color.LightGray)
@@ -255,20 +255,20 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
         if(active==null)items(lists.getOrDefault(emptyList()),key={it.id}){l->
             Card(onClick={selected=l.id},modifier=Modifier.fillMaxWidth()){
                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-                    Icon(Icons.Default.QueueMusic,null,tint=Color(0xFF39FF14))
+                    Icon(Icons.Default.QueueMusic,null,tint=MaterialTheme.colorScheme.primary )
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(l.name,fontWeight=FontWeight.Bold);Text("${l.songs.size} referências",fontSize=12.sp)}
                     Icon(Icons.Default.KeyboardArrowRight,"Abrir")
                 }
             }
         }else items(active.songs,key={it.id}){s->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
-                    Icon(Icons.Default.MusicNote,null,tint=Color(0xFF00E5FF))
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+                    Icon(Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary )
                     s.coverUrl?.let{NeroArtwork(model=it,contentDescription="Capa de "+s.title,contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())}
                 }
                 Column(Modifier.weight(1f).padding(horizontal=8.dp)){
                     Text(s.title,fontWeight=FontWeight.Medium,color=nowTrackColor(byId[s.id]?.mediaId));Text(displayArtistName(s.artist),fontSize=12.sp,color=Color.LightGray);NowTrackStatus(byId[s.id]?.mediaId)
-                    Text(if(s.id in byId)"Disponível no NERO Music" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"NERO Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)Color(0xFF39FF14)else Color.LightGray)
+                    Text(if(s.id in byId)"Disponível no NERO Music" else if(NativeMusicCatalog.enabled&&musicHitFromRef(s)!=null)"NERO Music · online" else "Somente referência",fontSize=11.sp,color=if(s.id in byId)MaterialTheme.colorScheme.primary else Color.LightGray)
                     s.openAudio?.takeIf{allowed(it)}?.let{audio->
                         Text(audio.license,fontSize=11.sp,color=Color.LightGray)
                         TextButton(onClick={if(!openBrowser(context,Uri.parse(audio.source)))notice="Não foi possível abrir a fonte."},contentPadding=PaddingValues(0.dp)){Text("Fonte e licença",fontSize=12.sp)}
@@ -303,7 +303,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                             val updated=current.map{if(it.id==live.id)it.copy(songs=(it.songs+ref).distinctBy{song->song.id})else it}
                             saveScopedOnlineLists(context,owner,current,updated);lists=Result.success(updated)
                         }catch(e:CancellationException){throw e}catch(_:Exception){notice="Não foi possível adicionar a sugestão."}}
-                    }){Icon(Icons.Default.AddCircleOutline,"Adicionar sugestão",tint=Color(0xFF39FF14))}
+                    }){Icon(Icons.Default.AddCircleOutline,"Adicionar sugestão",tint=MaterialTheme.colorScheme.primary )}
                 }
             }
         }

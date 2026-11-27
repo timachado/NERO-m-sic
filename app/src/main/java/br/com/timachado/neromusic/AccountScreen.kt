@@ -34,7 +34,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-private val accentAccount = Color(0xFF39FF14)
+
 internal fun authOrNull(context:Context): FirebaseAuth? = runCatching {
     val app = FirebaseApp.getApps(context).firstOrNull { it.name == FirebaseApp.DEFAULT_APP_NAME }
         ?: FirebaseApp.initializeApp(context)
@@ -90,7 +90,7 @@ internal fun AccountScreen(onBack:()->Unit,onPlans:()->Unit,onCloud:()->Unit,mod
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text("Minha conta",fontWeight=FontWeight.Bold,fontSize=24.sp)
         }
-        Icon(Icons.Default.AccountCircle,null,tint=accentAccount,modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
+        Icon(Icons.Default.AccountCircle,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.align(Alignment.CenterHorizontally).size(72.dp))
         if(auth==null) {
             Text("Acesso como visitante",fontSize=22.sp,fontWeight=FontWeight.Bold)
             Text("A autenticação está indisponível nesta versão. Você pode continuar usando o NERO Music normalmente.",color=Color.LightGray)

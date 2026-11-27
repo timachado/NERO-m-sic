@@ -36,9 +36,9 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
     }
     val rows=replayTracks(entries,NeroReplay.today(),days)
     val artists=replayArtists(rows)
-    Card(onClick={open=true},modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Color(0xFF102B23))){
+    Card(onClick={open=true},modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant )){
         Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
-            Icon(Icons.Default.BarChart,null,tint=Color(0xFF39FF14),modifier=Modifier.size(36.dp))
+            Icon(Icons.Default.BarChart,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(36.dp))
             Column(Modifier.weight(1f).padding(start=12.dp)){
                 Text("NERO Replay",fontSize=20.sp,fontWeight=FontWeight.Bold)
                 Text(if(rows.isEmpty())"Seu ritmo, suas estatísticas." else replayTime(rows.sumOf{it.millis})+" ouvidos · últimos "+days+" dias",fontSize=13.sp,color=Color.LightGray)
@@ -61,7 +61,7 @@ internal fun NeroReplayShelf(onSearch:(String)->Unit){
             Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 listOf(7,30,90).forEach{period->FilterChip(selected=days==period,onClick={days=period},label={Text("${period} dias")})}
             }
-            Text(replayTime(rows.sumOf{it.millis}),fontSize=28.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+            Text(replayTime(rows.sumOf{it.millis}),fontSize=28.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
             Text("Tempo estimado em reprodução · ${rows.size} faixas diferentes")
             if(rows.isEmpty())Text("Ainda não há dados suficientes. Ouça músicas para construir suas estatísticas.")
             if(artists.isNotEmpty()){

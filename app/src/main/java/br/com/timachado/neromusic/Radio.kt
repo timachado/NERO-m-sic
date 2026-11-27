@@ -75,7 +75,7 @@ internal fun RadioShelf(tracks:List<Track>,favorites:Set<String>,canPlay:Boolean
     Card(Modifier.fillMaxWidth()){
         Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
-                Icon(Icons.Default.Radio,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(32.dp))
+                Icon(Icons.Default.Radio,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.size(32.dp))
                 Text("NERO Radio",fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(start=8.dp))
             }
             Text("Rádio de arquivos do aparelho",fontSize=12.sp,color=Color.LightGray)

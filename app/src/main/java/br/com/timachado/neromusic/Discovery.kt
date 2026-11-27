@@ -36,8 +36,8 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-private val neon = Color(0xFF39FF14)
-private val aqua = Color(0xFF00E5FF)
+
+
 private const val maxBytes = 50L * 1024 * 1024
 
 internal data class OpenTrack(val id: Long, val title: String, val artist: String, val license: String,
@@ -235,7 +235,7 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             if (NativeMusicCatalog.enabled && !searchOnly) item {
                 Card(onClick={showDatedReleases=true},modifier=Modifier.fillMaxWidth()){
                     Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){
-                        Icon(Icons.Default.NewReleases,null,tint=aqua,modifier=Modifier.size(32.dp))
+                        Icon(Icons.Default.NewReleases,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(32.dp))
                         Column(Modifier.weight(1f).padding(horizontal=10.dp)){
                             Text("Descobrir álbuns",fontWeight=FontWeight.Bold,fontSize=19.sp)
                             Text("Explore sugestões por gênero",fontSize=12.sp,color=Color.LightGray)
@@ -250,29 +250,29 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
 
         }
         if(busy && !offline) item { CircularProgressIndicator() }
-        notice?.let { msg -> item { Text(msg,color=aqua) } }
+        notice?.let { msg -> item { Text(msg,color=MaterialTheme.colorScheme.secondary) } }
         val list=if(offline)saved else tracks
         if(list.isEmpty() && !busy) item {
             Text(if(offline) "Nenhum áudio salvo." else if(submitted==null) "Explore um gênero ou pesquise no NERO." else "Nenhum áudio compatível e licenciado encontrado.",color=Color.LightGray)
         }
         items(list,key={it.id}) { track ->
             val isSaved = saved.any { it.id == track.id }
-            Column(Modifier.fillMaxWidth().background(Color(0xFF10171C),RoundedCornerShape(14.dp)).padding(12.dp)) {
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(14.dp)).padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
-                    Icon(Icons.Default.MusicNote,null,tint=aqua,modifier=Modifier.size(32.dp))
+                    Icon(Icons.Default.MusicNote,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(32.dp))
                     Column(Modifier.weight(1f).padding(horizontal=10.dp)) {
                         Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
                         Text(track.artist,maxLines=2,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=Color.LightGray)
-                        Text(track.license,fontSize=11.sp,color=neon)
+                        Text(track.license,fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
                     }
                     IconButton(enabled=canPlay,onClick={
                         val uri=if(isSaved)Uri.fromFile(audioFile(context,track)) else Uri.parse(track.url)
                         onPlay(track.item(uri))
-                    }){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=neon)}
+                    }){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=MaterialTheme.colorScheme.primary)}
                 }
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     TextButton(onClick={if(!openBrowser(context,Uri.parse(track.source)))notice="Não foi possível abrir a fonte."}){Text("Fonte e licença")}
-                    if(isSaved)Text("Salvo",color=neon,fontSize=12.sp)
+                    if(isSaved)Text("Salvo",color=MaterialTheme.colorScheme.primary,fontSize=12.sp)
                     else TextButton(enabled=saving==null,onClick={
                         saving=track.id;notice=null
                         scope.launch {

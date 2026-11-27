@@ -101,7 +101,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
         }finally{busy=false}
     }
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text("NERO Radar",fontSize=22.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+        Text("NERO Radar",fontSize=22.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
         Text("Descobertas do catálogo · gratuito",fontSize=13.sp,color=Color.LightGray)
         Row(verticalAlignment=Alignment.CenterVertically){
             Text("Personalizar meu Radar",modifier=Modifier.weight(1f))
@@ -127,7 +127,7 @@ internal fun NeroRadarShelf(favorites:List<OnlineRef>,onSearch:(String)->Unit){
             notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
             val news=remember(inbox){runCatching{org.json.JSONArray(inbox)}.getOrDefault(org.json.JSONArray())}
             if(news.length()>0){
-                Text("Novidades para você",fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+                Text("Novidades para você",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
                 for(i in 0 until minOf(news.length(),10)){
                     val item=news.optJSONObject(i)?:continue
                     Card(onClick={onSearch(item.optString("search"))},modifier=Modifier.fillMaxWidth()){

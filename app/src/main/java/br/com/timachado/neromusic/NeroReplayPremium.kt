@@ -90,7 +90,7 @@ internal fun NeroReplayPremium(days:Int){
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
     val ready by NeroSupabase.identityReady.collectAsState()
-    Text("NERO Replay 365",fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+    Text("NERO Replay 365",fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
     val owner=uid
     if(!ready||owner==null){Text("Entre com Google para conhecer as estatísticas da sua conta neste aparelho.",fontSize=12.sp);return}
     key(owner){

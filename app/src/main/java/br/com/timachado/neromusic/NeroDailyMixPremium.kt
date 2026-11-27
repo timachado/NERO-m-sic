@@ -64,7 +64,7 @@ internal fun NeroDailyMixPremium(uid:String,artists:List<String>,day:Long,exclud
         val collections=remember(results,moment,day,excluded,hidden,verified){
             if(verified)premiumDailyCollections(results[moment].orEmpty(),day,excluded,hidden)else emptyList()
         }
-        Text("NERO Daily Mix Premium",fontSize=21.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+        Text("NERO Daily Mix Premium",fontSize=21.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
         Text("Coleções do dia inspiradas nos seus artistas e no momento que você escolher.",fontSize=12.sp,color=Color.LightGray)
         if(!verified){
             OutlinedButton(enabled=!busy,onClick={
@@ -78,7 +78,7 @@ internal fun NeroDailyMixPremium(uid:String,artists:List<String>,day:Long,exclud
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 items(DailyMoment.entries){item->FilterChip(selected=moment==item,enabled=!busy,onClick={moment=item;notice=null},label={Text(item.label)})}
             }
-            Text(moment.description,fontSize=12.sp,color=if(moment==DailyMoment.CAFE)Color(0xFFE8BB87)else Color.LightGray)
+            Text(moment.description,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Text("Artistas do dia: "+seeds.joinToString(" · "){displayArtistName(it)},fontSize=12.sp,color=Color.LightGray)
             Text("Ao gerar, os nomes dos artistas e o tema escolhido são enviados à busca musical. O tema é uma sugestão de pesquisa, não uma classificação verificada das faixas.",fontSize=11.sp,color=Color.LightGray)
             OutlinedButton(enabled=!busy&&seeds.isNotEmpty(),onClick={
@@ -117,7 +117,7 @@ internal fun NeroDailyMixPremium(uid:String,artists:List<String>,day:Long,exclud
                         }
                     }
                 }
-                Text(label,fontWeight=FontWeight.Medium,color=if(moment==DailyMoment.CAFE)Color(0xFFE9A3B6)else MaterialTheme.colorScheme.primary)
+                Text(label,fontWeight=FontWeight.Medium,color=MaterialTheme.colorScheme.primary)
                 Text("${collection.tracks.size} faixas sugeridas",fontSize=12.sp,color=Color.LightGray)
                 Button(enabled=canPlay&&!busy,onClick={play(collection.tracks.map{it.queueItem()},0)}){Text("Reproduzir coleção")}
                 OnlineDiscoveryRow(collection.tracks,canPlay&&!busy,play)

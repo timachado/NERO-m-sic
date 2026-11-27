@@ -61,7 +61,7 @@ internal fun NeroSmartMixPremium(uid:String,seeds:List<String>,known:List<String
         val rows=remember(groups,chosen,known,mode,excluded,hidden,limit,verified){
             if(verified)premiumMixRows(groups,chosen,known,mode,excluded,hidden,limit)else emptyList()
         }
-        Text("NERO Smart Mix Premium",fontSize=21.sp,fontWeight=FontWeight.Bold,color=Color(0xFF39FF14))
+        Text("NERO Smart Mix Premium",fontSize=21.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary )
         Text("Escolha até seis artistas, o estilo das sugestões e a quantidade de faixas. Os mixes básicos continuam gratuitos.",fontSize=12.sp,color=Color.LightGray)
         if(!verified){
             OutlinedButton(enabled=!busy,onClick={

@@ -96,13 +96,13 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         LazyColumn(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=12.dp)){
             if(!artistFilter&&!albumFilter&&"Músicas curtidas".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onFavorites),verticalAlignment=Alignment.CenterVertically){
-                    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Brush.linearGradient(listOf(Color(0xFF0066FF),Color(0xFF00E5FF),Color(0xFF39FF14)))),contentAlignment=Alignment.Center){Icon(Icons.Default.Favorite,null,tint=Color.White,modifier=Modifier.size(30.dp))}
+                    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.secondaryContainer ,MaterialTheme.colorScheme.secondary ,MaterialTheme.colorScheme.primary ))),contentAlignment=Alignment.Center){Icon(Icons.Default.Favorite,null,tint=Color.White,modifier=Modifier.size(30.dp))}
                     Column(Modifier.weight(1f).padding(start=12.dp)){Text("Músicas curtidas",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Playlist · "+(onlineFavoriteCount+localFavoriteCount)+" músicas",fontSize=12.sp,color=Color.LightGray)}
                 }
             }
             if(!artistFilter&&!albumFilter&&"Downloads".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onDownloads),verticalAlignment=Alignment.CenterVertically){
-                    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){Icon(Icons.Default.Download,null,tint=Color(0xFF39FF14),modifier=Modifier.size(30.dp))}
+                    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){Icon(Icons.Default.Download,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(30.dp))}
                     Column(Modifier.weight(1f).padding(start=12.dp)){Text("Downloads",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Ouvir offline",fontSize=12.sp,color=Color.LightGray)}
                 }
             }
@@ -110,7 +110,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                 if(followed.isEmpty())item{Text("Siga seus artistas favoritos para encontrá-los aqui.",color=Color.LightGray)}
                 items(followed.filter{it.contains(term,true)},key={"artist:"+nativeArtistKey(it)}){artist->
                     Row(Modifier.fillMaxWidth().clickable{onArtist(artist)}.padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
-                        Box(Modifier.size(66.dp).clip(RoundedCornerShape(50)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){Icon(Icons.Default.Person,null,tint=Color(0xFF39FF14),modifier=Modifier.size(30.dp))}
+                        Box(Modifier.size(66.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){Icon(Icons.Default.Person,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(30.dp))}
                         Column(Modifier.weight(1f).padding(start=12.dp)){Text(displayArtistName(artist),fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Artista · Seguindo",fontSize=12.sp,color=Color.LightGray)}
                     }
                 }
@@ -133,7 +133,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                     else HubCover(row.covers)
                     Column(Modifier.weight(1f).padding(start=12.dp)){
                         Text(row.title,fontSize=17.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                        Text((if(pinned)"Fixada · " else "")+"Playlist · "+row.count+" músicas"+(if(row.page==6)" · Importada" else ""),fontSize=12.sp,color=if(pinned)Color(0xFF39FF14)else Color.LightGray)
+                        Text((if(pinned)"Fixada · " else "")+"Playlist · "+row.count+" músicas"+(if(row.page==6)" · Importada" else ""),fontSize=12.sp,color=if(pinned)MaterialTheme.colorScheme.primary else Color.LightGray)
                     }
                     Box{
                         IconButton(onClick={options=true}){Icon(Icons.Default.MoreVert,"Opções da playlist")}
@@ -154,8 +154,8 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
 }
 @Composable
 private fun HubCover(covers:List<String>){
-    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF12313A)),contentAlignment=Alignment.Center){
-        if(covers.isEmpty())Icon(Icons.Default.QueueMusic,null,tint=Color(0xFF00E5FF))
+    Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){
+        if(covers.isEmpty())Icon(Icons.Default.QueueMusic,null,tint=MaterialTheme.colorScheme.secondary )
         else if(covers.size<4)NeroArtwork(model=covers.first(),contentDescription=null,modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
         else Column(Modifier.fillMaxSize()){repeat(2){r->Row(Modifier.weight(1f)){repeat(2){c->NeroArtwork(model=covers[r*2+c],contentDescription=null,modifier=Modifier.weight(1f).fillMaxHeight(),contentScale=ContentScale.Crop)}}}}
     }

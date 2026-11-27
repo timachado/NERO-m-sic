@@ -71,13 +71,13 @@ internal fun PersonalRecommendations(tracks:List<Track>, favorites:Set<String>, 
 private fun RecommendationRow(tracks:List<Track>, canPlay:Boolean,onPlay:(MediaItem)->Unit) {
     LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
         items(tracks,key={it.id}) { track ->
-            Column(Modifier.width(132.dp).background(Color(0xFF10171C),RoundedCornerShape(12.dp)).padding(10.dp),
+            Column(Modifier.width(132.dp).background(MaterialTheme.colorScheme.surface ,RoundedCornerShape(12.dp)).padding(10.dp),
                 verticalArrangement=Arrangement.spacedBy(6.dp)) {
                 LocalArtwork(track,Modifier.fillMaxWidth().aspectRatio(1f))
                 Text(track.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,fontSize=14.sp)
                 Text(track.artist,maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,fontSize=12.sp)
                 TextButton(enabled=canPlay,onClick={onPlay(track.mediaItem())},contentPadding=PaddingValues(0.dp)) {
-                    Icon(Icons.Default.PlayArrow,null,tint=Color(0xFF39FF14)); Text("Ouvir",color=Color(0xFF39FF14))
+                    Icon(Icons.Default.PlayArrow,null,tint=MaterialTheme.colorScheme.primary ); Text("Ouvir",color=MaterialTheme.colorScheme.primary )
                 }
             }
         }
