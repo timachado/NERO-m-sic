@@ -117,7 +117,7 @@ internal fun FullscreenClip(player:Player,title:String,artist:String,position:Lo
                 Text(displayArtistName(artist),maxLines=1,overflow=TextOverflow.Ellipsis,color=Color.LightGray,style=MaterialTheme.typography.bodySmall)
             }
             ClipQualityMenu(quality,{keepControls();onQuality(it)},onExpandedChange={qualityOpen=it;keepControls()})
-            IconButton(enabled=canFavorite,onClick={keepControls();onFavorite()}){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,if(favorite)"Descurtir música" else "Curtir música",tint=if(favorite)Color(0xFF39FF14)else Color.White)}
+            IconButton(enabled=canFavorite,onClick={keepControls();onFavorite()}){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,if(favorite)"Descurtir música" else "Curtir música",tint=if(favorite)MaterialTheme.colorScheme.primary else  Color.White)}
             if(pipSupported)IconButton(onClick=onPip){Icon(Icons.Default.PictureInPictureAlt,"Janela flutuante")}
             IconButton(onClick=onAudio){Icon(Icons.Default.MusicNote,"Voltar para música")}
         }

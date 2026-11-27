@@ -35,7 +35,9 @@ internal fun NeroPlayerTheme.scheme()=darkColorScheme(
     onPrimary=Color.Black,onSecondary=Color.Black,onTertiary=Color.Black,
     onPrimaryContainer=Color(primary),onSecondaryContainer=Color(secondary),onTertiaryContainer=Color(secondary),
     onBackground=Color.White,onSurface=Color.White,onSurfaceVariant=Color(0xFFD1D5DB),
-    outline=Color(secondary).copy(alpha=.65f),outlineVariant=Color(secondary).copy(alpha=.24f)
+    outline=Color(secondary).copy(alpha=.65f),outlineVariant=Color(secondary).copy(alpha=.24f),
+    surfaceContainerLowest=Color(background),surfaceContainerLow=Color(panel),surfaceContainer=Color(panel),
+    surfaceContainerHigh=Color(panel),surfaceContainerHighest=Color(panel),surfaceTint=Color(primary)
 )
 internal fun effectivePlayerTheme(stored:String?,verified:Boolean):NeroPlayerTheme {
     val theme=NeroPlayerTheme.entries.firstOrNull{it.name==stored}?:NeroPlayerTheme.AURORA

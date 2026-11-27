@@ -58,7 +58,7 @@ internal fun ArtistProfileCard(artist:String,onOpen:(()->Unit)?=null,expanded:Bo
     Card(modifier=Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){
         Column{
             Box(Modifier.fillMaxWidth().height(if(expanded)220.dp else 180.dp).background(MaterialTheme.colorScheme.primaryContainer),contentAlignment=Alignment.Center){
-                Icon(Icons.Default.Person,null,tint=Color(0xFF00E5FF),modifier=Modifier.size(64.dp))
+                Icon(Icons.Default.Person,null,tint=MaterialTheme.colorScheme.secondary,modifier=Modifier.size(64.dp))
                 val photo=profile?.avatar
                 if(photo!=null)NeroArtwork(model=photo,contentDescription="Foto de "+primaryArtistName(artist),contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())
                 else if(fallbackArtwork!=null)NeroArtwork(model=fallbackArtwork,contentDescription="Capa da música (foto de perfil indisponível)",contentScale=ContentScale.Crop,modifier=Modifier.fillMaxSize())

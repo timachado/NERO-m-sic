@@ -55,14 +55,14 @@ internal fun PlayerLyricsPreview(mediaId:String,title:String,artist:String,posit
         catch(e:CancellationException){throw e}catch(_:Exception){lines=emptyList()}
         finally{busy=false}
     }
-    Card(colors=CardDefaults.cardColors(containerColor=Color(0xFF12374A)),modifier=Modifier.fillMaxWidth()){
+    Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceVariant),modifier=Modifier.fillMaxWidth()){
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Text("Prévia da letra",fontWeight=FontWeight.Bold,fontSize=19.sp)
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-            if(lines.isEmpty()&&!busy)Text("Letra ainda indisponível.",color=Color.LightGray)
+            if(lines.isEmpty()&&!busy)Text("Letra ainda indisponível.",color=MaterialTheme.colorScheme.onSurfaceVariant)
             val active=lines.indexOfLast{(it.at?:Long.MAX_VALUE)<=position}
             val start=if(active>=0)(active-1).coerceAtLeast(0) else 0
-            lines.drop(start).take(4).forEachIndexed{i,line->Text(line.text,color=if(start+i==active)Color.White else Color(0xFF97C8DE),fontWeight=FontWeight.Bold,fontSize=20.sp)}
+            lines.drop(start).take(4).forEachIndexed{i,line->Text(line.text,color=if(start+i==active)MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,fontWeight=FontWeight.Bold,fontSize=20.sp)}
             Button(onClick=onOpen){Text("Mostrar letra")}
         }
     }
@@ -96,11 +96,11 @@ internal fun PlayerContextShelf(ref:OnlineRef?,artist:String,origin:PlaybackOrig
             if(busy){Text("Encontrando músicas relacionadas",fontSize=16.sp,fontWeight=FontWeight.Bold);LinearProgressIndicator(Modifier.fillMaxWidth())}
             data?.let{result->
                 result.album?.let{album->
-                    Card(onClick={onAlbum(album)},modifier=Modifier.fillMaxWidth()){
+                    Card(onClick={onAlbum(album)},colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface,contentColor=MaterialTheme.colorScheme.onSurface),modifier=Modifier.fillMaxWidth()){
                         Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
                             NeroArtwork(model=album.artwork?:seed.thumbnail,contentDescription=null,modifier=Modifier.size(76.dp).clip(RoundedCornerShape(8.dp)),contentScale=ContentScale.Crop)
-                            Column(Modifier.weight(1f).padding(start=12.dp)){Text("Do mesmo álbum",color=Color(0xFF00E5FF),fontSize=12.sp);Text(album.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)}
-                            Icon(Icons.Default.ChevronRight,"Abrir álbum")
+                            Column(Modifier.weight(1f).padding(start=12.dp)){Text("Do mesmo álbum",color=MaterialTheme.colorScheme.secondary,fontSize=12.sp);Text(album.title,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)}
+                            Icon(Icons.Default.ChevronRight,"Abrir álbum",tint=MaterialTheme.colorScheme.secondary)
                         }
                     }
                     if(result.albumSongs.isNotEmpty())PlayerRelatedRows(result.albumSongs,canPlay){hit->
@@ -109,7 +109,7 @@ internal fun PlayerContextShelf(ref:OnlineRef?,artist:String,origin:PlaybackOrig
                     }
                 }
                 Text("Músicas relacionadas",fontSize=20.sp,fontWeight=FontWeight.Bold)
-                if(result.related.isEmpty())Text("Nenhuma sugestão disponível agora.",color=Color.LightGray)
+                if(result.related.isEmpty())Text("Nenhuma sugestão disponível agora.",color=MaterialTheme.colorScheme.onSurfaceVariant)
                 else PlayerRelatedRows(result.related,canPlay){hit->
                     val (queue,index)=nativeQueue(result.related,hit)
                     onQueue(queue.withOrigin(PlaybackOrigin("related","Relacionadas a "+seed.title,"")),index)
@@ -125,8 +125,8 @@ private fun PlayerRelatedRows(rows:List<NativeMusicHit>,canPlay:Boolean,onPlay:(
         rows.forEach{hit->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 NeroArtwork(model=hit.thumbnail,contentDescription=null,modifier=Modifier.size(48.dp).clip(RoundedCornerShape(6.dp)),contentScale=ContentScale.Crop)
-                Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(displayArtistName(hit.artist),color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
-                IconButton(enabled=canPlay,onClick={onPlay(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=Color(0xFF39FF14))}
+                Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis);Text(displayArtistName(hit.artist),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
+                IconButton(enabled=canPlay,onClick={onPlay(hit)}){Icon(Icons.Default.PlayArrow,"Reproduzir",tint=MaterialTheme.colorScheme.primary)}
             }
         }
     }

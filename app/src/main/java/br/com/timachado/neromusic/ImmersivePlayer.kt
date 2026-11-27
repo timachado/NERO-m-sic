@@ -146,7 +146,7 @@ internal fun ImmersivePlayer(
         dismissButton={if(deadline!=null)TextButton(onClick={NeroSleepTimer.cancel();showTimer=false}){Text("Cancelar timer")}})
     val tones=rememberPlayerTones(track,remoteCover)
     BoxWithConstraints(modifier.fillMaxSize().background(Color(appearance.background))){
-        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else if(appearance==NeroPlayerTheme.CAFE)Color(0xFF653044) else aqua,playing&&!videoMode,Modifier.matchParentSize(),primary=neon,secondary=aqua)
+        NeroAuroraBackdrop(if(appearance==NeroPlayerTheme.AURORA)tones else androidx.compose.ui.graphics.lerp(panel,aqua,.24f),playing&&!videoMode,Modifier.matchParentSize(),primary=neon,secondary=aqua)
         val compact=maxHeight<780.dp
         val coverSize=minOf(maxWidth-36.dp,480.dp).coerceAtLeast(1.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(if(compact)6.dp else 9.dp)){
@@ -193,7 +193,7 @@ internal fun ImmersivePlayer(
                     val shape=RoundedCornerShape(50)
                     val outline=if(selected)neon else aqua.copy(alpha=.7f)
                     Row(Modifier.height(40.dp).widthIn(min=108.dp).clip(shape)
-                        .background(if(selected)Brush.horizontalGradient(listOf(neon,if(appearance==NeroPlayerTheme.AURORA)Color(0xFF00DDA3)else aqua))else Brush.horizontalGradient(listOf(panel,Color(appearance.background))))
+                        .background(if(selected)Brush.horizontalGradient(listOf(neon,aqua))else Brush.horizontalGradient(listOf(panel,Color(appearance.background))))
                         .border(1.dp,outline,shape).clickable(enabled=ready&&!selected){onVideoToggle()}.padding(horizontal=12.dp),
                         horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
                         Icon(if(video)Icons.Default.OndemandVideo else Icons.Default.MusicNote,null,tint=if(selected)Color.Black else neon,modifier=Modifier.size(20.dp))

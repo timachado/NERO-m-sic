@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -22,7 +23,9 @@ import kotlinx.coroutines.delay
 
 // Decorative motion only; does not capture audio, use the microphone or change playback.
 @Composable
-internal fun NeroAuroraBackdrop(tone:Color,playing:Boolean,modifier:Modifier=Modifier,primary:Color=Color(0xFF39FF14),secondary:Color=Color(0xFF00E5FF)){
+internal fun NeroAuroraBackdrop(tone:Color,playing:Boolean,modifier:Modifier=Modifier,primary:Color=MaterialTheme.colorScheme.primary,secondary:Color=MaterialTheme.colorScheme.secondary){
+    val background=MaterialTheme.colorScheme.background
+    val panel=MaterialTheme.colorScheme.surfaceVariant
     val phase=remember{Animatable(0f)}
     val owner=LocalLifecycleOwner.current
     var visible by remember(owner){mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}
@@ -39,7 +42,7 @@ internal fun NeroAuroraBackdrop(tone:Color,playing:Boolean,modifier:Modifier=Mod
     Canvas(modifier){
         val p=phase.value
         val radius=size.width*.82f
-        drawRect(Brush.verticalGradient(listOf(tone,Color(0xFF071619),Color.Black)))
+        drawRect(Brush.verticalGradient(listOf(tone,panel,background)))
         drawCircle(Brush.radialGradient(listOf(secondary.copy(alpha=.15f),Color.Transparent),center=Offset(size.width*(.13f+.17f*p),size.height*.32f),radius=radius),radius=radius,center=Offset(size.width*(.13f+.17f*p),size.height*.32f))
         drawCircle(Brush.radialGradient(listOf(primary.copy(alpha=.21f),Color.Transparent),center=Offset(size.width*(.9f-.14f*p),size.height*.53f),radius=radius),radius=radius,center=Offset(size.width*(.9f-.14f*p),size.height*.53f))
         val w=size.width;val h=size.height
@@ -54,7 +57,7 @@ internal fun NeroAuroraBackdrop(tone:Color,playing:Boolean,modifier:Modifier=Mod
 }
 
 @Composable
-internal fun NeroMotionBars(playing:Boolean,modifier:Modifier=Modifier,primary:Color=Color(0xFF39FF14),secondary:Color=Color(0xFF00E5FF)){
+internal fun NeroMotionBars(playing:Boolean,modifier:Modifier=Modifier,primary:Color=MaterialTheme.colorScheme.primary,secondary:Color=MaterialTheme.colorScheme.secondary){
     var frame by remember{mutableIntStateOf(0)}
     val owner=LocalLifecycleOwner.current
     var visible by remember(owner){mutableStateOf(owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))}

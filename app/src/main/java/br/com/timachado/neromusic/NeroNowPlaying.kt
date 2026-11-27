@@ -14,11 +14,11 @@ internal data class NeroNowPlaying(val id:String="",val playing:Boolean=false,va
 }
 internal val LocalNeroNowPlaying=compositionLocalOf{NeroNowPlaying()}
 @Composable internal fun nowTrackColor(id:String?,normal:Color=Color.Unspecified):Color =
-    if(LocalNeroNowPlaying.current.matches(id))Color(0xFF39FF14)else normal
+    if(LocalNeroNowPlaying.current.matches(id))MaterialTheme.colorScheme.primary else  normal
 
 @Composable internal fun NowTrackStatus(id:String?){
     val state=LocalNeroNowPlaying.current
-    if(state.matches(id))Text(state.label,fontSize=11.sp,color=Color(0xFF39FF14))
+    if(state.matches(id))Text(state.label,fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
 }
 @Composable internal fun NowTrackAction(id:String?,enabled:Boolean,onPlay:()->Unit){
     val state=LocalNeroNowPlaying.current
@@ -26,6 +26,6 @@ internal val LocalNeroNowPlaying=compositionLocalOf{NeroNowPlaying()}
     IconButton(enabled=enabled,onClick={if(current)state.open()else onPlay()}){
         Icon(if(current&&state.playing)Icons.Default.Equalizer else if(current)Icons.Default.MusicNote else Icons.Default.PlayArrow,
             if(current)"Abrir player: "+state.label else "Reproduzir",
-            tint=if(current)Color(0xFF39FF14)else Color.LightGray)
+            tint=if(current)MaterialTheme.colorScheme.primary else  MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
