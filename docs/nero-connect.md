@@ -35,3 +35,25 @@ After manual public key confirmation, the receiver explicitly starts a five-minu
 
 ## 0.9.108-dev — recuperação isolada para homologação
 Código de pareamento, prova P-256 e TLS mútuo recuperado de archive/experimental-0.9.41.3. Identidade e chave local isoladas por UID Google; mudança de conta encerra UI e invalida comandos. Recepção explícita de cinco minutos, primeiro plano, mesma rede Wi-Fi privada; somente play, pause, próxima e anterior conforme capacidade e regra Premium do receptor. Sem modo snapshot antigo, sem relay, sem transmissão de áudio, sem alteração de NERO Together ou do backend. Testes unitários recuperados; handshake real em dois aparelhos, expiração, troca de conta e revogação ainda exigem homologação. Não é recurso comercial validado.
+
+
+## Native Connect 195 — product acceptance contract
+
+Goal: independent receiver playback, not mirroring and not a single-track handoff. A controller selects an available, authorized receiver; the receiver obtains permitted media directly, owns playback and the queue, and reports confirmed state. The controller sends commands and does not need to keep a media stream running. Device capabilities and provider permissions determine supported actions. No Spotify protocol or credentials are reused.
+
+Acceptance criteria:
+- Discover/select a compatible receiver without manual browser navigation; a supported receiver or native playback protocol must actually be available. LG LF5900/webOS 2.0 compatibility is unverified. LG Developer Mode on physical devices starts with webOS 3.0.
+- Pair with explicit receiver approval and authenticated encrypted communication. Bind commands to receiver/session identity; enforce replay protection, expiry, owner changes and disconnect.
+- Transfer current queue order, current item and permitted position. Enforce Free/Premium control policy for NERO-owned playback, without restricting access to embedded YouTube or charging for that content.
+- Pause local playback only after verified receiver PLAYING for the requested session/item. Do not assume launch acknowledgement is playback. Preserve local playback on failed transfer.
+- Receiver advances independently while controller sleeps or disconnects; no fake end events, no duplicated advances, no unexpected restart.
+- Read actual remote state and volume; distinguish device volume from player volume. Play/pause/next/previous/seek only when supported and authorized. Reconnect obtains receiver state rather than overwriting it.
+- On return to local playback, confirm remote stop first and resume at confirmed position where permitted.
+- For YouTube use an authorized visible official player with its attribution, ads and functionality preserved; no isolated audio, hidden/background video playback, extracted stream forwarding or claims of Spotify-equivalent licensing. Full audio-only independent playback requires a separately authorized audio source.
+- Preserve WVC as the existing fallback. No production database, checkout, release publication or credential changes in this branch.
+
+Validation: first prove receiver availability and independent playback on actual hardware, then implement authenticated control and full end-to-end tests. The hosted receiver and debug launch are experimental, not a commercial Connect service. If the legacy LG has no compatible native receiver, document that limitation rather than fake successful connection.
+References:
+- https://support.spotify.com/uk/article/Spotify-Connect/
+- https://webostv.developer.lge.com/develop/tools/webos-tv-cli-dev-guide
+- https://developers.google.com/youtube/terms/developer-policies
