@@ -196,7 +196,7 @@ internal fun NeroDeviceSheet(title:String,artist:String,playing:Boolean,canCast:
                 },modifier=Modifier.fillMaxWidth()){
                     Icon(Icons.Default.OpenInNew,null);Spacer(Modifier.width(8.dp));Text("Abrir Web Video Caster")
                 }
-                Text("A transmissão entrega uma faixa por vez. A sessão e os comandos remotos ficam no Web Video Caster; o volume do Android acima não controla a TV. Use os controles disponíveis no aplicativo receptor ou na televisão.",fontSize=12.sp,color=Color.LightGray)
+                Text("A transmissão entrega uma faixa por vez. A sessão e os comandos remotos ficam no Web Video Caster; os ajustes de volume local do NERO não controlam essa sessão. Use os controles disponíveis no aplicativo receptor ou na televisão.",fontSize=12.sp,color=Color.LightGray)
             }
 
         }
