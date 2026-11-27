@@ -10,9 +10,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 
-private const val testOrigin="https://nero-native-audio-test.timachado-mcp.workers.dev"
-private const val testA="$testOrigin/track-a.wav"
-private const val testB="$testOrigin/track-b.wav"
 
 @Composable
 internal fun NeroNativeAudioTestDialog(onClose:()->Unit){
@@ -24,7 +21,7 @@ internal fun NeroNativeAudioTestDialog(onClose:()->Unit){
     var notice by remember{mutableStateOf("Localize uma TV compatível com DLNA.")}
     AlertDialog(onDismissRequest={if(!busy)onClose()},title={Text("NERO Connect · teste nativo")},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("Teste com dois sinais sonoros originais, de 25 segundos cada. Pause o áudio local antes de iniciar. A TV selecionada poderá interromper sua reprodução atual. Não precisa abrir o navegador.")
+            Text("Teste local com dois sinais originais de 12 segundos cada, sem depender de HTTPS externo. Pause o áudio local antes de iniciar. A TV selecionada poderá interromper sua reprodução atual. Não precisa abrir o navegador.")
             OutlinedButton(enabled=BuildConfig.DEBUG&&!busy,onClick={
                 busy=true;selected=null;devices=emptyList()
                 scope.launch{
@@ -45,34 +42,48 @@ internal fun NeroNativeAudioTestDialog(onClose:()->Unit){
         }
     },confirmButton={TextButton(enabled=BuildConfig.DEBUG&&!busy&&selected!=null,onClick={
         val d=selected?:return@TextButton
-        busy=true;notice="Testando reprodução e fila nativa na TV…"
+        busy=true;notice="Testando áudio local e fila nativa na TV…"
         scope.launch{
             try{
                 notice=withContext(Dispatchers.IO){
+                    var stage="criar servidor local"
                     try{
-                        NeroDlna.play(context,d,testA,"NERO Teste A","NERO","audio/wav")
-                        if(!NeroDlna.awaitPlaying(context,d,testA))return@withContext "A TV não confirmou a reprodução do primeiro áudio."
-                        if(!NeroDlna.prepareNext(context,d,testA,testB,"NERO Teste B","NERO","audio/wav"))return@withContext "A TV reproduziu o primeiro áudio, mas não confirmou a próxima faixa."
-                        val advanced=withTimeoutOrNull(45000L){
-                            while(true){
-                                val uri=NeroDlna.currentUri(context,d)
-                                val state=NeroDlna.transportState(context,d)
-                                if(uri==testB&&state=="PLAYING")return@withTimeoutOrNull true
-                                if(uri!=testA&&uri!=testB)return@withTimeoutOrNull false
-                                delay(700L)
-                            }
-                            @Suppress("UNREACHABLE_CODE")
-                            false
-                        }==true
-                        if(advanced)"A TV confirmou as duas faixas e avançou automaticamente." else "A TV não confirmou o avanço automático."
-                    }finally{
-                        withContext(NonCancellable){
-                            runCatching{
-                                val uri=NeroDlna.currentUri(context,d)
-                                if(uri==testA||uri==testB)NeroDlna.control(context,d,uri,"Stop")
+                        NeroLanAudioProbe(context,d).use{probe->
+                            val testA=probe.a
+                            val testB=probe.b
+                            try{
+                                stage="SetAVTransportURI / Play"
+                                NeroDlna.play(context,d,testA,"NERO Teste A","NERO","audio/wav")
+                                stage="GetTransportInfo / GetMediaInfo"
+                                if(!NeroDlna.awaitPlaying(context,d,testA))return@withContext "TV não confirmou o primeiro áudio. Requisição ao celular: "+if(probe.mediaRequested)"sim" else "não"
+                                stage="SetNextAVTransportURI"
+                                if(!NeroDlna.prepareNext(context,d,testA,testB,"NERO Teste B","NERO","audio/wav"))return@withContext "Primeiro áudio confirmado; próxima faixa não confirmada."
+                                stage="verificar avanço"
+                                val advanced=withTimeoutOrNull(25000L){
+                                    while(true){
+                                        val uri=NeroDlna.currentUri(context,d)
+                                        val state=NeroDlna.transportState(context,d)
+                                        if(uri==testB&&state=="PLAYING")return@withTimeoutOrNull true
+                                        if(uri!=testA&&uri!=testB)return@withTimeoutOrNull false
+                                        delay(500L)
+                                    }
+                                    @Suppress("UNREACHABLE_CODE")
+                                    false
+                                }==true
+                                if(advanced)"TV confirmou as duas faixas e avançou automaticamente." else "Primeiro áudio confirmado; avanço automático não confirmado."
+                            }finally{
+                                withContext(NonCancellable){
+                                    runCatching{
+                                        val uri=NeroDlna.currentUri(context,d)
+                                        if(uri==testA||uri==testB)NeroDlna.control(context,d,uri,"Stop")
+                                    }
+                                }
                             }
                         }
-                    }
+                    }catch(e:CancellationException){throw e}
+                    catch(e:NeroDlnaHttpException){"Falha em "+stage+" · HTTP "+e.status}
+                    catch(e:java.net.SocketTimeoutException){"Sem resposta em "+stage+" (timeout)."}
+                    catch(_:Exception){"Falha em "+stage+". A TV ou a rede não confirmou esta etapa."}
                 }
             }catch(e:CancellationException){throw e}catch(_:Exception){notice="O receptor não aceitou o teste nativo ou não respondeu."}
             finally{busy=false}
