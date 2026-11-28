@@ -57,44 +57,6 @@ internal fun saveOnlineLists(context:Context,lists:List<OnlineList>){
     try{out.write(bytes);file.finishWrite(out)}catch(e:Exception){file.failWrite(out);throw e}
 }
 @Composable
-internal fun SaveOnlineDialog(songs:List<OnlineRef>,onClose:()->Unit){
-    val incoming=remember(songs){songs.distinctBy{it.id}}
-    val context=LocalContext.current
-    val uid by NeroSupabase.activeUid.collectAsState()
-    val ready by NeroSupabase.identityReady.collectAsState()
-    val changes by NeroAccountSync.changes.collectAsState()
-    val scope=rememberCoroutineScope()
-    var loaded by remember(uid,ready){mutableStateOf(runCatching{if(ready)scopedOnlineLists(context,uid)else emptyList()})}
-    LaunchedEffect(uid,ready,changes){if(ready)loaded=runCatching{scopedOnlineLists(context,uid)}}
-    var name by remember{mutableStateOf("")}
-    var message by remember{mutableStateOf<String?>(null)}
-    fun add(list:OnlineList?){
-        val owner=uid
-        scope.launch{try{
-            val current=scopedOnlineLists(context,owner)
-            val next=if(list==null)current+OnlineList(UUID.randomUUID().toString(),name.trim(),incoming)
-            else current.map{if(it.id==list.id)it.copy(songs=(it.songs+incoming).distinctBy{s->s.id})else it}
-            saveScopedOnlineLists(context,owner,current,next)
-            android.widget.Toast.makeText(context,"Referência salva na playlist",android.widget.Toast.LENGTH_SHORT).show()
-            onClose()
-        }catch(e:CancellationException){throw e}catch(_:Exception){message="Não foi possível salvar. Nenhuma lista foi substituída."}}
-    }
-    AlertDialog(onDismissRequest=onClose,title={Text("Adicionar à playlist")},
-        text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text(if(incoming.size==1)incoming.first().title+" · "+displayArtistName(incoming.first().artist) else "${incoming.size} gravações para adicionar",color=Color.LightGray)
-            Text("Salva as referências musicais, não o áudio. Gravações já existentes não serão duplicadas.",fontSize=12.sp,color=Color.LightGray)
-            if(loaded.isFailure)Text("Não foi possível carregar suas playlists.")
-            else{
-                LazyColumn(Modifier.heightIn(max=180.dp)){items(loaded.getOrDefault(emptyList()),key={it.id}){list->
-                    TextButton(onClick={add(list)},modifier=Modifier.fillMaxWidth()){Text(list.name)}
-                }}
-                OutlinedTextField(name,{name=it.take(80)},label={Text("Nova playlist online")},singleLine=true)
-            }
-            message?.let{Text(it,color=MaterialTheme.colorScheme.error)}
-        }},confirmButton={TextButton(enabled=ready&&loaded.isSuccess&&name.isNotBlank()&&incoming.isNotEmpty(),onClick={add(null)}){Text("Criar e adicionar")}},
-        dismissButton={TextButton(onClick=onClose){Text("Cancelar")}})
-}
-@Composable
 internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={},offlineState:OfflineState=OfflineState(),onDownloadPlaylist:(List<OpenTrack>)->Unit={}){
     val context=LocalContext.current
     val uid by NeroSupabase.activeUid.collectAsState()
