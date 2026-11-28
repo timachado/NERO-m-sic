@@ -2,10 +2,10 @@
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
   "published": true,
-  "versionCode": 218,
-  "versionName": "1.1.1",
-  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.1.1/NERO-Music.apk",
-  "sha256": "e1038ab5359489548380edff2ef0278c3445c5417f98108d3ea3ec51cef0025c",
-  "publishedAt": "2026-11-28T11:28:54Z",
-  "releaseNotes": "• Nova experiência de boas-vindas Aurora Neon, com ajuste de espaçamento inferior.\n• Avisos opcionais de novidades na grade musical e atualizações oficiais.\n• Controle de privacidade e compartilhamento opcional de estatísticas básicas de atividade.\n• Recursos experimentais de pareamento Wi-Fi ocultados da interface comercial.\n"
+  "versionCode": 220,
+  "versionName": "1.1.3",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.1.3/NERO-Music.apk",
+  "sha256": "7e7aae398dcce93b76602eafb419853fe750fb37cbaa0e007568c851e0a86790",
+  "publishedAt": "2026-11-28T12:22:22Z",
+  "releaseNotes": "• NERO Quick Save: experiência premium para salvar músicas em várias playlists e nas músicas curtidas.\n• Prévia com capa, título e artista, busca instantânea e coleções utilizadas recentemente.\n• Seleção animada, resposta tátil e integração com o tema do NERO Studio.\n• Sincronização da biblioteca existente e proteção contra referências duplicadas.\n"
 }
