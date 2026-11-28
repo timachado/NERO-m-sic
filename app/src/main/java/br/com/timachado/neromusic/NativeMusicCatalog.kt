@@ -56,7 +56,7 @@ internal object NativeMusicCatalog{
             val hits=info.relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
                 val id=idFromUrl(item.url)?:return@mapNotNull null
                 val title=item.name.takeIf{it.isNotBlank()}?:return@mapNotNull null
-                NativeMusicHit(id,title,item.uploaderName.orEmpty(),item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails))}
+                NativeMusicHit(id,title,item.uploaderName.orEmpty(),item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails));NeroTrackDurations.record("youtube:"+id,it.duration)}
             }.distinctBy{it.id}.take(30)
             searchCache[cacheKey]=CachedSearch(android.os.SystemClock.elapsedRealtime(),hits)
             if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
@@ -76,7 +76,7 @@ internal object NativeMusicCatalog{
             val rows=SearchInfo.getInfo(service,handler).relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull{item->
                 val id=idFromUrl(item.url)?:return@mapNotNull null
                 if(item.name.isBlank()||item.duration<=0)return@mapNotNull null
-                NativeMusicHit(id,item.name,item.uploaderName.orEmpty(),item.duration).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails))}
+                NativeMusicHit(id,item.name,item.uploaderName.orEmpty(),item.duration).also{NeroArtworkSources.record(id,bestArtwork(item.thumbnails));NeroTrackDurations.record("youtube:"+id,it.duration)}
             }.distinctBy{it.id}.take(30)
             searchCache[key]=CachedSearch(android.os.SystemClock.elapsedRealtime(),rows)
             if(searchCache.size>32)searchCache.remove(searchCache.keys.first())
@@ -152,7 +152,7 @@ internal object NativeMusicCatalog{
             PlaylistInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/playlist?list="+id).relatedItems.mapNotNull{item->
                 val trackId=idFromUrl(item.url)?:return@mapNotNull null
                 if(item.name.isBlank())return@mapNotNull null
-                NativeMusicHit(trackId,item.name,item.uploaderName.orEmpty().ifBlank{album.credit},item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(trackId,bestArtwork(item.thumbnails))}
+                NativeMusicHit(trackId,item.name,item.uploaderName.orEmpty().ifBlank{album.credit},item.duration.coerceAtLeast(0)).also{NeroArtworkSources.record(trackId,bestArtwork(item.thumbnails));NeroTrackDurations.record("youtube:"+trackId,it.duration)}
             }.distinctBy{it.id}.take(30)
         }
     }
@@ -178,12 +178,21 @@ internal object NativeMusicCatalog{
             }.distinctBy{it.id}
         }
     }
+    suspend fun durationSeconds(id:String):Long? = withContext(Dispatchers.IO){
+        lock.withLock{
+            require(Regex("[A-Za-z0-9_-]{11}").matches(id))
+            NeroTrackDurations.durations.value["youtube:"+id]?.let{return@withLock it}
+            initialize()
+            StreamInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/watch?v="+id).duration.takeIf{it in 1..86400L}
+        }
+    }
     suspend fun resolve(hit:NativeMusicHit,economical:Boolean=false):MediaItem = withContext(Dispatchers.IO){
         lock.withLock{
             initialize()
             require(Regex("[A-Za-z0-9_-]{11}").matches(hit.id))
             val info=StreamInfo.getInfo(ServiceList.YouTube,"https://www.youtube.com/watch?v="+hit.id)
             require(info.duration>0){"Faixa indisponível"}
+            NeroTrackDurations.record("youtube:"+hit.id,info.duration)
             val candidates=info.audioStreams.filter{stream->
                 val uri=Uri.parse(stream.content)
                 stream.isUrl&&stream.deliveryMethod==DeliveryMethod.PROGRESSIVE_HTTP&&uri.scheme=="https"&&
