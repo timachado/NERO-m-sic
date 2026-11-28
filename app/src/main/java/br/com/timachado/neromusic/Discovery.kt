@@ -166,16 +166,21 @@ internal fun openYouTubeMusic(context: Context, query: String): Boolean {
 @Composable
 internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Boolean = false, localTracks:List<Track> = emptyList(), favoriteIds:Set<String> = emptySet(), onlineFavorites:List<OnlineRef> = emptyList(), onRadio:(List<Track>)->Unit = {}, onSearch:(String)->Unit = {}, onSearchFocus:()->Unit={onSearch("")}, onNativeQueue:(List<MediaItem>,Int)->Unit={_,_->}, onPlay:(MediaItem)->Unit,livePlayer:androidx.media3.common.Player?=null) {
     val context = LocalContext.current
+    var showIntelligence by remember { mutableStateOf(false) }
     var showReleases by remember { mutableStateOf(false) }
     var showDatedReleases by remember { mutableStateOf(false) }
     var showAlbums by remember { mutableStateOf(false) }
     var albumGenre by remember { mutableStateOf("Todos") }
     var selectedAlbum by remember { mutableStateOf<NativeCollection?>(null) }
-    androidx.activity.compose.BackHandler(enabled=(showReleases||showDatedReleases||showAlbums||selectedAlbum!=null)&&!offline){
-        if(selectedAlbum!=null)selectedAlbum=null else if(showAlbums)showAlbums=false else if(showDatedReleases)showDatedReleases=false else showReleases=false
+    androidx.activity.compose.BackHandler(enabled=(showIntelligence||showReleases||showDatedReleases||showAlbums||selectedAlbum!=null)&&!offline){
+        if(selectedAlbum!=null)selectedAlbum=null else if(showAlbums)showAlbums=false else if(showDatedReleases)showDatedReleases=false else if(showReleases)showReleases=false else showIntelligence=false
     }
     selectedAlbum?.let{album->
         key(album.url){NativeAlbumScreen(album,canPlay,onBack={selectedAlbum=null},onQueue=onNativeQueue)}
+        return
+    }
+    if(showIntelligence&&!offline){
+        NeroIntelligenceScreen(onlineFavorites,localTracks,favoriteIds,canPlay,onBack={showIntelligence=false},onQueue=onNativeQueue,onSearch=onSearch,onAlbum={selectedAlbum=it},onRadio=onRadio,onPlay=onPlay)
         return
     }
     if(showAlbums&&!offline){
@@ -224,13 +229,9 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
             }
             if (!searchOnly) item {
                 PremiumDiscovery(onSearch=onSearch)
-                NeroRadarShelf(onlineFavorites,onSearch)
+                NeroIntelligenceEntry(onOpen={showIntelligence=true})
                 NeroTogetherShelf(canPlay,onNativeQueue,livePlayer)
                 DigitalChartsShelf(onSearch=onSearch,canPlay=canPlay,onQueue=onNativeQueue)
-                NeroReplayShelf(onSearch)
-                OnlineDiscoveryShelf(onlineFavorites,canPlay,onNativeQueue,onSearch=onSearch,onAlbum={selectedAlbum=it})
-                PersonalRecommendations(localTracks, favoriteIds, canPlay, onPlay)
-                RadioShelf(localTracks,favoriteIds,canPlay,onRadio)
             }
             if (NativeMusicCatalog.enabled && !searchOnly) item {
                 Card(onClick={showDatedReleases=true},modifier=Modifier.fillMaxWidth()){
