@@ -362,7 +362,10 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
             }else null)
         }
     }
-    CompositionLocalProvider(LocalNeroNowPlaying provides NeroNowPlaying(nowId,playing,buffering,playbackError!=null,open={playerAlbum=null;playerArtist=null;fullPlayer=true})) {
+    val savedIndex=rememberNeroSavedIndex()
+    val currentLocal=tracks.firstOrNull{it.id.toString()==nowId}
+    val savedDestinations=savedIndex.destinations(nowOpenRef,currentLocal?.id)
+    CompositionLocalProvider(LocalNeroSavedIndex provides savedIndex,LocalNeroNowPlaying provides NeroNowPlaying(nowId,playing,buffering,playbackError!=null,open={playerAlbum=null;playerArtist=null;fullPlayer=true})) {
     Scaffold(containerColor = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize().safeDrawingPadding(), bottomBar = {
         if (playerAlbum==null && playerArtist==null && !fullPlayer && !showEq && !showLyrics && !showQueue) Column {
             if (nowId.isNotEmpty()) Row(Modifier.fillMaxWidth().background(SurfaceDark).clickable { showAccount=false;fullPlayer = true }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -372,6 +375,9 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                     Text(displayArtistName(artist), color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
+                }
+                if(currentLocal!=null||nowOpenRef!=null)IconButton(onClick={if(currentLocal!=null)addLocal=currentLocal else addOnline=nowOpenRef}){
+                    Icon(if(savedDestinations.isNotEmpty())Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,contentDescription=savedPlaylistLabel(savedDestinations)?:"Adicionar à playlist",tint=if(savedDestinations.isNotEmpty())Green else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { controller?.let(::toggleNeroPlayback) }) { Icon(if (playRequested) Icons.Default.Pause else Icons.Default.PlayArrow, if(playRequested)"Pausar" else "Reproduzir", tint = Green) }
                 IconButton(enabled=nextAvailable,onClick = { controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()} }) { Icon(Icons.Default.SkipNext, "Próxima") }
@@ -451,7 +457,7 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
                 onRelatedQueue={queue,index->controller?.let{p->if(queue.isNotEmpty()){p.shuffleModeEnabled=false;p.repeatMode=Player.REPEAT_MODE_OFF;p.setMediaItems(queue,index,0L);p.prepare();p.play()}}},
                 favorite=nowId in favorites||onlineFavorites.getOrDefault(emptyList()).any{it.id==nowOpenRef?.id},shuffle=shuffle,repeat=repeat,ready=controller!=null,error=playbackError,nextAvailable=nextAvailable,
                 onClose={fullPlayer=false},onFavorite={if(currentTrack!=null)toggle(nowId) else nowOpenRef?.let{toggleOnline(it)}},
-                canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
+                savedPlaylists=savedDestinations,canSave=currentTrack!=null||nowOpenRef!=null,onSave={if(currentTrack!=null)addLocal=currentTrack else addOnline=nowOpenRef},
                 onSeek={if(NeroPlaybackAccess.allowed())controller?.seekTo(it)},onPlayPause={controller?.let(::toggleNeroPlayback)},onRetry={controller?.let(::retryNeroPlayback)},
                 onPrevious={if(NeroPlaybackAccess.allowed())controller?.seekToPreviousMediaItem()},onNext={controller?.let{if(it.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)&&it.hasNextMediaItem())it.seekToNextMediaItem()}} ,
                 onShuffle={if(NeroPlaybackAccess.allowed())controller?.let{it.shuffleModeEnabled=!it.shuffleModeEnabled}},
