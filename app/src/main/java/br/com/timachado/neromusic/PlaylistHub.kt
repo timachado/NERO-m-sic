@@ -94,6 +94,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         lists=result.getOrDefault(emptyList());failed=result.isFailure;loading=false
     }
     val durations by NeroTrackDurations.durations.collectAsState()
+    val premium=rememberOfflinePremium()
     LoadPlaylistDurations(lists.flatMap{it.songIds},ready)
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
@@ -139,7 +140,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
             if(!artistFilter&&!albumFilter&&"Downloads".contains(term,true))item{
                 Row(Modifier.fillMaxWidth().clickable(onClick=onDownloads),verticalAlignment=Alignment.CenterVertically){
                     Box(Modifier.size(66.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant ),contentAlignment=Alignment.Center){Icon(Icons.Default.Download,null,tint=MaterialTheme.colorScheme.primary ,modifier=Modifier.size(30.dp))}
-                    Column(Modifier.weight(1f).padding(start=12.dp)){Text("Downloads",fontSize=17.sp,fontWeight=FontWeight.Medium);Text("Ouvir offline",fontSize=12.sp,color=Color.LightGray)}
+                    Column(Modifier.weight(1f).padding(start=12.dp)){Text("Downloads",fontSize=17.sp,fontWeight=FontWeight.Medium);Text(if(premium)"Ouvir offline" else "Ouça offline com Premium",fontSize=12.sp,color=Color.LightGray)}
                 }
             }
             if(artistFilter){
