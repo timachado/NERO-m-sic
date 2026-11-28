@@ -1,0 +1,24 @@
+name: NERO AI - isolated verification
+on:
+  push:
+    branches: ['feature/nero-ai-2']
+    paths: ['.github/workflows/nero-ai-check.yml', 'app/**']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compile and test without provider activation or commercial signing
+        env:
+          NERO_IDENTIFY_ENABLED: 'false'
+        run: gradle :app:assembleRelease :app:lintRelease :app:testReleaseUnitTest --no-daemon
