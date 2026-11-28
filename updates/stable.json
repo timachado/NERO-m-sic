@@ -2,10 +2,10 @@
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
   "published": true,
-  "versionCode": 225,
-  "versionName": "1.2.4",
-  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.2.4/NERO-Music.apk",
-  "sha256": "ffb051604a830afaddf658364fde1e577205900a358afde862cd2b80a9f03665",
-  "publishedAt": "2026-11-28T15:20:21Z",
-  "releaseNotes": "• NERO Intelligence 2.0: DNA musical e modos de recomendação.\n• Playlist Intelligence: sugestões para playlists e renovação das recomendações.\n• Smart Save: indicador de músicas já salvas em playlists.\n• Quick Save: adição direta à playlist pela busca.\n"
+  "versionCode": 226,
+  "versionName": "1.2.5",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.2.5/NERO-Music.apk",
+  "sha256": "6663697f16dd303ea4cfc5ed58b125bc3ecb6c2be7678a7372b8adf6adef480d",
+  "publishedAt": "2026-11-28T15:49:34Z",
+  "releaseNotes": "• Playlist Intelligence: toque na capa ou no título para reproduzir músicas recomendadas.\n• Botão + independente para adicionar à playlist.\n• Indicador de reprodução e fila contínua de recomendações.\n"
 }
