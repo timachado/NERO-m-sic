@@ -156,7 +156,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(12.dp)){
                 TextButton(onClick={privacyPage=NeroPrivacyPage.DATA}){Icon(Icons.Default.Shield,null);Spacer(Modifier.width(8.dp));Text("Privacidade e seus dados")}
-                TextButton(onClick={privacyPage=NeroPrivacyPage.TERMS}){Icon(Icons.Default.Description,null);Spacer(Modifier.width(8.dp));Text("Informações de uso")}
+                TextButton(onClick={privacyPage=NeroPrivacyPage.TERMS}){Icon(Icons.Default.Description,null);Spacer(Modifier.width(8.dp));Text("Termos de uso")}
                 TextButton(onClick={privacyPage=NeroPrivacyPage.ACCOUNT}){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Solicitar exclusão da conta")}
             }
         }
