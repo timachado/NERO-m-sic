@@ -2,10 +2,10 @@
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
   "published": true,
-  "versionCode": 220,
-  "versionName": "1.1.3",
-  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.1.3/NERO-Music.apk",
-  "sha256": "7e7aae398dcce93b76602eafb419853fe750fb37cbaa0e007568c851e0a86790",
-  "publishedAt": "2026-11-28T12:22:22Z",
-  "releaseNotes": "• NERO Quick Save: experiência premium para salvar músicas em várias playlists e nas músicas curtidas.\n• Prévia com capa, título e artista, busca instantânea e coleções utilizadas recentemente.\n• Seleção animada, resposta tátil e integração com o tema do NERO Studio.\n• Sincronização da biblioteca existente e proteção contra referências duplicadas.\n"
+  "versionCode": 225,
+  "versionName": "1.2.4",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.2.4/NERO-Music.apk",
+  "sha256": "ffb051604a830afaddf658364fde1e577205900a358afde862cd2b80a9f03665",
+  "publishedAt": "2026-11-28T15:20:21Z",
+  "releaseNotes": "• NERO Intelligence 2.0: DNA musical e modos de recomendação.\n• Playlist Intelligence: sugestões para playlists e renovação das recomendações.\n• Smart Save: indicador de músicas já salvas em playlists.\n• Quick Save: adição direta à playlist pela busca.\n"
 }
