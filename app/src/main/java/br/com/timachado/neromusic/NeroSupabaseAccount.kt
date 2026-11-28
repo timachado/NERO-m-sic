@@ -112,7 +112,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             }
         }
         user?.let{NeroStudioEntry(it.uid,enabled=!busy)}
-        if(user!=null)NeroConnectShelf()
+        // NERO Connect Wi-Fi pairing remains experimental; do not expose in commercial accounts.
         Text("Notificações",fontSize=20.sp,fontWeight=FontWeight.Bold)
         NeroUpdateNotificationPreference()
         Text("Reprodução",fontSize=20.sp,fontWeight=FontWeight.Bold)
@@ -139,11 +139,24 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
                 Text("Arquivos já baixados não são alterados.",fontSize=12.sp,color=Color.LightGray)
             }
         }
+        user?.let{connected->
+            val presenceRevision by NeroPresence.revision.collectAsState()
+            val presenceEnabled=remember(connected.uid,presenceRevision){NeroPresence.enabled(context,connected.uid)}
+            Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){
+                    Text("Compartilhar atividade do aplicativo")
+                    Text("Opcional: registra uma instalação aleatória e o último uso para estatísticas. Não envia músicas, localização ou histórico. Ao desligar, solicita remoção do registro; dados antigos expiram em até 90 dias.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked=presenceEnabled,onCheckedChange={enabled->
+                    if(!NeroPresence.setEnabled(context,connected.uid,enabled))notice="Não foi possível salvar a preferência."
+                })
+            }
+        }
         Text("Privacidade e suporte",fontSize=20.sp,fontWeight=FontWeight.Bold)
         Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),modifier=Modifier.fillMaxWidth()){
             Column(Modifier.padding(12.dp)){
                 TextButton(onClick={privacyPage=NeroPrivacyPage.DATA}){Icon(Icons.Default.Shield,null);Spacer(Modifier.width(8.dp));Text("Privacidade e seus dados")}
-                TextButton(onClick={privacyPage=NeroPrivacyPage.TERMS}){Icon(Icons.Default.Description,null);Spacer(Modifier.width(8.dp));Text("Informações de uso")}
+                TextButton(onClick={privacyPage=NeroPrivacyPage.TERMS}){Icon(Icons.Default.Description,null);Spacer(Modifier.width(8.dp));Text("Termos de uso")}
                 TextButton(onClick={privacyPage=NeroPrivacyPage.ACCOUNT}){Icon(Icons.Default.ManageAccounts,null);Spacer(Modifier.width(8.dp));Text("Solicitar exclusão da conta")}
             }
         }

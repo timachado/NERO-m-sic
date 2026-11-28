@@ -113,7 +113,7 @@ class NeroUpdateWorker(c:Context,p:WorkerParameters):CoroutineWorker(c,p){
     }
 }
 @Composable
-internal fun NeroUpdateNotice(){
+internal fun NeroUpdateNotice(showDialog:Boolean=true){
     val context=LocalContext.current
     val resume=rememberNeroCommerceResume()
     val current by NeroUpdateInstaller.state.collectAsState()
@@ -127,7 +127,7 @@ internal fun NeroUpdateNotice(){
         }
         catch(e:CancellationException){throw e}catch(_:Exception){}
     }
-    current?.let{state->
+    current?.takeIf{showDialog}?.let{state->
         val u=state.update
         val downloading=state.phase==NeroInstallPhase.DOWNLOADING
         val verifying=state.phase==NeroInstallPhase.VERIFYING
@@ -189,6 +189,24 @@ internal fun NeroUpdateNotificationPreference(){
                 enabled=it;NeroAppUpdates.setNotifications(context,it)
                 if(it&&Build.VERSION.SDK_INT>=33&&!allowed)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
             })
+        }
+        var catalogueEnabled by remember(resume){mutableStateOf(NeroCatalogueAlerts.enabled(context))}
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            Text("Novidades na grade e descobertas musicais",modifier=Modifier.weight(1f))
+            Switch(checked=catalogueEnabled,onCheckedChange={
+                catalogueEnabled=it
+                NeroCatalogueAlerts.setEnabled(context,it)
+                if(it&&Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            })
+        }
+        Text("Seleção musical consultada periodicamente, sem usar seu histórico. Datas de lançamento não verificadas.",style=MaterialTheme.typography.bodySmall)
+        if(catalogueEnabled&&!NeroRadarAlerts.permitted(context)){
+            TextButton(onClick={
+                if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else NeroAppUpdates.openNotificationSettings(context)
+            }){Text("Permitir avisos da grade")}
         }
         Text("Versão instalada: "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE,style=MaterialTheme.typography.bodySmall)
         if(enabled){
