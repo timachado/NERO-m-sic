@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -86,6 +87,42 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
     var editorOpen by remember(key){mutableStateOf(false)}
     var editorText by remember(key){mutableStateOf("")}
     val currentKey by rememberUpdatedState(key)
+    val aiUid by NeroSupabase.activeUid.collectAsState()
+    val aiReady by NeroSupabase.identityReady.collectAsState()
+    var aiConfirm by remember(key,aiUid,aiReady){mutableStateOf(false)}
+    var aiBusy by remember(key,aiUid,aiReady){mutableStateOf(false)}
+    var aiNotice by remember(key,aiUid,aiReady){mutableStateOf<String?>(null)}
+    var aiJob by remember(key,aiUid,aiReady){mutableStateOf<Job?>(null)}
+    var aiDraft by remember(key,aiUid,aiReady){mutableStateOf(false)}
+    var pendingAudio by remember{mutableStateOf<Pair<String,String>?>(null)}
+    DisposableEffect(key,aiUid,aiReady){onDispose{aiJob?.cancel()}}
+    val audioPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
+        val target=pendingAudio;pendingAudio=null
+        if(uri!=null&&target!=null&&target.first==currentKey&&aiReady&&NeroSupabase.activeUid.value==target.second&&!busy&&!aiBusy){
+            aiBusy=true;aiNotice="Transcrevendo o áudio…"
+            aiJob=scope.launch{
+                try{
+                    val transcript=NeroLyricsAiClient.transcribe(context,target.second,uri)
+                    if(target.first==currentKey&&NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==target.second){
+                        editorText=transcript;aiDraft=true;editorOpen=true
+                        aiNotice="Transcrição aproximada por IA. Confira as palavras e a faixa antes de salvar."
+                    }
+                }catch(e:CancellationException){throw e}
+                catch(_:Exception){aiNotice="Transcrição indisponível. Use WAV PCM mono de 16 kHz, até cinco minutos, e tente novamente."}
+                finally{aiBusy=false}
+            }
+        }
+    }
+    if(aiConfirm)AlertDialog(onDismissRequest={aiConfirm=false},title={Text("Transcrever áudio com IA")},
+        text={Text("Selecione uma gravação própria ou que você possa enviar para transcrição. O arquivo será enviado ao serviço de IA. Use WAV PCM mono de 16 kHz, até cinco minutos. A transcrição pode conter erros; confira o texto antes de associá-lo à música.")},
+        confirmButton={TextButton(onClick={
+            aiConfirm=false
+            val owner=aiUid
+            if(owner!=null&&aiReady&&!busy&&!aiBusy&&NeroLyricsAiClient.enabled){
+                pendingAudio=key to owner
+                audioPicker.launch(arrayOf("audio/wav","audio/x-wav","audio/vnd.wave"))
+            }
+        }){Text("Selecionar áudio")}},dismissButton={TextButton(onClick={aiConfirm=false}){Text("Cancelar")}})
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri ->
         val target=pendingKey;pendingKey=null
         if(uri!=null&&target!=null){
@@ -103,8 +140,9 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         loading=true
         try {
             val result=withContext(Dispatchers.IO){
-                val imported=runCatching{parseLyrics(lyricFile(context,key).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
-                if(imported.any{it.text.isNotBlank()}) imported to "Arquivo importado"
+                val stored=runCatching{lyricFile(context,key).readFully().toString(Charsets.UTF_8)}.getOrDefault("")
+                val imported=parseLyrics(stored)
+                if(imported.any{it.text.isNotBlank()}) imported to if(stored.startsWith("[source:NERO_AI_TRANSCRIPT]"))"Transcrição aproximada por IA · revisada pelo usuário" else "Arquivo importado"
                 else {
                     val embedded=if(localUri!=null)runCatching{
                         context.contentResolver.openInputStream(localUri)?.use{readEmbeddedLyrics(it)}
@@ -132,14 +170,16 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         catch(e:LyricsAuthException){onlineNotice="O serviço de letras exige ativação de acesso."}
         catch(_:Exception){onlineNotice="Serviço de letras temporariamente indisponível."}
     }
-    if(editorOpen)NeroLyricsEditor(editorText,position,duration,playing,onTogglePlay,busy,onRestart=if(fullControls){{onSeek(0L)}}else null,onDismiss={editorOpen=false},onSave={value->
+    if(editorOpen)NeroLyricsEditor(editorText,position,duration,playing,onTogglePlay,busy,onRestart=if(fullControls){{onSeek(0L)}}else null,onDismiss={editorOpen=false;aiDraft=false},onSave={value->
         val target=key
-        if(!busy&&target==currentKey){
+        val fromAi=aiDraft
+        val owner=aiUid
+        if(!busy&&target==currentKey&&(!fromAi||(aiReady&&owner!=null&&NeroSupabase.activeUid.value==owner))){
             busy=true
             scope.launch{
                 try{
                     val parsed=withContext(Dispatchers.IO){
-                        val bytes=value.toByteArray(Charsets.UTF_8)
+                        val bytes=(if(fromAi)"[source:NERO_AI_TRANSCRIPT]\n"+value else value).toByteArray(Charsets.UTF_8)
                         require(bytes.size<=MAX_LYRICS)
                         val result=parseLyrics(value)
                         require(result.any{it.text.isNotBlank()})
@@ -147,7 +187,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
                         try{stream.write(bytes);file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
                         result
                     }
-                    if(target==currentKey){lines=parsed;source="Letra salva no aparelho";editorOpen=false;notice=null;importRevision++}
+                    if(target==currentKey){lines=parsed;source=if(fromAi)"Transcrição aproximada por IA · revisada pelo usuário" else "Letra salva no aparelho";editorOpen=false;aiDraft=false;notice=null;importRevision++}
                 }catch(e:CancellationException){throw e}
                 catch(_:Exception){if(target==currentKey)notice="Não foi possível salvar a letra."}
                 finally{busy=false}
@@ -175,6 +215,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         source?.let{Text(it,color=Color.LightGray,fontSize=11.sp)}
         onlineNotice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
         notice?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+        aiNotice?.let{Text(it,color=MaterialTheme.colorScheme.secondary,fontSize=12.sp)}
         if(loading){
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Spacer(Modifier.weight(1f))
@@ -183,13 +224,21 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         }else if(lines.isEmpty()){
             Spacer(Modifier.weight(1f))
             Text("Nenhuma letra disponível no momento. Importe um arquivo LRC/TXT ou insira sua letra.",color=Color.LightGray)
-            OutlinedButton(enabled=!busy&&mediaId.isNotBlank(),onClick={editorText="";editorOpen=true},modifier=Modifier.fillMaxWidth()){Text("Inserir e sincronizar letra")}
+            if(NeroLyricsAiClient.enabled){
+                if(aiBusy){
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    TextButton(onClick={aiJob?.cancel();aiNotice=null}){Text("Cancelar transcrição")}
+                }else Button(enabled=!busy&&aiReady&&aiUid!=null&&mediaId.isNotBlank(),onClick={aiConfirm=true},modifier=Modifier.fillMaxWidth()){
+                    Icon(Icons.Default.AutoAwesome,null);Spacer(Modifier.width(8.dp));Text("Transcrever com IA")
+                }
+            }
+            OutlinedButton(enabled=!busy&&!aiBusy&&mediaId.isNotBlank(),onClick={editorText="";aiDraft=false;editorOpen=true},modifier=Modifier.fillMaxWidth()){Text("Inserir e sincronizar letra")}
             if(BuildConfig.DEBUG)TextButton(enabled=durationSeconds>0&&onlineNotice!="Buscando letra online…",onClick={onlineRevision++}){Text("Buscar letra novamente")}
             Button(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
             Spacer(Modifier.weight(1f))
         }else {
             if(!synced&&source!="LRCLIB · consulta online")TextButton(enabled=!busy&&duration>0&&mediaId.isNotBlank(),onClick={
-                editorText=lines.joinToString("\n"){it.text};editorOpen=true
+                editorText=lines.joinToString("\n"){it.text};aiDraft=source?.startsWith("Transcrição aproximada por IA")==true;editorOpen=true
             }){Text("Sincronizar esta letra")}
             LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){
             itemsIndexed(lines){index,line->
