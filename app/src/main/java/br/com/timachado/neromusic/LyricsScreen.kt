@@ -177,7 +177,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         catch(e:LyricsAuthException){onlineNotice="O serviço de letras exige ativação de acesso."}
         catch(_:Exception){onlineNotice="Serviço de letras temporariamente indisponível."}
     }
-    if(editorOpen)NeroLyricsEditor(editorText,position,duration,playing,onTogglePlay,busy,onRestart=if(fullControls){{onSeek(0L)}}else null,onDismiss={editorOpen=false;aiDraft=false},onSave={value->
+    if(editorOpen)NeroLyricsEditor(editorText,position,duration,playing,onTogglePlay,busy,onRestart=if(fullControls){{onSeek(0L)}}else null,aiDraft=aiDraft,onDismiss={editorOpen=false;aiDraft=false},onSave={value->
         val target=key
         val fromAi=aiDraft
         val owner=aiUid
