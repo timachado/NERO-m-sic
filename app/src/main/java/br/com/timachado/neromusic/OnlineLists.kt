@@ -56,6 +56,8 @@ internal fun saveOnlineLists(context:Context,lists:List<OnlineList>){
     val bytes=data.toString().toByteArray(Charsets.UTF_8);require(bytes.size<=4*1024*1024)
     val file=listFile(context);val out=file.startWrite()
     try{out.write(bytes);file.finishWrite(out)}catch(e:Exception){file.failWrite(out);throw e}
+    val prefs=context.getSharedPreferences("nero_library",Context.MODE_PRIVATE)
+    prefs.edit().putLong("online_playlist_revision",prefs.getLong("online_playlist_revision",0L)+1L).apply()
 }
 @Composable
 internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<MediaItem>,Int,Boolean)->Unit,onSearch:(String)->Unit={},initialSelection:String?=null,createOnOpen:Boolean=false,onCreated:()->Unit={},offlineState:OfflineState=OfflineState(),onDownloadPlaylist:(List<OpenTrack>)->Unit={}){
