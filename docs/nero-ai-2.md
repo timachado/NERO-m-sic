@@ -22,3 +22,6 @@ Reuse NeroIntelligence, DNA, playlist recommendations, Quick Save, existing acco
 4. Verify lyrics exact version and timestamps, no hallucinated verses, unavailable fallback and offline/local import.
 5. Verify account switch, entitlement, quota, privacy, and no paid activation without owner approval.
 6. Preserve existing checkout, license, Supabase production, and approved functions.
+
+## Client integration progress
+A feature-branch Compose screen and cancellable HTTPS transport now target the existing configured NERO Supabase project at `/functions/v1/nero-identify`, with the existing user JWT and publishable key. Build flag `NERO_IDENTIFY_ENABLED` defaults to false. No server function, provider token, quota allocation, production database changes or activation have been deployed. The screen only requests microphone access after explicit consent and does not start automatically after permission grant. Recognition result links to existing catalog search. The release-candidate workflow is unchanged. Before activating, verify backend authorization, cost limits and audio retention contract. Android compilation and device validation remain pending.
