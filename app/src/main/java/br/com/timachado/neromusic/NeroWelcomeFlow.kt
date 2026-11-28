@@ -39,9 +39,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 private const val WELCOME_REVISION=1
-private val Aurora=Color(0xFFC1ABFF)
-private val Ink=Color(0xFF0B0B10)
-private val Mist=Color(0xFFB1B1BE)
+private val Aurora=Color(NeroPlayerTheme.AURORA.primary)
+private val Electric=Color(NeroPlayerTheme.AURORA.secondary)
+private val Ink=Color(NeroPlayerTheme.AURORA.background)
+private val Mist=Color(0xFFD1D5DB)
 private fun welcomePrefs(c:Context)=c.getSharedPreferences("nero_welcome_v1",Context.MODE_PRIVATE)
 
 /** Three full-screen stages. Consent is never inferred from terms or notifications. */
@@ -70,7 +71,9 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
     if(permissionPending)return true
     val page=privacyPage
     if(page!=null){
-        NeroPrivacyDialog(page,onClose={privacyPage=null})
+        MaterialTheme(colorScheme=NeroPlayerTheme.AURORA.scheme()){
+            NeroPrivacyDialog(page,onClose={privacyPage=null})
+        }
         return true
     }
     val uid=accountUid
@@ -109,9 +112,9 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
     val heading=when(stage){1->"A música é sua.\nA experiência também.";2->"Não perca o que\nacabou de chegar.";else->"Sua privacidade.\nSeu controle."}
     val eyebrow=when(stage){1->"SEU SOM. SEU UNIVERSO.";2->"SEMPRE UM PASSO À FRENTE";else->"CONFIANÇA POR PRINCÍPIO"}
     Dialog(onDismissRequest={dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false,decorFitsSystemWindows=false)){
-        MaterialTheme(colorScheme=darkColorScheme(primary=Aurora,onPrimary=Ink,background=Ink,surface=Color(0xFF14121B),onSurface=Color.White)){
+        MaterialTheme(colorScheme=NeroPlayerTheme.AURORA.scheme()){
             Surface(Modifier.fillMaxSize(),color=Ink){
-                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171022),Ink,Ink))).windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets(bottom=safeNavBottom))).padding(horizontal=24.dp,vertical=16.dp)){
+                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(NeroPlayerTheme.AURORA.panel).copy(alpha=.78f),Ink,Ink))).windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets(bottom=safeNavBottom))).padding(horizontal=24.dp,vertical=16.dp)){
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                         Text("NERO MUSIC",fontWeight=FontWeight.Bold,letterSpacing=2.sp,color=Color.White,fontSize=14.sp)
                         Text("0"+stage+" / 03",color=Mist,fontSize=12.sp)
@@ -121,7 +124,7 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(bodyScroll),verticalArrangement=Arrangement.Center){
                         Spacer(Modifier.height(12.dp))
                         AuroraHero(stage)
-                        Text(eyebrow,color=Aurora,fontWeight=FontWeight.SemiBold,fontSize=10.sp,letterSpacing=1.6.sp)
+                        Text(eyebrow,color=Electric,fontWeight=FontWeight.SemiBold,fontSize=10.sp,letterSpacing=1.6.sp)
                         Spacer(Modifier.height(8.dp))
                         Text(heading,fontSize=32.sp,lineHeight=36.sp,fontWeight=FontWeight.Bold,color=Color.White)
                         Spacer(Modifier.height(14.dp))
@@ -172,7 +175,7 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
                     Row(Modifier.fillMaxWidth().padding(top=10.dp,bottom=4.dp),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
                         for(i in 1..3){
                             val w by animateFloatAsState(if(stage==i)24f else 6f,tween(220),label="welcome progress")
-                            Box(Modifier.padding(horizontal=3.dp).width(w.dp).height(5.dp).background(if(stage==i)Aurora else Color(0xFF373342),CircleShape))
+                            Box(Modifier.padding(horizontal=3.dp).width(w.dp).height(5.dp).background(if(stage==i)Aurora else Color(NeroPlayerTheme.AURORA.panel),CircleShape))
                         }
                     }
                 }
@@ -184,8 +187,8 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
 
 @Composable private fun WelcomeFeature(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector){
     Row(Modifier.fillMaxWidth().padding(vertical=5.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-        Icon(icon,contentDescription=null,tint=Aurora,modifier=Modifier.size(20.dp))
-        Text(label,color=Color(0xFFE5E1EE),style=MaterialTheme.typography.bodyMedium)
+        Icon(icon,contentDescription=null,tint=Electric,modifier=Modifier.size(20.dp))
+        Text(label,color=Color(0xFFF2F5F7),style=MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -194,13 +197,13 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
         Canvas(Modifier.fillMaxSize()){
             val r=size.minDimension*.49f
             val center=Offset(size.width/2,size.height/2)
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF8055EC).copy(alpha=.35f),Color.Transparent),center,r),radius=r,center=center)
-            for(ratio in listOf(.51f,.70f,.88f))drawCircle(Aurora.copy(alpha=.16f),radius=r*ratio,center=center,style=Stroke(1.dp.toPx()))
+            drawCircle(Brush.radialGradient(listOf(Electric.copy(alpha=.17f),Color.Transparent),center,r),radius=r,center=center)
+            for(ratio in listOf(.51f,.70f,.88f))drawCircle(Electric.copy(alpha=.20f),radius=r*ratio,center=center,style=Stroke(1.dp.toPx()))
             if(stage==1){
                 val heights=listOf(.16f,.32f,.52f,.78f,.52f,.92f,.62f,.34f,.19f)
                 heights.forEachIndexed{i,h->
                     val x=center.x+(i-4)*r*.13f
-                    drawLine(Aurora,Offset(x,center.y-r*h/2),Offset(x,center.y+r*h/2),strokeWidth=4.dp.toPx(),cap=StrokeCap.Round)
+                    drawLine(if(i%3==0)Electric else Aurora,Offset(x,center.y-r*h/2),Offset(x,center.y+r*h/2),strokeWidth=4.dp.toPx(),cap=StrokeCap.Round)
                 }
             }
         }
