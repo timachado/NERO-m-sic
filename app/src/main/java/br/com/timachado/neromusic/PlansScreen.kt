@@ -98,6 +98,10 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             listOf("Player de música e busca","Reprodução aleatória","Login Google","Favoritos e playlists","Sincronização básica da biblioteca","NERO Radar","NERO DJ · degustação","NERO Together · participar por convite").forEach { PlanFeature(it,true) }
             PlanFeature("Smart Mix, Daily Mix e Discovery online",NativeMusicCatalog.enabled)
             if(!NativeMusicCatalog.enabled)Text("Recursos online indisponíveis nesta versão.",fontSize=12.sp,color=Color.LightGray)
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                Icon(Icons.Default.Lock,null,tint=premiumCyan,modifier=Modifier.size(20.dp))
+                Text("Downloads offline · exclusivo Premium",fontSize=14.sp,color=Color.LightGray)
+            }
             Text("Ouça em modo aleatório e avance para a próxima faixa. Voltar e arrastar a barra da música são recursos Premium.",fontSize=12.sp,color=Color.LightGray)
         }
         Column(Modifier.fillMaxWidth().border(1.dp,premiumGreen,RoundedCornerShape(16.dp)).background(panel,RoundedCornerShape(16.dp)).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -116,6 +120,14 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             }
             subscription?.planLabel?.let{Text("Seu plano: "+it,fontSize=13.sp)}
             if(checking||activating)LinearProgressIndicator(Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth().background(premiumGreen.copy(alpha=.10f),RoundedCornerShape(12.dp)).padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                Icon(Icons.Default.DownloadForOffline,null,tint=premiumGreen,modifier=Modifier.size(28.dp))
+                Column(Modifier.weight(1f)){
+                    Text("Downloads para ouvir offline",fontSize=15.sp,fontWeight=FontWeight.Bold,color=premiumGreen)
+                    Text("Sua música, onde você estiver.",fontSize=12.sp,color=Color.LightGray)
+                }
+                Icon(if(premium)Icons.Default.CheckCircle else Icons.Default.WorkspacePremium,null,tint=premiumGreen,modifier=Modifier.size(20.dp))
+            }
             listOf("Tudo do Free","Reprodução na ordem escolhida","Voltar, repetir e ajustar posição","Controle da fila","NERO DJ · mixes personalizados","NERO Studio · temas exclusivos","Personalização avançada do player","NERO Replay 365","NERO Smart Library","Backup e exportação avançada","Smart Mix e Daily Mix avançados").forEach { PlanFeature(it,premium) }
             PlanFeature("NERO Together · criar salas e sincronizar músicas",premium)
             PlanFeature("Suporte prioritário · previsto",false)
@@ -166,7 +178,7 @@ internal fun PlansScreen(onBack:()->Unit,modifier:Modifier=Modifier,canPlayToget
             Text("O site confirma os valores, disponibilidade e pagamentos.",color=Color.LightGray,fontSize=13.sp)
             if(siteError)Text("Não foi possível abrir o pagamento. Verifique sua conexão e tente novamente.",color=Color.LightGray,fontSize=12.sp)
         }
-        Text("O Premium NERO Music é uma assinatura independente. Downloads sujeitos à disponibilidade e às permissões de cada faixa.",fontSize=12.sp,color=Color.LightGray)
+        Text("O Premium NERO Music é uma assinatura independente. A disponibilidade de downloads varia conforme a música.",fontSize=12.sp,color=Color.LightGray)
         OutlinedButton(onClick=onBack,modifier=Modifier.fillMaxWidth()){Text("Voltar")}
     }
 }
