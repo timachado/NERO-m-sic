@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun NeroLyricsEditor(initial:String,position:Long,duration:Long,playing:Boolean,onTogglePlay:()->Unit,
-    saving:Boolean,onRestart:(()->Unit)?,onDismiss:()->Unit,onSave:(String)->Unit){
+    saving:Boolean,onRestart:(()->Unit)?,aiDraft:Boolean=false,onDismiss:()->Unit,onSave:(String)->Unit){
     var draft by remember{mutableStateOf(initial)}
     var words by remember{mutableStateOf<List<String>?>(null)}
     var marks by remember{mutableStateOf<List<Long>>(emptyList())}
@@ -25,7 +25,7 @@ internal fun NeroLyricsEditor(initial:String,position:Long,duration:Long,playing
         text={
             Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
                 if(timing==null){
-                    Text("Insira sua letra própria ou uma letra que você possa utilizar. Nenhum texto é criado automaticamente.")
+                    Text(if(aiDraft)"Transcrição aproximada por IA. Revise cada verso antes de salvar." else "Insira sua letra própria ou uma letra que você possa utilizar.")
                     OutlinedTextField(value=draft,onValueChange={if(it.length<=262144){draft=it;error=null}},modifier=Modifier.fillMaxWidth().heightIn(min=100.dp,max=240.dp),
                         minLines=4,label={Text("Um verso por linha")},enabled=!saving)
                     OutlinedButton(enabled=!saving&&duration>0&&draft.isNotBlank(),onClick={
