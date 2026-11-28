@@ -11,8 +11,8 @@ android {
         applicationId = "br.com.timachado.neromusic"
         minSdk = 26
         targetSdk = 35
-        versionCode = 221
-        versionName = "1.2.0"
+        versionCode = 222
+        versionName = "1.2.1"
         buildConfigField("boolean", "FULL_FEATURES", "true")
         // TV casting remains on experiment/nero-tv-build-197, not in commercial builds.
         buildConfigField("boolean", "NERO_TV_EXPERIMENT", "false")
