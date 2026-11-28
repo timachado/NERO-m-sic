@@ -19,6 +19,7 @@ android {
         buildConfigField("boolean", "NERO_FCM_DIAGNOSTIC", "false")
         // Fail closed until the backend and its quota/privacy controls are approved.
         buildConfigField("boolean", "NERO_IDENTIFY_ENABLED", (System.getenv("NERO_IDENTIFY_ENABLED")=="true").toString())
+        buildConfigField("boolean", "NERO_LYRICS_AI_ENABLED", (System.getenv("NERO_LYRICS_AI_ENABLED")=="true").toString())
         val supabaseUrl = System.getenv("NERO_SUPABASE_URL").orEmpty().trim().trimEnd('/')
         val supabaseKey = System.getenv("NERO_SUPABASE_PUBLISHABLE_KEY").orEmpty().trim()
         val googleClient = System.getenv("NERO_GOOGLE_CLIENT_ID").orEmpty().trim()
