@@ -2,10 +2,10 @@
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
   "published": true,
-  "versionCode": 208,
-  "versionName": "1.0.1",
-  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.0.1/NERO-Music.apk",
-  "sha256": "d26ddea9a2d29699e50cdc0c501ec99e6d2bfc1dd866a7615e804341c7dfc15e",
-  "publishedAt": "2026-11-27T07:44:04Z",
-  "releaseNotes": "• Download de atualizações diretamente no NERO Music, com progresso e verificação do APK.\n• Instalação da versão oficial pelo instalador do Android.\n• Novidades da versão exibidas antes de baixar.\n• Recuperação de avisos de atualização e diagnóstico da inscrição no Firebase.\n• Reconexão dos avisos e identificação da build instalada.\n"
+  "versionCode": 211,
+  "versionName": "1.0.4",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.0.4/NERO-Music.apk",
+  "sha256": "09081657c3ddfdaf441bda9ed9ee40a1ea41322c32188dc39d6c599ef69db6b3",
+  "publishedAt": "2026-11-28T00:53:32Z",
+  "releaseNotes": "• Correção do player na central de notificações do Android.\n• Ao encerrar o aplicativo, o player sai da primeira puxada e permanece disponível para retomada na central expandida.\n• Reprodução em segundo plano preservada.\n"
 }
