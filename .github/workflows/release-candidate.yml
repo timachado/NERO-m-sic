@@ -9,6 +9,7 @@ on:
       - candidate/nero-player-212
       - candidate/nero-player-213
       - candidate/nero-player-214
+      - candidate/nero-player-215
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   release:
-    if: github.ref == 'refs/heads/candidate/nero-player-214' || github.ref == 'refs/heads/candidate/nero-player-213' || github.ref == 'refs/heads/candidate/nero-player-212' || github.ref == 'refs/heads/candidate/nero-player-211' || github.ref == 'refs/heads/candidate/nero-player-210' || github.ref == 'refs/heads/feat/nero-connect' || github.ref == 'refs/heads/experiment/nero-together-sync' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    if: github.ref == 'refs/heads/candidate/nero-player-215' || github.ref == 'refs/heads/candidate/nero-player-214' || github.ref == 'refs/heads/candidate/nero-player-213' || github.ref == 'refs/heads/candidate/nero-player-212' || github.ref == 'refs/heads/candidate/nero-player-211' || github.ref == 'refs/heads/candidate/nero-player-210' || github.ref == 'refs/heads/feat/nero-connect' || github.ref == 'refs/heads/experiment/nero-together-sync' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     environment: nero-release
     runs-on: ubuntu-latest
     timeout-minutes: 30
