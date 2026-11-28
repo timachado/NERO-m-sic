@@ -50,13 +50,14 @@ internal fun onlinePlaylistSummary(songs:List<OnlineRef>,durations:Map<String,Lo
 }
 @Composable
 internal fun LoadPlaylistDurations(ids:List<String>,enabled:Boolean=true){
-    val requested=remember(ids){ids.distinct().filter{it.startsWith("youtube:")}.take(40)}
+    val requested=remember(ids){ids.distinct().filter{it.startsWith("youtube:")}}
     LaunchedEffect(requested,enabled){
         if(!enabled)return@LaunchedEffect
-        for(id in requested){
+        for(id in requested.filter{NeroTrackDurations.durations.value[it]==null}.take(40)){
             if(NeroTrackDurations.durations.value[id]!=null)continue
             try{NativeMusicCatalog.durationSeconds(id.removePrefix("youtube:"))?.let{NeroTrackDurations.record(id,it)}}
             catch(e:CancellationException){throw e}catch(_:Exception){}
+            kotlinx.coroutines.delay(150L)
         }
     }
 }
