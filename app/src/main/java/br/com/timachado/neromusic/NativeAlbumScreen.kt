@@ -29,6 +29,8 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
     val accountUid by NeroSupabase.activeUid.collectAsState()
     val accountReady by NeroSupabase.identityReady.collectAsState()
     val accountScope=rememberCoroutineScope()
+    val premium=rememberOfflinePremium()
+    val premiumOffer=LocalNeroPremiumOffer.current
     val savedAlbums=rememberSavedAlbums()
     val savedKey=savedAlbumKey(album.url)
     val saved=savedKey!=null&&savedAlbums.any{savedAlbumKey(it.url)==savedKey}
@@ -68,6 +70,7 @@ internal fun NativeAlbumScreen(album:NativeCollection,canPlay:Boolean,onBack:()-
                 Button(enabled=canPlay&&songs.isNotEmpty(),onClick={songs.firstOrNull()?.let{play(it)}}){Text("Reproduzir")}
                 OutlinedButton(enabled=songs.isNotEmpty(),onClick={adding=songs.map{it.reference()}}){Text("Salvar faixas")}
             }
+            if(songs.isNotEmpty()&&!premium)PremiumOfflineCard()
             if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
             if(failed){Text("Não foi possível carregar as faixas.");TextButton(onClick={retry++}){Text("Tentar novamente")}}
             else if(!busy&&songs.isEmpty())Text("Nenhuma faixa disponível.")
