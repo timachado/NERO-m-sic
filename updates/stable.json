@@ -2,10 +2,10 @@
   "applicationId": "br.com.timachado.neromusic",
   "channel": "stable",
   "published": true,
-  "versionCode": 211,
-  "versionName": "1.0.4",
-  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.0.4/NERO-Music.apk",
-  "sha256": "09081657c3ddfdaf441bda9ed9ee40a1ea41322c32188dc39d6c599ef69db6b3",
-  "publishedAt": "2026-11-28T00:53:32Z",
-  "releaseNotes": "• Correção do player na central de notificações do Android.\n• Ao encerrar o aplicativo, o player sai da primeira puxada e permanece disponível para retomada na central expandida.\n• Reprodução em segundo plano preservada.\n"
+  "versionCode": 218,
+  "versionName": "1.1.1",
+  "downloadUrl": "https://github.com/timachado/NERO-m-sic/releases/download/v1.1.1/NERO-Music.apk",
+  "sha256": "e1038ab5359489548380edff2ef0278c3445c5417f98108d3ea3ec51cef0025c",
+  "publishedAt": "2026-11-28T11:28:54Z",
+  "releaseNotes": "• Nova experiência de boas-vindas Aurora Neon, com ajuste de espaçamento inferior.\n• Avisos opcionais de novidades na grade musical e atualizações oficiais.\n• Controle de privacidade e compartilhamento opcional de estatísticas básicas de atividade.\n• Recursos experimentais de pareamento Wi-Fi ocultados da interface comercial.\n"
 }
