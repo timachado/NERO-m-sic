@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun NeroLyricsEditor(initial:String,position:Long,duration:Long,playing:Boolean,onTogglePlay:()->Unit,
-    saving:Boolean,onDismiss:()->Unit,onSave:(String)->Unit){
+    saving:Boolean,onRestart:(()->Unit)?,onDismiss:()->Unit,onSave:(String)->Unit){
     var draft by remember{mutableStateOf(initial)}
     var words by remember{mutableStateOf<List<String>?>(null)}
     var marks by remember{mutableStateOf<List<Long>>(emptyList())}
@@ -37,6 +37,7 @@ internal fun NeroLyricsEditor(initial:String,position:Long,duration:Long,playing
                     Text("Posição: "+android.text.format.DateUtils.formatElapsedTime(position.coerceAtLeast(0)/1000))
                     Text(timing.getOrNull(marks.size)?:"Todos os versos marcados.")
                     OutlinedButton(enabled=!saving,onClick=onTogglePlay,modifier=Modifier.fillMaxWidth()){Text(if(playing)"Pausar" else "Reproduzir")}
+                    if(onRestart!=null)TextButton(enabled=!saving,onClick={onRestart();marks=emptyList();error=null}){Text("Voltar ao início da música")}
                     Button(enabled=!saving&&marks.size<timing.size&&duration>0,onClick={
                         if(position !in 0..duration||marks.lastOrNull()?.let{position<=it}==true)
                             error="Avance a reprodução antes de marcar o próximo verso."
