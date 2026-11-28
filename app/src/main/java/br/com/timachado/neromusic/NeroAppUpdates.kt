@@ -113,7 +113,7 @@ class NeroUpdateWorker(c:Context,p:WorkerParameters):CoroutineWorker(c,p){
     }
 }
 @Composable
-internal fun NeroUpdateNotice(){
+internal fun NeroUpdateNotice(showDialog:Boolean=true){
     val context=LocalContext.current
     val resume=rememberNeroCommerceResume()
     val current by NeroUpdateInstaller.state.collectAsState()
@@ -127,7 +127,7 @@ internal fun NeroUpdateNotice(){
         }
         catch(e:CancellationException){throw e}catch(_:Exception){}
     }
-    current?.let{state->
+    current?.takeIf{showDialog}?.let{state->
         val u=state.update
         val downloading=state.phase==NeroInstallPhase.DOWNLOADING
         val verifying=state.phase==NeroInstallPhase.VERIFYING
