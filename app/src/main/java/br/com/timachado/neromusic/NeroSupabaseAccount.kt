@@ -112,7 +112,7 @@ internal fun NeroSupabaseAccount(onBack:()->Unit,modifier:Modifier=Modifier,favo
             }
         }
         user?.let{NeroStudioEntry(it.uid,enabled=!busy)}
-        if(user!=null)NeroConnectShelf()
+        // NERO Connect Wi-Fi pairing remains experimental; do not expose in commercial accounts.
         Text("Notificações",fontSize=20.sp,fontWeight=FontWeight.Bold)
         NeroUpdateNotificationPreference()
         Text("Reprodução",fontSize=20.sp,fontWeight=FontWeight.Bold)
