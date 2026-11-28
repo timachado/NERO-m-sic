@@ -102,6 +102,9 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
         }
     }
     val active=lists.getOrDefault(emptyList()).firstOrNull{it.id==selected}
+    val durations by NeroTrackDurations.durations.collectAsState()
+    val premium=rememberOfflinePremium()
+    LoadPlaylistDurations(active?.songs?.map{it.id}.orEmpty(),ready)
     var deleteTarget by remember(uid,ready){mutableStateOf<OnlineList?>(null)}
     var deleting by remember(uid,ready){mutableStateOf(false)}
     deleteTarget?.let{target->AlertDialog(onDismissRequest={if(!deleting)deleteTarget=null},title={Text("Excluir playlist?")},
@@ -230,26 +233,25 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
         item{
             if(active!=null)IconButton(onClick={selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}
             Text(active?.name?:"Playlists online",fontSize=23.sp,fontWeight=FontWeight.Bold)
-            Text("Referências musicais e áudios autorizados. As faixas disponíveis tocam no NERO Music.",fontSize=12.sp,color=Color.LightGray)
+            if(active!=null)Text(onlinePlaylistSummary(active.songs,durations),fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(active==null){TextButton(onClick={create=true}){Icon(Icons.Default.Add,null);Text("Criar playlist")};OutlinedButton(enabled=ready&&!importingShared,onClick={importShared.launch(arrayOf("application/json","application/octet-stream","text/plain"))},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.FileOpen,null);Spacer(Modifier.width(8.dp));Text(if(importingShared)"Importando…" else "Importar playlist NERO")}}
             if(active==null)NeroSmartLibrary(uid,ready,lists.getOrDefault(emptyList())){next->lists=Result.success(next);notice="Coleções inteligentes salvas."}
             if(active!=null){
                 TextButton(enabled=ready&&!renaming,onClick={renameName=active.name;renameTarget=active.id}){Icon(Icons.Default.Edit,null);Spacer(Modifier.width(8.dp));Text("Renomear playlist")}
                 TextButton(enabled=ready&&!deleting,onClick={deleteTarget=active}){Icon(Icons.Default.Delete,null,tint=MaterialTheme.colorScheme.error);Spacer(Modifier.width(8.dp));Text("Excluir playlist",color=MaterialTheme.colorScheme.error)}
                 OutlinedButton(enabled=active.songs.isNotEmpty(),onClick={sharing=SharedPlaylist(active.name,active.songs.map{sharedSong(it)})},modifier=Modifier.fillMaxWidth()){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Compartilhar playlist")}
-                Text("${queue.size} de ${active.songs.size} faixas disponíveis para reprodução interna.",fontSize=12.sp,color=Color.LightGray)
                 val eligible=active.songs.mapNotNull{ref->ref.openAudio?.takeIf{allowed(it)&&ref.id=="commons:"+it.id}}.distinctBy{it.id}
                 val ready=eligible.count{audio->saved.any{it==audio}}
                 val busy=offlineState.active!=null||offlineState.batchTotal>0
-                if(eligible.isNotEmpty()){
+                if(!premium)PremiumOfflineCard()
+                else if(eligible.isNotEmpty()){
                     OutlinedButton(enabled=!busy&&ready<eligible.size,onClick={onDownloadPlaylist(eligible)},modifier=Modifier.fillMaxWidth()){
                         Icon(if(ready==eligible.size)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=MaterialTheme.colorScheme.primary )
-                        Spacer(Modifier.width(8.dp));Text(if(ready==eligible.size)"Faixas autorizadas baixadas" else "Baixar playlist ($ready/${eligible.size})")
+                        Spacer(Modifier.width(8.dp));Text(if(ready==eligible.size)"Músicas baixadas" else "Baixar músicas ($ready/${eligible.size})")
                     }
                     if(offlineState.batchTotal>0)Text("Preparando downloads: "+offlineState.batchDone+"/"+offlineState.batchTotal,fontSize=12.sp,color=Color.LightGray)
                     offlineState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
                 }
-                if(eligible.size<active.songs.size)Text("Download disponível apenas para as faixas com autorização offline.",fontSize=11.sp,color=Color.LightGray)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                     Button(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,0,false)},modifier=Modifier.weight(1f)){Text("Reproduzir")}
                     OutlinedButton(enabled=canPlay&&queue.isNotEmpty(),onClick={onPlay(queue,queue.indices.random(),true)},modifier=Modifier.weight(1f)){Text("Aleatório")}
@@ -264,7 +266,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
             Card(onClick={selected=l.id},modifier=Modifier.fillMaxWidth()){
                 Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
                     Icon(Icons.Default.QueueMusic,null,tint=MaterialTheme.colorScheme.primary )
-                    Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(l.name,fontWeight=FontWeight.Bold);Text("${l.songs.size} referências",fontSize=12.sp)}
+                    Column(Modifier.weight(1f).padding(horizontal=10.dp)){Text(l.name,fontWeight=FontWeight.Bold);Text(onlinePlaylistSummary(l.songs,durations),fontSize=12.sp)}
                     Icon(Icons.Default.KeyboardArrowRight,"Abrir")
                 }
             }
