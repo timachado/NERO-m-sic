@@ -83,6 +83,8 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
     var notice by remember(key){mutableStateOf<String?>(null)}
     var pendingKey by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
+    var editorOpen by remember(key){mutableStateOf(false)}
+    var editorText by remember(key){mutableStateOf("")}
     val currentKey by rememberUpdatedState(key)
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri ->
         val target=pendingKey;pendingKey=null
@@ -130,6 +132,28 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         catch(e:LyricsAuthException){onlineNotice="O serviço de letras exige ativação de acesso."}
         catch(_:Exception){onlineNotice="Serviço de letras temporariamente indisponível."}
     }
+    if(editorOpen)NeroLyricsEditor(editorText,position,duration,playing,onTogglePlay,busy,onDismiss={editorOpen=false},onSave={value->
+        val target=key
+        if(!busy&&target==currentKey){
+            busy=true
+            scope.launch{
+                try{
+                    val parsed=withContext(Dispatchers.IO){
+                        val bytes=value.toByteArray(Charsets.UTF_8)
+                        require(bytes.size<=MAX_LYRICS)
+                        val result=parseLyrics(value)
+                        require(result.any{it.text.isNotBlank()})
+                        val file=lyricFile(context,target);val stream=file.startWrite()
+                        try{stream.write(bytes);file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
+                        result
+                    }
+                    if(target==currentKey){lines=parsed;source="Letra salva no aparelho";editorOpen=false;notice=null;importRevision++}
+                }catch(e:CancellationException){throw e}
+                catch(_:Exception){if(target==currentKey)notice="Não foi possível salvar a letra."}
+                finally{busy=false}
+            }
+        }
+    })
     val synced=lines.firstOrNull()?.at!=null
     val active=if(synced)activeLyricIndex(lines,position)else -1
     var follow by remember(key){mutableStateOf(true)}
@@ -158,16 +182,22 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             Spacer(Modifier.weight(1f))
         }else if(lines.isEmpty()){
             Spacer(Modifier.weight(1f))
-            Text("Nenhuma letra disponível no momento. Você também pode importar um LRC com tempos ou TXT autorizado.",color=Color.LightGray)
+            Text("Nenhuma letra disponível no momento. Importe um arquivo LRC/TXT ou insira sua letra.",color=Color.LightGray)
+            OutlinedButton(enabled=!busy&&mediaId.isNotBlank(),onClick={editorText="";editorOpen=true},modifier=Modifier.fillMaxWidth()){Text("Inserir e sincronizar letra")}
             if(BuildConfig.DEBUG)TextButton(enabled=durationSeconds>0&&onlineNotice!="Buscando letra online…",onClick={onlineRevision++}){Text("Buscar letra novamente")}
             Button(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
             Spacer(Modifier.weight(1f))
-        }else LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){
+        }else {
+            if(!synced&&source!="LRCLIB · consulta online")TextButton(enabled=!busy&&duration>0&&mediaId.isNotBlank(),onClick={
+                editorText=lines.joinToString("\n"){it.text};editorOpen=true
+            }){Text("Sincronizar esta letra")}
+            LazyColumn(state=state,modifier=Modifier.weight(1f).fillMaxWidth(),contentPadding=PaddingValues(vertical=18.dp),verticalArrangement=Arrangement.spacedBy(15.dp)){
             itemsIndexed(lines){index,line->
                 Text(line.text.ifBlank{"♪"},fontSize=if(index==active)26.sp else 21.sp,fontWeight=if(index==active)FontWeight.Bold else FontWeight.Normal,
                     color=if(index==active)MaterialTheme.colorScheme.primary else Color.LightGray,
                     modifier=Modifier.fillMaxWidth().clickable(enabled=fullControls&&line.at!=null&&duration>0){line.at?.let{onSeek(it.coerceIn(0,duration))}})
             }
+        }
         }
         Slider(value=if(duration>0)(position.toFloat()/duration).coerceIn(0f,1f)else 0f,onValueChange={if(duration>0)onSeek((it*duration).toLong())},enabled=duration>0&&fullControls)
         FilledIconButton(onClick=onTogglePlay,enabled=mediaId.isNotBlank(),modifier=Modifier.align(Alignment.CenterHorizontally).size(56.dp)){
