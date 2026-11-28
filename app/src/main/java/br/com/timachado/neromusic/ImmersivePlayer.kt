@@ -55,6 +55,7 @@ internal fun ImmersivePlayer(
 ){
     val premiumSignal by NeroPlaybackAccess.premium.collectAsState()
     val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
+    val premiumOffer=LocalNeroPremiumOffer.current
     var fullscreen by rememberSaveable{mutableStateOf(false)}
     LaunchedEffect(videoMode){if(!videoMode)fullscreen=false}
     if(fullscreen&&videoMode&&videoPlayer!=null){
@@ -125,7 +126,7 @@ internal fun ImmersivePlayer(
     if(showStudio&&preferenceReady)preferenceUid?.let{owner->NeroStudioDialog(owner,onClose={showStudio=false})}
     val preferenceScope=rememberCoroutineScope()
     var downloadInfo by remember(mediaId){mutableStateOf(false)}
-    if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta faixa não tem autorização de download offline fornecida ao NERO. As músicas com licença de download ficam na categoria Áudio livre.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
+    if(downloadInfo)AlertDialog(onDismissRequest={downloadInfo=false},title={Text("Ouvir offline")},text={Text(if(track!=null)"Este arquivo já está no aparelho. Você pode ouvi-lo sem internet." else "Esta música está disponível para ouvir online.")},confirmButton={TextButton(onClick={downloadInfo=false}){Text("Entendi")}})
     var sharing by remember(title,artist){mutableStateOf(false)}
     if(sharing)TrackShareDialog(title,artist,shareRef,remoteCover,onClose={sharing=false})
     var seekPreview by remember(title,artist,track?.id,fullControls){mutableStateOf<Float?>(null)}
@@ -165,7 +166,7 @@ internal fun ImmersivePlayer(
                     IconButton(onClick={showMore=true}){Icon(Icons.Default.MoreVert,"Mais opções")}
                     DropdownMenu(expanded=showMore,onDismissRequest={showMore=false}){
                         DropdownMenuItem(text={Text("Compartilhar música")},enabled=title.isNotBlank(),onClick={showMore=false;sharing=true},leadingIcon={Icon(Icons.Default.Share,null)})
-                        DropdownMenuItem(text={Text("Baixar para ouvir offline")},enabled=title.isNotBlank(),onClick={showMore=false;if(offlineTrack!=null&&allowed(offlineTrack)){if(offlineState.saved.any{it==offlineTrack})onOfflineOpen()else onOfflineSave(offlineTrack)}else if(nativeHit!=null){if(offlineState.nativeSaved.any{it.hit.id==nativeHit.id})onOfflineOpen()else onNativeSave(nativeHit)}else downloadInfo=true},leadingIcon={Icon(Icons.Default.Download,null)})
+                        DropdownMenuItem(text={Text(if(fullControls||track!=null)"Baixar para ouvir offline" else "Ouça offline com Premium")},enabled=title.isNotBlank(),onClick={showMore=false;if(!fullControls&&track==null){premiumOffer();return@DropdownMenuItem};if(offlineTrack!=null&&allowed(offlineTrack)){if(offlineState.saved.any{it==offlineTrack})onOfflineOpen()else onOfflineSave(offlineTrack)}else if(nativeHit!=null){if(offlineState.nativeSaved.any{it.hit.id==nativeHit.id})onOfflineOpen()else onNativeSave(nativeHit)}else downloadInfo=true},leadingIcon={Icon(Icons.Default.Download,null)})
                         DropdownMenuItem(text={Text(if(favorite)"Remover dos favoritos" else "Curtir música")},enabled=canSave,onClick={showMore=false;onFavorite()},leadingIcon={Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,null,tint=if(favorite)neon else Color.White)})
                         if(nativeHit!=null)DropdownMenuItem(text={Text(if(nativeHit.id in hiddenSongs)"Voltar a recomendar esta música" else "Não recomendar esta música")},enabled=preferenceReady,onClick={
                             showMore=false
@@ -281,10 +282,10 @@ internal fun ImmersivePlayer(
             if(nativeHit!=null){
                 val saved=offlineState.nativeSaved.any{it.hit.id==nativeHit.id}
                 val active=offlineState.nativeActive?.id==nativeHit.id
-                OutlinedButton(enabled=saved||(offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0),onClick={if(saved)onOfflineOpen()else onNativeSave(nativeHit)},modifier=Modifier.fillMaxWidth()){
-                    Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved)neon else aqua)
+                OutlinedButton(enabled=saved||(offlineState.active==null&&offlineState.nativeActive==null&&offlineState.batchTotal==0),onClick={if(saved)onOfflineOpen()else if(!fullControls)premiumOffer()else onNativeSave(nativeHit)},modifier=Modifier.fillMaxWidth()){
+                    Icon(if(saved)Icons.Default.CheckCircle else if(!fullControls)Icons.Default.Lock else Icons.Default.Download,null,tint=if(saved)neon else aqua)
                     Spacer(Modifier.width(8.dp))
-                    Text(if(saved)"Baixada · ouvir offline" else if(active)"Baixando "+(offlineState.progress*100).toInt()+"%" else "Baixar música")
+                    Text(if(saved)"Baixada · ouvir offline" else if(active)"Baixando "+(offlineState.progress*100).toInt()+"%" else if(!fullControls)"Ouça offline com Premium" else "Baixar música")
                 }
                 if(active)LinearProgressIndicator(progress={offlineState.progress},modifier=Modifier.fillMaxWidth())
                 offlineState.notice?.let{Text(it,fontSize=12.sp,color=Color.LightGray)}
