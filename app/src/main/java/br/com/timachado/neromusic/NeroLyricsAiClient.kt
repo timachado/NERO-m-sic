@@ -41,7 +41,7 @@ internal object NeroLyricsAiClient{
             check(session.uid==owner&&NeroSupabase.activeUid.value==owner&&NeroSupabase.identityReady.value)
             val req=Request.Builder().url(BuildConfig.SUPABASE_URL+"/functions/v1/nero-lyrics-ai")
                 .header("Authorization","Bearer "+session.access).header("apikey",BuildConfig.SUPABASE_KEY)
-                .header("Accept","application/json")
+                .header("Accept","application/json").header("x-nero-lyrics-consent","v1")
                 .post(audio.toRequestBody("audio/wav".toMediaType())).build()
             val text=suspendCancellableCoroutine<String>{cont->
                 val call=http.newCall(req);cont.invokeOnCancellation{call.cancel()}
