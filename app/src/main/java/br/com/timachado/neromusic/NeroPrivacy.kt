@@ -38,7 +38,7 @@ internal fun NeroPrivacyDialog(page:NeroPrivacyPage,onClose:()->Unit){
                     Text("Você pode sair da conta, revogar permissões nas configurações do Android e solicitar atendimento sobre dados pessoais. Limpar os dados do aplicativo também remove a biblioteca local e os downloads; isso não exclui a conta remota.")
                     Text("Atividade opcional",fontWeight=FontWeight.Bold)
                     Text("Se você permitir, registramos sua conta, um identificador aleatório por instalação e a data do último uso para estatísticas administrativas. Não enviamos localização, identificadores de hardware, faixas ou histórico de reprodução para essa finalidade. Você pode desligar o compartilhamento na conta; o aplicativo solicita a remoção do registro quando conectado. Registros sem atividade são removidos após 90 dias, pela rotina diária do servidor.")
-                    Text("Avisos de atualização são opcionais. Consulte o atendimento da T.I. Machado para informações sobre o tratamento dos seus dados.",fontSize=12.sp)
+                    Text("Avisos de atualização e descobertas da grade são opcionais e independentes. As descobertas consultam uma seleção pública do catálogo, sem utilizar seu histórico ou sua conta; o controle de itens já vistos é mantido no aparelho. As fontes externas recebem dados de conexão necessários à consulta. Consulte o atendimento da T.I. Machado para informações sobre o tratamento dos seus dados.",fontSize=12.sp)
                 }
                 NeroPrivacyPage.TERMS->{
                     Text("Uso do aplicativo",fontWeight=FontWeight.Bold)
