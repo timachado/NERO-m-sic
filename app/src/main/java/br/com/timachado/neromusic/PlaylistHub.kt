@@ -24,7 +24,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList())
+private data class HubPlaylist(val id:String,val title:String,val count:Int,val page:Int,val covers:List<String>,val local:List<Track> = emptyList(),val songIds:List<String> = emptyList(),val localSeconds:List<Long?> = emptyList())
 @Composable
 internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavoriteCount:Int,onAccount:()->Unit,onFavorites:()->Unit,onDownloads:()->Unit,onArtist:(String)->Unit={},onAlbum:(NativeCollection)->Unit={},onOpen:(Int,String?)->Unit,onSearch:()->Unit,onCreate:()->Unit){
     val context=LocalContext.current
@@ -86,13 +86,15 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
         val result=withContext(Dispatchers.IO){
             val index=tracks.associateBy{it.id}
             runCatching{
-                (if(ready)scopedOnlineLists(context,uid)else emptyList()).asReversed().map{HubPlaylist(it.id,it.name,it.songs.size,7,it.songs.mapNotNull{song->song.coverUrl}.distinct().take(4))}+
-                mixes(context).asReversed().map{HubPlaylist(it.id,it.name,it.ids.size,1,emptyList(),it.ids.mapNotNull{ id->index[id]}.take(4))}+
+                (if(ready)scopedOnlineLists(context,uid)else emptyList()).asReversed().map{HubPlaylist(it.id,it.name,it.songs.size,7,it.songs.mapNotNull{song->song.coverUrl}.distinct().take(4),songIds=it.songs.map{song->song.id})}+
+                mixes(context).asReversed().map{HubPlaylist(it.id,it.name,it.ids.size,1,emptyList(),it.ids.mapNotNull{ id->index[id]}.take(4),localSeconds=it.ids.map{id->index[id]?.duration?.div(1000L)})}+
                 readSaved(context).asReversed().map{HubPlaylist(it.id,it.name,it.items.size,6,emptyList())}
             }
         }
         lists=result.getOrDefault(emptyList());failed=result.isFailure;loading=false
     }
+    val durations by NeroTrackDurations.durations.collectAsState()
+    LoadPlaylistDurations(lists.flatMap{it.songIds},ready)
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
             NeroHeaderProfile(onClick=onAccount)
@@ -167,7 +169,7 @@ internal fun PlaylistHub(tracks:List<Track>,onlineFavoriteCount:Int,localFavorit
                     else HubCover(row.covers)
                     Column(Modifier.weight(1f).padding(start=12.dp)){
                         Text(row.title,fontSize=17.sp,fontWeight=FontWeight.Medium,maxLines=2,overflow=TextOverflow.Ellipsis)
-                        Text((if(pinned)"Fixada · " else "")+"Playlist · "+row.count+" músicas"+(if(row.page==6)" · Importada" else ""),fontSize=12.sp,color=if(pinned)MaterialTheme.colorScheme.primary else Color.LightGray)
+                        Text((if(pinned)"Fixada · " else "")+"Playlist · "+row.count+" músicas"+(playlistDurationLabel(if(row.page==1)row.localSeconds else row.songIds.map{durations[it]})?.let{" · "+it}?:"")+(if(row.page==6)" · Importada" else ""),fontSize=12.sp,color=if(pinned)MaterialTheme.colorScheme.primary else Color.LightGray)
                     }
                     Box{
                         IconButton(onClick={options=true}){Icon(Icons.Default.MoreVert,"Opções da playlist")}
