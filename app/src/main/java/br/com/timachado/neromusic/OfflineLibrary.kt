@@ -40,6 +40,7 @@ internal class OfflineManager(private val context:Context){
     }
     private suspend fun runDownload(action:suspend ()->Unit){
         if(downloadJob!=null||_state.value.removing)return
+        if(!NeroPlaybackAccess.allowed()){notify(premiumOfflineMessage);return}
         val job=currentCoroutineContext()[Job]?:return
         downloadJob=job
         try{action()}
@@ -94,17 +95,21 @@ internal class OfflineManager(private val context:Context){
         runDownload{
         _state.update{it.copy(batchTotal=rows.size,batchDone=0,notice=null)}
         try{
+            val owner=NeroSupabase.activeUid.value
             for(track in rows){
                 currentCoroutineContext().ensureActive()
+                requireOfflinePremium(owner)
                 if(_state.value.saved.none{it==track})saveOne(track)
                 _state.update{it.copy(batchDone=it.batchDone+1)}
             }
             val count=rows.count{track->_state.value.saved.any{it==track}}
             _state.update{it.copy(notice="$count de "+rows.size+" faixas disponíveis offline.")}
-        }finally{_state.update{it.copy(batchTotal=0,batchDone=0)}}
+        }catch(_:OfflinePremiumRequired){notify(premiumOfflineMessage)}finally{_state.update{it.copy(batchTotal=0,batchDone=0)}}
         }
     }
     suspend fun saveNative(hit:NativeMusicHit){
+        if(!NeroPlaybackAccess.allowed()){notify(premiumOfflineMessage);return}
+        if(!nativeOfflineAuthorized(hit)){notify("Esta música está disponível para ouvir online.");return}
         if(_state.value.active!=null||_state.value.nativeActive!=null||_state.value.batchTotal>0||_state.value.removing)return
         runDownload{
         _state.update{it.copy(nativeActive=hit,progress=0f,notice=null)}
@@ -114,6 +119,7 @@ internal class OfflineManager(private val context:Context){
             check(rows.any{it.hit.id==hit.id})
             _state.update{it.copy(nativeSaved=rows,notice="Música disponível offline.")}
         }catch(e:CancellationException){throw e}
+        catch(_:OfflinePremiumRequired){notify(premiumOfflineMessage)}
         catch(_:WifiDownloadRequired){notify("Conecte-se ao Wi-Fi ou altere a preferência em Downloads.")}
         catch(_:Exception){_state.update{it.copy(notice="Não foi possível baixar esta música. Verifique a conexão e tente novamente.")}}
         finally{_state.update{it.copy(nativeActive=null,progress=0f)}}
@@ -128,6 +134,7 @@ internal class OfflineManager(private val context:Context){
             check(rows.any{it==track})
             _state.update{it.copy(saved=rows,notice="Música disponível offline.")}
         }catch(e:CancellationException){throw e}
+        catch(_:OfflinePremiumRequired){notify(premiumOfflineMessage)}
         catch(_:WifiDownloadRequired){notify("Conecte-se ao Wi-Fi ou altere a preferência em Downloads.")}
         catch(_:Exception){_state.update{it.copy(notice="Falha ao baixar. Confira o espaço livre e a conexão.")}}
         finally{_state.update{it.copy(active=null,progress=0f)}}
@@ -135,14 +142,16 @@ internal class OfflineManager(private val context:Context){
 }
 @Composable
 internal fun OfflinePlayerButton(track:OpenTrack?,local:Boolean,state:OfflineState,onSave:(OpenTrack)->Unit,onOpen:()->Unit,onInfo:()->Unit,enabled:Boolean){
+    val premium=rememberOfflinePremium()
+    val offer=LocalNeroPremiumOffer.current
     val saved=track!=null&&state.saved.any{it==track}
     val active=track!=null&&state.active?.id==track.id
-    val label=when{saved->"Baixada · ouvir offline";local->"Arquivo no aparelho";active->"Baixando "+(state.progress*100).toInt()+"%";else->"Baixar para ouvir offline"}
+    val label=when{saved->"Baixada · ouvir offline";local->"Arquivo no aparelho";active->"Baixando "+(state.progress*100).toInt()+"%";!premium->"Ouça offline com Premium";else->"Baixar para ouvir offline"}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
         OutlinedButton(enabled=enabled&&!active&&((state.active==null&&state.nativeActive==null&&state.batchTotal==0)||saved||track==null),onClick={
-            if(saved)onOpen()else if(track!=null&&allowed(track))onSave(track)else onInfo()
+            if(saved)onOpen()else if(local)onInfo()else if(!premium)offer()else if(track!=null&&allowed(track))onSave(track)else onInfo()
         },modifier=Modifier.fillMaxWidth()){
-            Icon(if(saved||local)Icons.Default.CheckCircle else Icons.Default.Download,null,tint=if(saved||local)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
+            Icon(if(saved||local)Icons.Default.CheckCircle else if(!premium)Icons.Default.Lock else Icons.Default.Download,null,tint=if(saved||local)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
             Spacer(Modifier.width(8.dp));Text(label)
         }
         if(active)LinearProgressIndicator(progress={state.progress},modifier=Modifier.fillMaxWidth())
@@ -151,17 +160,20 @@ internal fun OfflinePlayerButton(track:OpenTrack?,local:Boolean,state:OfflineSta
 }
 @Composable
 internal fun NativeDownloadIcon(hit:NativeMusicHit,state:OfflineState,onSave:(NativeMusicHit)->Unit,onOpen:()->Unit){
+    val premium=rememberOfflinePremium()
+    val offer=LocalNeroPremiumOffer.current
     val saved=state.nativeSaved.any{it.hit.id==hit.id}
     val active=state.nativeActive?.id==hit.id
     val busy=state.nativeActive!=null||state.active!=null||state.batchTotal>0
-    IconButton(enabled=saved||!busy,onClick={if(saved)onOpen()else onSave(hit)}){
+    IconButton(enabled=saved||!busy,onClick={if(saved)onOpen()else if(!premium)offer()else onSave(hit)}){
         if(active)CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp)
-        else Icon(if(saved)Icons.Default.CheckCircle else Icons.Default.Download,if(saved)"Baixada · abrir downloads" else "Baixar música",tint=if(saved)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
+        else Icon(if(saved)Icons.Default.CheckCircle else if(!premium)Icons.Default.Lock else Icons.Default.Download,if(saved)"Baixada · abrir downloads" else if(!premium)"Ouça offline com Premium" else "Baixar música",tint=if(saved)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary )
     }
 }
 @Composable
 internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit,onPlay:(List<MediaItem>,Int)->Unit,onWifiChange:(Boolean)->Unit={},onRemove:(String)->Unit={},onQualityChange:(Boolean)->Unit={},onCancelDownload:()->Unit={}){
     val context=androidx.compose.ui.platform.LocalContext.current
+    val premium=rememberOfflinePremium()
     val rows=state.saved
     var filter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     val visible=remember(rows,filter){
@@ -185,6 +197,7 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
     LazyColumn(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(10.dp),contentPadding=PaddingValues(bottom=16.dp)){
         item{
             Text("Downloads",fontSize=25.sp,fontWeight=FontWeight.Bold)
+            if(!premium)PremiumOfflineCard()
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){
                     Text("Baixar somente pelo Wi-Fi",fontWeight=FontWeight.Medium)
@@ -238,14 +251,14 @@ internal fun OfflineLibrary(state:OfflineState,canPlay:Boolean,onBrowse:()->Unit
                 Text((state.progress*100).toInt().toString()+"%",color=Color.LightGray)
             }
             state.notice?.let{Text(it,color=Color.LightGray,fontSize=12.sp)}
-            if(total==0)Card(modifier=Modifier.fillMaxWidth()){
+            if(total==0&&premium)Card(modifier=Modifier.fillMaxWidth()){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
                     Icon(Icons.Default.DownloadForOffline,null,tint=MaterialTheme.colorScheme.secondary ,modifier=Modifier.size(42.dp))
                     Text("Leve suas músicas com você",fontSize=19.sp,fontWeight=FontWeight.Bold)
                     Text("Baixe músicas para ouvir sem internet. As faixas salvas aparecem aqui.",color=Color.LightGray)
                     Button(onClick=onBrowse){Text("Encontrar músicas para baixar")}
                 }
-            }else TextButton(onClick=onBrowse){Text("Encontrar mais músicas")}
+            }else if(premium)TextButton(onClick=onBrowse){Text("Encontrar mais músicas")}
         }
         items(nativeVisible,key={"native:"+it.hit.id}){entry->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
