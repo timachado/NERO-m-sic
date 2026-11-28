@@ -111,7 +111,7 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
     Dialog(onDismissRequest={dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false,decorFitsSystemWindows=false)){
         MaterialTheme(colorScheme=darkColorScheme(primary=Aurora,onPrimary=Ink,background=Ink,surface=Color(0xFF14121B),onSurface=Color.White)){
             Surface(Modifier.fillMaxSize(),color=Ink){
-                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171022),Ink,Ink))).windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.navigationBarsIgnoringVisibility).union(WindowInsets(bottom=safeNavBottom))).padding(horizontal=24.dp,vertical=16.dp)){
+                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171022),Ink,Ink))).windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets(bottom=safeNavBottom))).padding(horizontal=24.dp,vertical=16.dp)){
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                         Text("NERO MUSIC",fontWeight=FontWeight.Bold,letterSpacing=2.sp,color=Color.White,fontSize=14.sp)
                         Text("0"+stage+" / 03",color=Mist,fontSize=12.sp)
