@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,7 +49,10 @@ internal fun SaveLocalTrackDialog(track:Track,onClose:()->Unit){
             if(loaded.isFailure)Text("Não foi possível ler as playlists.")
             else{
                 LazyColumn(Modifier.heightIn(max=180.dp)){items(loaded.getOrDefault(emptyList()),key={it.id}){mix->
-                    TextButton(onClick={save(mix.id)},modifier=Modifier.fillMaxWidth()){Text(mix.name)}
+                    TextButton(onClick={save(mix.id)},enabled=track.id !in mix.ids,modifier=Modifier.fillMaxWidth()){
+                        if(track.id in mix.ids){Icon(androidx.compose.material.icons.Icons.Default.CheckCircle,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(8.dp))}
+                        Text(mix.name+if(track.id in mix.ids)" · Já adicionada" else "")
+                    }
                 }}
                 OutlinedTextField(name,{name=it.take(80)},singleLine=true,label={Text("Nova playlist")})
             }
