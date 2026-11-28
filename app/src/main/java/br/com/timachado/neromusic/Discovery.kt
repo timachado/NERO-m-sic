@@ -200,6 +200,8 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
         return
     }
     val scope = rememberCoroutineScope()
+    val premium=rememberOfflinePremium()
+    val premiumOffer=LocalNeroPremiumOffer.current
     var query by remember { mutableStateOf("") }
     var submitted by remember { mutableStateOf<String?>(null) }
     var generation by remember { mutableIntStateOf(0) }
@@ -279,14 +281,16 @@ internal fun DiscoveryScreen(offline: Boolean, canPlay: Boolean, searchOnly:Bool
                     TextButton(onClick={if(!openBrowser(context,Uri.parse(track.source)))notice="Não foi possível abrir a fonte."}){Text("Fonte e licença")}
                     if(isSaved)Text("Salvo",color=MaterialTheme.colorScheme.primary,fontSize=12.sp)
                     else TextButton(enabled=saving==null,onClick={
+                        if(!NeroPlaybackAccess.allowed()){premiumOffer();return@TextButton}
                         saving=track.id;notice=null
                         scope.launch {
                             try { saveAudio(context,track);saved=downloaded(context);notice="Áudio salvo para ouvir offline." }
                             catch(e:CancellationException){throw e}
+                            catch(_:OfflinePremiumRequired){notice=premiumOfflineMessage}
                             catch(e:Exception){notice="Falha no download. Tente novamente."}
                             finally{saving=null}
                         }
-                    }){Text(if(saving==track.id)"Salvando…" else "Baixar")}
+                    }){Text(if(saving==track.id)"Salvando…" else if(!premium)"Premium" else "Baixar")}
                 }
             }
         }
