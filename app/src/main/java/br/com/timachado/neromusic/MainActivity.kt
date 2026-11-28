@@ -99,7 +99,6 @@ private fun timestamp(ms: Long): String {
 @Composable
 private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Unit,pipMode:Boolean,pipSupported:Boolean,onPip:()->Boolean) {
     val context = LocalContext.current
-    NeroUpdateNotice()
     val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) }
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
@@ -175,6 +174,8 @@ private fun NeroApp(incomingShare:String?,shareRevision:Int,onShareClosed:()->Un
         lifecycle?.addObserver(observer)
         onDispose{lifecycle?.removeObserver(observer)}
     }
+    val welcomeShowing=NeroWelcomeFlow(accountUid,accountReady,foreground,pipMode)
+    NeroUpdateNotice(showDialog=!welcomeShowing)
     val presenceRevision by NeroPresence.revision.collectAsState()
     LaunchedEffect(foreground,accountUid,accountReady,presenceRevision){
         val uid=accountUid ?: return@LaunchedEffect
