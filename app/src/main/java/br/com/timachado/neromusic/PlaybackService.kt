@@ -246,15 +246,21 @@ class PlaybackService : MediaLibraryService() {
         })
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
-        session.takeIf{controllerInfo.uid==android.os.Process.myUid()||controllerInfo.isTrusted}
+        session.takeIf{
+            controllerInfo.uid==android.os.Process.myUid()||controllerInfo.isTrusted||
+                // Media3 1.5.1 routes the legacy browser through an anonymous placeholder.
+                // This only selects the session; NeroCarLibrary.onConnect still authenticates
+                // the actual caller and every external library/playback command.
+                (controllerInfo.packageName==MediaSession.ControllerInfo.LEGACY_CONTROLLER_PACKAGE_NAME&&controllerInfo.uid<0)
+        }
     // Dismissing the task is an explicit exit. Home and screen lock do not call this.
     override fun onTaskRemoved(rootIntent: Intent?) {
         NeroSleepTimer.cancel()
         session?.player?.let { player ->
             NeroResumeStore.save(applicationContext,player)
             player.pause()
-            // Clear the active timeline but retain the persisted resume record.
-            player.clearMediaItems()
+            // IDLE removes Media3's active notification. Retain the timeline
+            // until release so SystemUI can convert its titled card to resumption.
             player.stop()
         }
         // Keep the session valid until Android destroys the service.
