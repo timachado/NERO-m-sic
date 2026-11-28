@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -303,6 +305,7 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 Text("NERO PLAYLIST INTELLIGENCE",color=MaterialTheme.colorScheme.secondary,style=MaterialTheme.typography.labelMedium,fontWeight=FontWeight.Bold)
                 Text("Músicas recomendadas",fontSize=22.sp,fontWeight=FontWeight.Bold)
                 Text("Com base nas músicas desta playlist",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Toque na música para ouvir ou no + para adicionar.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f)){
                         Text("Sugestões automáticas",style=MaterialTheme.typography.bodyMedium)
@@ -320,11 +323,24 @@ internal fun OnlineListsScreen(tracks:List<Track>,canPlay:Boolean,onPlay:(List<M
                 suggestionsNotice?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
             }
             items(visibleSuggestions,key={"suggestion:"+it.id}){hit->
+                val mediaId=hit.queueItem().mediaId
+                val nowPlaying=LocalNeroNowPlaying.current
+                fun playSuggestion(){
+                    if(!canPlay||!NeroSupabase.identityReady.value||NeroSupabase.activeUid.value!=uid)return
+                    if(nowPlaying.matches(mediaId)){nowPlaying.open();return}
+                    val position=visibleSuggestions.indexOfFirst{it.id==hit.id}
+                    if(position<0)return
+                    val recommendedQueue=visibleSuggestions.map{it.queueItem()}.withOrigin(PlaybackOrigin("mix","Recomendações · "+active.name,""))
+                    onPlay(recommendedQueue,position,false)
+                }
                 Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
-                    NeroArtwork(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)))
-                    Column(Modifier.weight(1f).padding(horizontal=10.dp)){
-                        Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium)
-                        Text(displayArtistName(hit.artist),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(enabled=canPlay,role=Role.Button,onClickLabel="Ouvir "+hit.title,onClick={playSuggestion()}).padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
+                        NeroArtwork(model=hit.thumbnail,contentDescription=null,contentScale=ContentScale.Crop,modifier=Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)))
+                        Column(Modifier.weight(1f).padding(horizontal=10.dp)){
+                            Text(hit.title,maxLines=2,overflow=TextOverflow.Ellipsis,fontWeight=FontWeight.Medium,color=nowTrackColor(mediaId))
+                            Text(displayArtistName(hit.artist),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            NowTrackStatus(mediaId)
+                        }
                     }
                     IconButton(enabled=ready&&addingSuggestion==null,onClick={
                         val owner=uid;val target=active.id;addingSuggestion=hit.id
