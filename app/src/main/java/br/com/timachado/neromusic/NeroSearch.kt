@@ -385,7 +385,11 @@ internal fun NeroSearch(tracks:List<Track>,canPlay:Boolean,onPlay:(Track)->Unit,
 private fun SearchTrackActions(onAdd:()->Unit,onShare:(()->Unit)?,canQueue:Boolean,onQueue:(Boolean)->Unit,saved:List<String> = emptyList()){
     var expanded by remember{mutableStateOf(false)}
     Row(verticalAlignment=Alignment.CenterVertically){
-        if(saved.isNotEmpty())IconButton(onClick=onAdd,modifier=Modifier.size(40.dp)){Icon(Icons.Default.CheckCircle,savedPlaylistLabel(saved),tint=MaterialTheme.colorScheme.primary)}
+        IconButton(onClick=onAdd,modifier=Modifier.size(48.dp)){
+            Icon(if(saved.isNotEmpty())Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,
+                savedPlaylistLabel(saved)?:"Adicionar à playlist",
+                tint=if(saved.isNotEmpty())MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Box{
         IconButton(onClick={expanded=true}){Icon(Icons.Default.MoreVert,"Mais opções da música",tint=MaterialTheme.colorScheme.primary)}
         DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){
