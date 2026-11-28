@@ -17,8 +17,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-// Foundation only: no UI entry point, no background listener and no network calls.
-// The future Identify screen must obtain explicit microphone consent first.
+// Bounded sample capture, no background listener and no network calls.
+// Identify screen obtains explicit microphone consent before calling this code.
 internal object NeroIdentifySample {
     const val SAMPLE_RATE = 16000
     const val SECONDS = 8
