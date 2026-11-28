@@ -112,6 +112,8 @@ internal suspend fun downloaded(context: Context): List<OpenTrack> = withContext
 }
 private val downloadLock=Mutex()
 internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)->Unit={}):Unit = downloadLock.withLock { withContext(Dispatchers.IO) {
+    val owner=NeroSupabase.activeUid.value
+    requireOfflinePremium(owner)
     check(allowed(t))
     val final = audioFile(context,t)
     val side = File(storage(context),t.id.toString()+".json")
@@ -129,6 +131,7 @@ internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)-
             val buffer = ByteArray(32768); var total = 0L
             while (true) {
                 currentCoroutineContext().ensureActive()
+                requireOfflinePremium(owner)
                 networkGuard.check()
                 val n = input.read(buffer); if (n < 0) break
                 total += n; check(total <= t.size && total <= maxBytes); output.write(buffer,0,n)
@@ -137,6 +140,7 @@ internal suspend fun saveAudio(context: Context, t: OpenTrack, progress:(Float)-
             check(total == t.size)
         } }
         networkGuard.check(force=true)
+        requireOfflinePremium(owner)
         meta.writeText(t.json().toString())
         check(partial.renameTo(final))
         check(meta.renameTo(side))
