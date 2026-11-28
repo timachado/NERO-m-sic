@@ -7,6 +7,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -28,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +48,10 @@ private fun welcomePrefs(c:Context)=c.getSharedPreferences("nero_welcome_v1",Con
 @Composable
 internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:Boolean,pipMode:Boolean):Boolean{
     val context=LocalContext.current
+    val hostView=LocalView.current
+    val density=LocalDensity.current
+    val hostNavBottom=with(density){(ViewCompat.getRootWindowInsets(hostView)?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0).toDp()}
+    val safeNavBottom=maxOf(hostNavBottom,24.dp)
     val prefs=remember(context){welcomePrefs(context)}
     var accepted by remember{mutableStateOf(prefs.getInt("terms_revision",0)>=WELCOME_REVISION)}
     var notificationChoice by remember{mutableStateOf(prefs.getBoolean("catalogue_choice_v1",false))}
@@ -100,15 +108,17 @@ internal fun NeroWelcomeFlow(accountUid:String?,accountReady:Boolean,foreground:
     }
     val heading=when(stage){1->"A música é sua.\nA experiência também.";2->"Não perca o que\nacabou de chegar.";else->"Sua privacidade.\nSeu controle."}
     val eyebrow=when(stage){1->"SEU SOM. SEU UNIVERSO.";2->"SEMPRE UM PASSO À FRENTE";else->"CONFIANÇA POR PRINCÍPIO"}
-    Dialog(onDismissRequest={dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false)){
+    Dialog(onDismissRequest={dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false,dismissOnClickOutside=false,decorFitsSystemWindows=false)){
         MaterialTheme(colorScheme=darkColorScheme(primary=Aurora,onPrimary=Ink,background=Ink,surface=Color(0xFF14121B),onSurface=Color.White)){
             Surface(Modifier.fillMaxSize(),color=Ink){
-                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171022),Ink,Ink))).safeDrawingPadding().padding(horizontal=24.dp,vertical=16.dp)){
+                Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF171022),Ink,Ink))).windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.navigationBarsIgnoringVisibility).union(WindowInsets(bottom=safeNavBottom))).padding(horizontal=24.dp,vertical=16.dp)){
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
                         Text("NERO MUSIC",fontWeight=FontWeight.Bold,letterSpacing=2.sp,color=Color.White,fontSize=14.sp)
                         Text("0"+stage+" / 03",color=Mist,fontSize=12.sp)
                     }
-                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.Center){
+                    val bodyScroll=rememberScrollState()
+                    LaunchedEffect(stage){bodyScroll.scrollTo(0)}
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(bodyScroll),verticalArrangement=Arrangement.Center){
                         Spacer(Modifier.height(12.dp))
                         AuroraHero(stage)
                         Text(eyebrow,color=Aurora,fontWeight=FontWeight.SemiBold,fontSize=10.sp,letterSpacing=1.6.sp)
