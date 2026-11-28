@@ -46,6 +46,8 @@ internal suspend fun removeNativeDownload(context:Context,id:String):Unit=withCo
     check(!meta.exists()||meta.delete())
 }
 internal suspend fun saveNativeAudio(context:Context,hit:NativeMusicHit,progress:(Float)->Unit):NativeOfflineTrack = withContext(Dispatchers.IO){
+    requireOfflinePremium(NeroSupabase.activeUid.value)
+    require(nativeOfflineAuthorized(hit))
     require(nativeOfflineId.matches(hit.id)&&NativeMusicCatalog.enabled)
     nativeOfflineCopy(context,hit.id)?.let{progress(1f);return@withContext it}
     val networkGuard=DownloadNetworkGuard(context)
