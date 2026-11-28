@@ -55,6 +55,8 @@ internal fun parseLyrics(text:String):List<LyricLine> {
 private fun lyricFile(context:Context,key:String)=AtomicFile(File(File(context.filesDir,"lyrics").apply{mkdirs()},key+".txt"))
 private fun lyricKey(mediaId:String,title:String,artist:String)=MessageDigest.getInstance("SHA-256")
     .digest((mediaId+"\u0000"+title+"\u0000"+artist).toByteArray()).joinToString(""){"%02x".format(it.toInt() and 255)}
+private fun aiLyricKey(key:String,owner:String)=key+"_ai_"+MessageDigest.getInstance("SHA-256")
+    .digest(owner.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it.toInt() and 255)}
 private suspend fun importLyrics(context:Context,uri:Uri,key:String):List<LyricLine> = withContext(Dispatchers.IO){
     val bytes=context.contentResolver.openInputStream(uri)?.use{input ->
         val out=java.io.ByteArrayOutputStream();val buffer=ByteArray(8192)
@@ -75,8 +77,10 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
     val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
     val scope=rememberCoroutineScope()
     val key=remember(mediaId,title,artist){lyricKey(mediaId,title,artist)}
-    var lines by remember(key){mutableStateOf(emptyList<LyricLine>())}
-    var source by remember(key){mutableStateOf<String?>(null)}
+    val aiUid by NeroSupabase.activeUid.collectAsState()
+    val aiReady by NeroSupabase.identityReady.collectAsState()
+    var lines by remember(key,aiUid,aiReady){mutableStateOf(emptyList<LyricLine>())}
+    var source by remember(key,aiUid,aiReady){mutableStateOf<String?>(null)}
     var loading by remember(key,localUri){mutableStateOf(true)}
     var importRevision by remember(key){mutableIntStateOf(0)}
     var onlineRevision by remember(key){mutableIntStateOf(0)}
@@ -84,11 +88,9 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
     var notice by remember(key){mutableStateOf<String?>(null)}
     var pendingKey by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
-    var editorOpen by remember(key){mutableStateOf(false)}
-    var editorText by remember(key){mutableStateOf("")}
+    var editorOpen by remember(key,aiUid,aiReady){mutableStateOf(false)}
+    var editorText by remember(key,aiUid,aiReady){mutableStateOf("")}
     val currentKey by rememberUpdatedState(key)
-    val aiUid by NeroSupabase.activeUid.collectAsState()
-    val aiReady by NeroSupabase.identityReady.collectAsState()
     var aiConfirm by remember(key,aiUid,aiReady){mutableStateOf(false)}
     var aiBusy by remember(key,aiUid,aiReady){mutableStateOf(false)}
     var aiNotice by remember(key,aiUid,aiReady){mutableStateOf<String?>(null)}
@@ -136,11 +138,16 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             }
         }
     }
-    LaunchedEffect(key,localUri,importRevision){
+    LaunchedEffect(key,localUri,importRevision,aiUid,aiReady){
         loading=true
         try {
             val result=withContext(Dispatchers.IO){
-                val stored=runCatching{lyricFile(context,key).readFully().toString(Charsets.UTF_8)}.getOrDefault("")
+                val manual=runCatching{lyricFile(context,key).readFully().toString(Charsets.UTF_8)}.getOrDefault("")
+                val owner=aiUid
+                val generated=if(manual.isBlank()&&aiReady&&owner!=null)
+                    runCatching{lyricFile(context,aiLyricKey(key,owner)).readFully().toString(Charsets.UTF_8)}.getOrDefault("")
+                else ""
+                val stored=manual.ifBlank{generated}
                 val imported=parseLyrics(stored)
                 if(imported.any{it.text.isNotBlank()}) imported to if(stored.startsWith("[source:NERO_AI_TRANSCRIPT]"))"Transcrição aproximada por IA · revisada pelo usuário" else "Arquivo importado"
                 else {
@@ -183,7 +190,8 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
                         require(bytes.size<=MAX_LYRICS)
                         val result=parseLyrics(value)
                         require(result.any{it.text.isNotBlank()})
-                        val file=lyricFile(context,target);val stream=file.startWrite()
+                        val saveKey=if(fromAi)aiLyricKey(target,requireNotNull(owner)) else target
+                        val file=lyricFile(context,saveKey);val stream=file.startWrite()
                         try{stream.write(bytes);file.finishWrite(stream)}catch(e:Exception){file.failWrite(stream);throw e}
                         result
                     }
@@ -203,7 +211,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
         Row(verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,"Voltar ao player")}
             Text("Letras",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-            IconButton(enabled=!busy&&!loading&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))}){Icon(Icons.Default.FileOpen,"Importar LRC ou TXT")}
+            IconButton(enabled=!busy&&!aiBusy&&!loading&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))}){Icon(Icons.Default.FileOpen,"Importar LRC ou TXT")}
         }
         Text(title,fontSize=21.sp,fontWeight=FontWeight.Bold)
         Text(displayArtistName(artist),color=Color.LightGray)
@@ -234,7 +242,7 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
             }
             OutlinedButton(enabled=!busy&&!aiBusy&&mediaId.isNotBlank(),onClick={editorText="";aiDraft=false;editorOpen=true},modifier=Modifier.fillMaxWidth()){Text("Inserir e sincronizar letra")}
             if(BuildConfig.DEBUG)TextButton(enabled=durationSeconds>0&&onlineNotice!="Buscando letra online…",onClick={onlineRevision++}){Text("Buscar letra novamente")}
-            Button(enabled=!busy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
+            Button(enabled=!busy&&!aiBusy&&mediaId.isNotBlank(),onClick={pendingKey=key;picker.launch(arrayOf("*/*"))},modifier=Modifier.fillMaxWidth()){Text("Importar letra")}
             Spacer(Modifier.weight(1f))
         }else {
             if(!synced&&source!="LRCLIB · consulta online")TextButton(enabled=!busy&&duration>0&&mediaId.isNotBlank(),onClick={
@@ -257,8 +265,13 @@ internal fun LyricsScreen(mediaId:String,title:String,artist:String,position:Lon
 
 internal suspend fun playerPreviewLyrics(context:Context,mediaId:String,title:String,artist:String,duration:Long,localUri:Uri?):List<LyricLine>{
     val local=withContext(Dispatchers.IO){
-        val imported=runCatching{parseLyrics(lyricFile(context,lyricKey(mediaId,title,artist)).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
-        if(imported.isNotEmpty())imported else if(localUri!=null)runCatching{context.contentResolver.openInputStream(localUri)?.use{readEmbeddedLyrics(it)}?.let{parseLyrics(it)}.orEmpty()}.getOrDefault(emptyList())else emptyList()
+        val key=lyricKey(mediaId,title,artist)
+        val imported=runCatching{parseLyrics(lyricFile(context,key).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
+        val owner=NeroSupabase.activeUid.value
+        val ai=if(imported.isEmpty()&&owner!=null&&NeroSupabase.identityReady.value)
+            runCatching{parseLyrics(lyricFile(context,aiLyricKey(key,owner)).readFully().toString(Charsets.UTF_8))}.getOrDefault(emptyList())
+        else emptyList()
+        if(imported.isNotEmpty())imported else if(ai.isNotEmpty()&&NeroSupabase.activeUid.value==owner&&NeroSupabase.identityReady.value)ai else if(localUri!=null)runCatching{context.contentResolver.openInputStream(localUri)?.use{readEmbeddedLyrics(it)}?.let{parseLyrics(it)}.orEmpty()}.getOrDefault(emptyList())else emptyList()
     }
     if(local.isNotEmpty()||!BuildConfig.DEBUG||duration<=0)return local
     return OnlineLyrics.lookup(title,artist,(duration+500L)/1000L)?.let{parseLyrics(it.text)}.orEmpty()
