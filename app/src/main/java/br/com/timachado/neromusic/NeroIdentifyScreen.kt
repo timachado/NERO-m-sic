@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -49,6 +51,10 @@ internal fun NeroIdentifyScreen(onBack:()->Unit,onSearch:(String)->Unit){
     var message by remember(uid){mutableStateOf<String?>(null)}
     var match by remember(uid){mutableStateOf<NeroIdentifyMatch?>(null)}
     var consent by remember(uid){mutableStateOf(false)}
+    var historyOpen by remember(uid,ready){mutableStateOf(false)}
+    var confirmClear by remember(uid,ready){mutableStateOf(false)}
+    var historyEnabled by remember(uid,ready){mutableStateOf(ready&&uid?.let{NeroIdentifyHistory.enabled(context,it)}==true)}
+    var history by remember(uid,ready){mutableStateOf(if(ready)uid?.let{NeroIdentifyHistory.read(context,it)}.orEmpty() else emptyList())}
     var pendingOwner by remember{mutableStateOf<String?>(null)}
     fun start(owner:String){
         if(!NeroIdentifyClient.enabled||!foreground||busy||!ready||NeroSupabase.activeUid.value!=owner)return
@@ -60,7 +66,12 @@ internal fun NeroIdentifyScreen(onBack:()->Unit,onSearch:(String)->Unit){
                 audio=NeroIdentifySample.record(context)
                 message="Procurando a música…"
                 when(val result=NeroIdentifyClient.identify(context,owner,audio)){
-                    is NeroIdentifyResult.Match->{match=result.value;message=null}
+                    is NeroIdentifyResult.Match->{
+                        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==owner){
+                            match=result.value;message=null
+                            history=NeroIdentifyHistory.add(context,owner,result.value)
+                        }
+                    }
                     NeroIdentifyResult.NoMatch->message="Não encontrei uma correspondência. Tente outro trecho."
                     NeroIdentifyResult.Limit->message="Limite de identificações atingido."
                     NeroIdentifyResult.Unavailable->message="Reconhecimento indisponível no momento."
@@ -83,6 +94,68 @@ internal fun NeroIdentifyScreen(onBack:()->Unit,onSearch:(String)->Unit){
         lifecycle?.addObserver(observer)
         onDispose{job?.cancel();lifecycle?.removeObserver(observer)}
     }
+    val historyOwner=uid?.takeIf{ready}
+    if(historyOpen&&historyOwner!=null){
+        AlertDialog(
+            onDismissRequest={historyOpen=false;confirmClear=false},
+            title={Text("Histórico de identificações")},
+            text={
+                Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.weight(1f)){
+                            Text("Salvar identificações",fontWeight=FontWeight.Medium)
+                            Text("Apenas neste aparelho, na sua conta.",style=MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked=historyEnabled,onCheckedChange={enabled->
+                            if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==historyOwner){
+                                NeroIdentifyHistory.setEnabled(context,historyOwner,enabled)
+                                historyEnabled=enabled
+                                history=NeroIdentifyHistory.read(context,historyOwner)
+                            }
+                        })
+                    }
+                    if(!historyEnabled)Text("Ative para guardar novas descobertas. Desativar apaga o histórico.")
+                    else if(history.isEmpty())Text("Nenhuma identificação salva.")
+                    else LazyColumn(Modifier.heightIn(max=320.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                        items(history){row->
+                            Card(Modifier.fillMaxWidth()){
+                                Column(Modifier.padding(10.dp)){
+                                    Row(verticalAlignment=Alignment.CenterVertically){
+                                        Column(Modifier.weight(1f)){
+                                            Text(row.match.title,fontWeight=FontWeight.Bold)
+                                            Text(row.match.artist,style=MaterialTheme.typography.bodyMedium)
+                                            if(row.match.album.isNotBlank())Text(row.match.album,style=MaterialTheme.typography.bodySmall)
+                                            Text(android.text.format.DateFormat.format("dd/MM/yyyy HH:mm",row.at).toString(),style=MaterialTheme.typography.labelSmall)
+                                        }
+                                        IconButton(onClick={
+                                            if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==historyOwner)
+                                                history=NeroIdentifyHistory.remove(context,historyOwner,row)
+                                        }){Icon(Icons.Default.DeleteOutline,"Remover identificação")}
+                                    }
+                                    TextButton(onClick={
+                                        if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==historyOwner){
+                                            historyOpen=false;onSearch(row.match.query)
+                                        }
+                                    }){Text("Encontrar no NERO Music")}
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton={TextButton(onClick={historyOpen=false}){Text("Fechar")}},
+            dismissButton={if(historyEnabled&&history.isNotEmpty())TextButton(onClick={confirmClear=true}){Text("Limpar histórico")}}
+        )
+        if(confirmClear)AlertDialog(onDismissRequest={confirmClear=false},title={Text("Limpar histórico?")},
+            text={Text("As músicas salvas neste histórico serão removidas. Favoritos e playlists não serão alterados.")},
+            confirmButton={TextButton(onClick={
+                if(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==historyOwner){
+                    NeroIdentifyHistory.clear(context,historyOwner);history=emptyList()
+                }
+                confirmClear=false
+            }){Text("Limpar")}},
+            dismissButton={TextButton(onClick={confirmClear=false}){Text("Cancelar")}})
+    }
     if(consent)AlertDialog(onDismissRequest={consent=false},title={Text("Identificar música")},
         text={Text("O NERO grava oito segundos do ambiente e envia o trecho ao serviço de reconhecimento. Não use enquanto estiver dirigindo. A captura só acontece após sua confirmação.")},
         confirmButton={TextButton(onClick={
@@ -96,7 +169,8 @@ internal fun NeroIdentifyScreen(onBack:()->Unit,onSearch:(String)->Unit){
     Column(Modifier.fillMaxSize().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick={job?.cancel();onBack()}){Icon(Icons.Default.ArrowBack,"Voltar")}
-            Text("NERO IDENTIFY",color=MaterialTheme.colorScheme.secondary,fontWeight=FontWeight.Bold)
+            Text("NERO IDENTIFY",color=MaterialTheme.colorScheme.secondary,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+            IconButton(enabled=historyOwner!=null&&!busy,onClick={historyOpen=true}){Icon(Icons.Default.History,"Histórico de identificações")}
         }
         Spacer(Modifier.weight(1f))
         Icon(Icons.Default.GraphicEq,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(120.dp))
@@ -106,6 +180,7 @@ internal fun NeroIdentifyScreen(onBack:()->Unit,onSearch:(String)->Unit){
         else Text("Identifique músicas do rádio ou do ambiente.")
         if(busy){CircularProgressIndicator();OutlinedButton(onClick={job?.cancel();message=null}){Text("Cancelar")}}
         else Button(enabled=NeroIdentifyClient.enabled&&foreground&&ready&&uid!=null,onClick={consent=true},modifier=Modifier.fillMaxWidth()){Text("Identificar música")}
+        if(historyOwner!=null&&!busy)TextButton(onClick={historyOpen=true}){Text(if(historyEnabled)"Histórico · "+history.size+" músicas" else "Ativar histórico de identificações")}
         message?.let{Text(it)}
         match?.let{result->
             Card(Modifier.fillMaxWidth()){
