@@ -26,6 +26,16 @@ class NeroSaveTargetsTest {
         assertEquals(next,addNeroSaveTargets(next,listOf(two),emptySet(),false,draft))
         assertTrue(next.favorites.isEmpty())
     }
+    @Test fun quickSaveSearchAndRecentOrder(){
+        val rows=listOf(a.copy(name="Pagode"),b.copy(name="Rock"),c.copy(name="Pagode 2"))
+        assertEquals(listOf("a","c","b"),quickSaveOrder(rows,listOf("a","deleted"),"").map{it.id})
+        assertEquals(listOf("a","c"),quickSaveOrder(rows,listOf("a")," PAGODE ").map{it.id})
+        assertTrue(quickSaveOrder(rows,emptyList(),"Jazz").isEmpty())
+    }
+    @Test fun recentTargetsDeduplicateAndStayBounded(){
+        assertEquals(listOf("b","c","a"),quickSaveRecents(listOf("a","b"),listOf("b","c")))
+        assertEquals(12,quickSaveRecents((1..20).map{it.toString()},listOf("new")).size)
+    }
     @Test(expected=IllegalArgumentException::class) fun deletedDestinationDoesNotSilentlySave(){
         addNeroSaveTargets(NeroSaveTargets(emptyList(),listOf(a)),listOf(two),setOf("deleted"),false,null)
     }
