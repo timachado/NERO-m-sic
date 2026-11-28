@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 internal object NeroPlaybackAccess {
     private val state=MutableStateFlow(false)
     val premium=state.asStateFlow()
-    private var owner:String?=null
-    private var deadline=0L
+    @Volatile private var owner:String?=null
+    @Volatile private var deadline=0L
     fun allowed():Boolean=state.value&&owner!=null&&NeroSupabase.identityReady.value&&
         NeroSupabase.activeUid.value==owner&&android.os.SystemClock.elapsedRealtime()<deadline
     fun update(uid:String?,verified:Boolean){
