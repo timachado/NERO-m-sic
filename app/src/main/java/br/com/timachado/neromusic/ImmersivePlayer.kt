@@ -51,7 +51,7 @@ internal fun ImmersivePlayer(
     onClose:()->Unit,onFavorite:()->Unit,onSeek:(Long)->Unit,onPlayPause:()->Unit,onPrevious:()->Unit,onNext:()->Unit,
     onShuffle:()->Unit,onRepeat:()->Unit,onLyrics:()->Unit,onQueue:()->Unit,onEqualizer:()->Unit,onRadio:()->Unit,
     canRadio:Boolean=track!=null,radioBusy:Boolean=false,autoplay:Boolean=false,onToggleAutoplay:()->Unit={},
-    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier,onRetry:()->Unit=onPlayPause,nextAvailable:Boolean=ready
+    shareRef:OnlineRef?=null,mediaId:String="",origin:PlaybackOrigin?=null,onOriginClick:(PlaybackOrigin)->Unit={},onOpenAlbum:(NativeCollection)->Unit={},onExploreArtist:(String)->Unit={},onRelatedQueue:(List<MediaItem>,Int)->Unit={_,_->},videoPlayer:Player?=null,videoMode:Boolean=false,canVideo:Boolean=false,onVideoToggle:()->Unit={},videoQuality:Int=0,onVideoQuality:(Int)->Unit={},pipSupported:Boolean=false,onPip:()->Unit={},offlineTrack:OpenTrack?=null,offlineState:OfflineState=OfflineState(),onOfflineSave:(OpenTrack)->Unit={},onOfflineOpen:()->Unit={},onNativeSave:(NativeMusicHit)->Unit={},modifier:Modifier=Modifier,onRetry:()->Unit=onPlayPause,nextAvailable:Boolean=ready,savedPlaylists:List<String> = emptyList()
 ){
     val premiumSignal by NeroPlaybackAccess.premium.collectAsState()
     val fullControls=premiumSignal&&NeroPlaybackAccess.allowed()
@@ -176,7 +176,7 @@ internal fun ImmersivePlayer(
                                 if(NeroSupabase.activeUid.value==owner)android.widget.Toast.makeText(castContext,if(!ok)"Não foi possível atualizar a preferência." else if(hidden)"Música liberada para recomendações." else "Música ocultada das recomendações.",android.widget.Toast.LENGTH_SHORT).show()
                             }
                         })
-                        DropdownMenuItem(text={Text("Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()})
+                        DropdownMenuItem(text={Text(savedPlaylistLabel(savedPlaylists)?:"Adicionar à playlist")},enabled=canSave,onClick={showMore=false;onSave()},leadingIcon={Icon(if(savedPlaylists.isNotEmpty())Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,null,tint=neon)})
                         DropdownMenuItem(text={Text(if(radioBusy)"Preparando rádio…" else "Rádio desta faixa")},enabled=ready&&canRadio&&!radioBusy,onClick={showMore=false;onRadio()})
                         if(NativeMusicCatalog.enabled)DropdownMenuItem(text={Text(if(autoplay)"Autoplay online: ligado" else "Autoplay online: desligado")},onClick={showMore=false;onToggleAutoplay()})
                         DropdownMenuItem(text={Text("NERO Studio · Trocar tema")},enabled=preferenceReady&&preferenceUid!=null,onClick={showMore=false;showStudio=true})
@@ -224,9 +224,10 @@ internal fun ImmersivePlayer(
                 Column(Modifier.weight(1f)){
                     Text(title.ifBlank{"Nenhuma faixa"},fontSize=if(compact)21.sp else 24.sp,lineHeight=if(compact)24.sp else 27.sp,fontWeight=FontWeight.Bold,maxLines=2,overflow=TextOverflow.Ellipsis)
                     Text(displayArtistName(artist),color=Color.LightGray,fontSize=14.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    savedPlaylistLabel(savedPlaylists)?.let{Text(it,color=neon,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                     track?.album?.takeUnless{it=="Álbum desconhecido"}?.let{Text(it,color=Color.LightGray,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)}
                 }
-                FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(Icons.Default.PlaylistAdd,"Adicionar à playlist",tint=neon)}
+                FilledTonalIconButton(onClick=onSave,enabled=canSave){Icon(if(savedPlaylists.isNotEmpty())Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,savedPlaylistLabel(savedPlaylists)?:"Adicionar à playlist",tint=neon)}
                 FilledTonalIconButton(onClick=onFavorite,enabled=canSave){Icon(if(favorite)Icons.Default.Favorite else Icons.Default.FavoriteBorder,if(favorite)"Descurtir música" else "Curtir música",tint=if(favorite)neon else Color.White)}
                 FilledTonalIconButton(onClick=onLyrics,enabled=ready&&title.isNotBlank()){Icon(Icons.Default.Lyrics,"Letras",tint=aqua)}
             }
