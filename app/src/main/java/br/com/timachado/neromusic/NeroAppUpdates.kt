@@ -190,6 +190,24 @@ internal fun NeroUpdateNotificationPreference(){
                 if(it&&Build.VERSION.SDK_INT>=33&&!allowed)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
             })
         }
+        var catalogueEnabled by remember(resume){mutableStateOf(NeroCatalogueAlerts.enabled(context))}
+        Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){
+            Text("Novidades na grade e descobertas musicais",modifier=Modifier.weight(1f))
+            Switch(checked=catalogueEnabled,onCheckedChange={
+                catalogueEnabled=it
+                NeroCatalogueAlerts.setEnabled(context,it)
+                if(it&&Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            })
+        }
+        Text("Seleção musical consultada periodicamente, sem usar seu histórico. Datas de lançamento não verificadas.",style=MaterialTheme.typography.bodySmall)
+        if(catalogueEnabled&&!NeroRadarAlerts.permitted(context)){
+            TextButton(onClick={
+                if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else NeroAppUpdates.openNotificationSettings(context)
+            }){Text("Permitir avisos da grade")}
+        }
         Text("Versão instalada: "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE,style=MaterialTheme.typography.bodySmall)
         if(enabled){
             Text(registration,style=MaterialTheme.typography.bodySmall)
