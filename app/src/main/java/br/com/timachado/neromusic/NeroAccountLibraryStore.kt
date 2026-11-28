@@ -87,6 +87,11 @@ internal object NeroAccountSync{
             if(changed){changesState.value++;editsState.value++}
         }
     }
+    suspend fun addSaveDestinations(context:Context,uid:String,incoming:List<OnlineRef>,ids:Set<String>,favorite:Boolean,created:OnlineList?)=updateCollections(context,uid){snapshot->
+        require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
+        val next=addNeroSaveTargets(NeroSaveTargets(snapshot.favorites,snapshot.playlists),incoming,ids,favorite,created)
+        snapshot.copy(favorites=next.favorites,playlists=next.playlists)
+    }
     suspend fun restorePremiumBackup(context:Context,uid:String,backup:CloudLibrarySnapshot)=updateCollections(context,uid){snapshot->
         require(NeroSupabase.identityReady.value&&NeroSupabase.activeUid.value==uid)
         mergeNeroBackup(snapshot,backup)
